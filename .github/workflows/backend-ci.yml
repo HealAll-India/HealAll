@@ -1,0 +1,140 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths: ['backend/**']
+  pull_request:
+    branches: [main]
+    paths: ['backend/**']
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+        working-directory: backend
+
+      - name: Ruff check
+        run: ruff check app/ tests/
+        working-directory: backend
+
+      - name: Ruff format check
+        run: ruff format --check app/ tests/
+        working-directory: backend
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: healall
+          POSTGRES_PASSWORD: changeme
+          POSTGRES_DB: healall_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # App
+      APP_ENV: development
+      APP_DEBUG: "false"
+      APP_SECRET_KEY: ci-test-app-secret-key-not-for-production
+      APP_ALLOWED_ORIGINS: "http://localhost:3000"
+
+      # Database — used for migrations and tests
+      DATABASE_URL: postgresql+asyncpg://healall:changeme@localhost:5432/healall
+
+      # Redis
+      REDIS_URL: redis://localhost:6379/0
+
+      # JWT
+      JWT_SECRET_KEY: ci-test-jwt-secret-key-not-for-production
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: "30"
+
+      # S3 — stub/no-op in CI
+      S3_ENDPOINT_URL: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET_MEDIA: healall-media
+      S3_BUCKET_IDENTITY: healall-identity-ephemeral
+      S3_REGION: us-east-1
+
+      # SMS — stub provider, no real credentials needed
+      SMS_PROVIDER: stub
+      SMS_API_KEY: ""
+      SMS_SENDER_ID: HEALALL
+
+      # Email — stub provider, no real credentials needed
+      EMAIL_PROVIDER: stub
+      EMAIL_SMTP_HOST: ""
+      EMAIL_SMTP_PORT: "587"
+      EMAIL_SMTP_USER: ""
+      EMAIL_SMTP_PASSWORD: ""
+      EMAIL_FROM: noreply@healall.in
+
+      # Aadhaar — stub provider, no real credentials needed
+      AADHAAR_PROVIDER: stub
+      AADHAAR_API_KEY: ""
+      AADHAAR_API_URL: ""
+
+      # Sentry — disabled in CI
+      SENTRY_DSN: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+        working-directory: backend
+
+      - name: Create migrations database
+        # The postgres service creates healall_test; migrations target the
+        # main 'healall' database. Create it before running alembic.
+        run: |
+          PGPASSWORD=changeme psql \
+            -h localhost -U healall -d healall_test \
+            -c "CREATE DATABASE healall;"
+
+      - name: Run migrations
+        run: alembic upgrade head
+        working-directory: backend
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short --cov=app --cov-report=xml
+        working-directory: backend
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: backend/coverage.xml
+          flags: backend
+        continue-on-error: true
