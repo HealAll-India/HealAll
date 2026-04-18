@@ -1,0 +1,15 @@
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
+
+# Node
+node_modules/
+package-lock.json
+
+# Generated
+graphify-out/
+backend/graphify-out/
+
+# Claude worktrees (ephemeral)
+.claude/worktrees/
