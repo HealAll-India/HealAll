@@ -3,7 +3,23 @@
     "allow": [
       "Bash(docker compose up:*)",
       "Bash(chmod:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(docker info:*)",
+      "Bash(pip3 show:*)",
+      "Bash(/Users/anupam8nith/Desktop/HealAll/backend/.env:*)",
+      "Bash(python3.12:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(echo exit: $?:*)",
+      "Bash(docker compose:*)",
+      "Bash(.venv/bin/alembic upgrade:*)",
+      "Bash(.venv/bin/alembic:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(.venv/bin/uvicorn app.main:app:*)",
+      "Bash(pkill:*)",
+      "Skill(update-config)"
     ]
   }
 }
