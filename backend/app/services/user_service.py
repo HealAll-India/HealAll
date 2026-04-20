@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import DuplicateException, NotFoundException
 from app.models.privacy import UserBlock, UserPrivacySettings
 from app.models.user import User, UserSkill
-from app.schemas.user import PrivacySettings, UpdatePrivacyRequest, UserProfileUpdate
+from app.schemas.user import UpdatePrivacyRequest, UserProfileUpdate
 
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:

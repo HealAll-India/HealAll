@@ -19,8 +19,8 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     generate_otp,
-    hash_password,
     hash_otp,
+    hash_password,
     verify_otp,
 )
 from app.models.user import OTPAttempt, RefreshToken, User

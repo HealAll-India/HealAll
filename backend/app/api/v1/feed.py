@@ -38,7 +38,7 @@ async def get_feed(
     )
 
     # Get all unique author IDs
-    author_ids = list(set(post.author_id for post in posts))
+    author_ids = list({post.author_id for post in posts})
 
     # Fetch all authors in one query
     authors_result = await db.execute(

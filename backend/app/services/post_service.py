@@ -5,9 +5,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException, InvalidStateException, NotFoundException
-from app.models.privacy import UserBlock
 from app.models.post import Post, PostStatus
-from app.models.user import User
+from app.models.privacy import UserBlock
 from app.schemas.post import CreatePostRequest, UpdatePostRequest
 
 

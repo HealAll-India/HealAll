@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.post import PostCategory, PostStatus, PostUrgency
+from app.models.post import PostCategory, PostUrgency
 
 
 class CreatePostRequest(BaseModel):

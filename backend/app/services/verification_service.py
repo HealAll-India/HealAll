@@ -9,7 +9,6 @@ from app.models.case import Case, CaseStatus
 from app.models.post import Post, PostStatus
 from app.models.verification import Verification, VerificationDecision
 
-
 VERIFICATION_ALLOWED_FROM = {
     PostStatus.SUBMITTED.value,
     PostStatus.NEEDS_INFO.value,

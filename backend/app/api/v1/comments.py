@@ -39,7 +39,7 @@ async def create_comment(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return CommentResponse(
         id=comment.id,
@@ -104,4 +104,4 @@ async def delete_comment(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None

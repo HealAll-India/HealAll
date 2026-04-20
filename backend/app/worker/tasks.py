@@ -33,7 +33,7 @@ def send_otp_sms(self: Task, phone: str, otp_code: str, purpose: str) -> bool:
         return result
     except Exception as exc:
         logger.exception("send_otp_sms failed for phone=%s: %s", phone, exc)
-        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1)) from exc
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="worker.send_otp_email")
@@ -63,7 +63,7 @@ def send_otp_email(self: Task, email: str, otp_code: str, purpose: str) -> bool:
         return result
     except Exception as exc:
         logger.exception("send_otp_email failed for email=%s: %s", email, exc)
-        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1)) from exc
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="worker.notify_case_update")
@@ -92,7 +92,7 @@ def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list
         # TODO: Replace with real push/email/SMS dispatch when providers are configured.
     except Exception as exc:
         logger.exception("notify_case_update failed for case_id=%s: %s", case_id, exc)
-        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1)) from exc
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="worker.notify_new_comment")
@@ -124,4 +124,4 @@ def notify_new_comment(
         logger.exception(
             "notify_new_comment failed for post_id=%s: %s", post_id, exc
         )
-        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1)) from exc
