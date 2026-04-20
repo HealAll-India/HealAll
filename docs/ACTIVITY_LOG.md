@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-21 — Task 1: Logo + AppShell nav
+**Agent**: coder (claude-sonnet-4-6)
+**Scope**: Replace AppShell with role-gated nav, gradient logo wordmark, and fix teal inline styles.
+**Changes**:
+- `frontend/public/logo.jpeg`: new — copied from `assets/logo.jpeg`; served as `/logo.jpeg` by Next.js.
+- `frontend/components/layout/app-shell.tsx`: full replacement — `<img>` + `.logo-text` gradient wordmark replaces `<strong>HealAll>`; inline `style={{ color: '#0f766e' }}` replaced with `className="active"`; flat `appLinks` array split into `BASE_LINKS` / `MOD_LINKS` / `ADMIN_LINKS`; `isAuthed` guest branch simplified to Sign up + Login only; user badge uses `.vbadge` class.
+**Tests**: TypeScript build (`npm run build`) produced zero errors.
+**Follow-ups**: Task 2 (Export FeedFilters type).
+
+---
+
 ## 2026-04-20 — Task 1: Fix failing tests (make test green)
 **Agent**: coder (claude-sonnet-4-6)
 **Scope**: Fix two HTTP status code bugs in `main.py` exception handlers; all 108 integration tests now pass.
