@@ -7,32 +7,43 @@ import { logout } from "@/lib/api/auth";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
-const appLinks = [
-  { href: "/feed", label: "Feed" },
+const BASE_LINKS = [
+  { href: "/feed",      label: "Feed" },
   { href: "/posts/new", label: "New Post" },
-  { href: "/cases", label: "Cases" },
-  { href: "/messages", label: "Messages" },
-  { href: "/profile", label: "Profile" },
-  { href: "/admin/verification", label: "Verify" },
+  { href: "/cases",     label: "Cases" },
+  { href: "/messages",  label: "Messages" },
+  { href: "/profile",   label: "Profile" },
+];
+
+const MOD_LINKS = [
   { href: "/admin/moderation", label: "Moderation" },
-  { href: "/invites", label: "Invites" }
+];
+
+const ADMIN_LINKS = [
+  { href: "/admin/verification", label: "Verify" },
+  { href: "/invites",            label: "Invites" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const hydrated = useHydrated();
-  const pathname = usePathname();
-  const router = useRouter();
+  const hydrated  = useHydrated();
+  const pathname  = usePathname();
+  const router    = useRouter();
   const { accessToken, user, clearSession } = useAuthStore();
 
   const isAuthed = hydrated && Boolean(accessToken);
+  const roles    = user?.roles ?? [];
+  const isMod    = roles.some(r => ["MODERATOR", "ADMIN", "HEAD_ADMIN"].includes(r));
+  const isAdmin  = roles.some(r => ["ADMIN", "HEAD_ADMIN"].includes(r));
+
+  const visibleLinks = [
+    ...BASE_LINKS,
+    ...(isMod   ? MOD_LINKS   : []),
+    ...(isAdmin ? ADMIN_LINKS : []),
+  ];
 
   async function handleLogout() {
     if (accessToken) {
-      try {
-        await logout(accessToken);
-      } catch {
-        // Ignore server-side logout failure and clear local session anyway.
-      }
+      try { await logout(accessToken); } catch { /* ignore */ }
     }
     clearSession();
     router.push("/login");
@@ -42,47 +53,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <nav className="main-nav">
         <div className="inner">
-          <div className="row">
-            <Link href="/">
-              <strong>HealAll</strong>
-            </Link>
-            {isAuthed && user ? (
-              <span className="badge ok">
-                {user.name} · L{user.verification_level}
-              </span>
-            ) : (
-              <span className="badge">Guest</span>
-            )}
-          </div>
+          <Link href="/" className="logo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.jpeg" alt="HealAll" width={36} height={36} />
+            <span className="logo-text">HealAll</span>
+          </Link>
 
           <div className="links">
             {isAuthed ? (
-              appLinks.map((link) => (
+              visibleLinks.map(link => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  style={{
-                    borderColor: pathname.startsWith(link.href) ? "#0f766e" : undefined,
-                    color: pathname.startsWith(link.href) ? "#0f766e" : undefined
-                  }}
+                  className={pathname.startsWith(link.href) ? "active" : ""}
                 >
                   {link.label}
                 </Link>
               ))
             ) : (
               <>
-                <Link href="/signup">Signup</Link>
-                <Link href="/verify-otp">Verify OTP</Link>
+                <Link href="/signup">Sign up</Link>
                 <Link href="/login">Login</Link>
               </>
             )}
           </div>
 
-          {isAuthed ? (
-            <button className="danger" onClick={handleLogout} type="button">
-              Logout
-            </button>
-          ) : null}
+          <div className="row" style={{ gap: "10px" }}>
+            {isAuthed && user ? (
+              <>
+                <span className="vbadge">{user.name} · L{user.verification_level}</span>
+                <button className="danger" onClick={handleLogout} type="button">Logout</button>
+              </>
+            ) : null}
+          </div>
         </div>
       </nav>
       {children}
