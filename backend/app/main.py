@@ -1,6 +1,7 @@
 """FastAPI application factory and configuration."""
 import logging
 
+import sentry_sdk
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +37,14 @@ settings = get_settings()
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.APP_ENV,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+
     app = FastAPI(
         title="HealAll API",
         description="Backend API for the HealAll mutual-aid platform",
