@@ -92,7 +92,9 @@ def create_app() -> FastAPI:
             status_code = status.HTTP_410_GONE
         elif isinstance(exc, RateLimitException):
             status_code = status.HTTP_429_TOO_MANY_REQUESTS
-        elif isinstance(exc, (InvalidStateException, ValidationException)):
+        elif isinstance(exc, InvalidStateException):
+            status_code = status.HTTP_409_CONFLICT
+        elif isinstance(exc, ValidationException):
             status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         else:
             status_code = status.HTTP_400_BAD_REQUEST
@@ -117,7 +119,7 @@ def create_app() -> FastAPI:
         ]
 
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=ErrorResponse(
                 error=ErrorInfo(
                     code="VALIDATION_ERROR",
