@@ -1,5 +1,4 @@
 """API dependencies."""
-from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status

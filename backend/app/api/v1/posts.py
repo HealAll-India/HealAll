@@ -37,7 +37,7 @@ async def create_post(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return PostResponse(
         id=post.id,
@@ -70,7 +70,7 @@ async def get_post(
     # see drafts, submitted, needs_info, or rejected posts.
     visible_statuses = {PostStatus.ACTIVE.value, PostStatus.RESOLVED.value}
     if post.status not in visible_statuses and post.author_id != current_user.id:
-        raise NotFoundException("Post not found")
+        raise NotFoundException("Post not found") from None
 
     # Get author info — use scalar_one_or_none to avoid 500 on deleted authors
     author_result = await db.execute(
@@ -78,7 +78,7 @@ async def get_post(
     )
     author = author_result.scalar_one_or_none()
     if not author:
-        raise NotFoundException("Post not found")
+        raise NotFoundException("Post not found") from None
 
     return PostResponse(
         id=post.id,
@@ -111,7 +111,7 @@ async def update_post(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return PostResponse(
         id=post.id,
@@ -143,7 +143,7 @@ async def delete_post(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
 
 @router.post("/{post_id}/submit", response_model=PostResponse)
@@ -158,7 +158,7 @@ async def submit_post(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return PostResponse(
         id=post.id,
