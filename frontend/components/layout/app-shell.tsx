@@ -19,9 +19,12 @@ const MOD_LINKS = [
   { href: "/admin/moderation", label: "Moderation" },
 ];
 
-const ADMIN_LINKS = [
+const VERIFIER_LINKS = [
   { href: "/admin/verification", label: "Verify" },
-  { href: "/invites",            label: "Invites" },
+];
+
+const ADMIN_LINKS = [
+  { href: "/invites", label: "Invites" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -31,14 +34,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { accessToken, user, clearSession } = useAuthStore();
 
   const isAuthed = hydrated && Boolean(accessToken);
-  const roles    = user?.roles ?? [];
-  const isMod    = roles.some(r => ["MODERATOR", "ADMIN", "HEAD_ADMIN"].includes(r));
-  const isAdmin  = roles.some(r => ["ADMIN", "HEAD_ADMIN"].includes(r));
+  const roles      = user?.roles ?? [];
+  const isMod      = roles.some(r => ["moderator", "admin", "head_admin"].includes(r));
+  const isAdmin    = roles.some(r => ["admin", "head_admin"].includes(r));
+  const isVerifier = roles.some(r => ["case_verifier", "admin", "head_admin"].includes(r));
 
   const visibleLinks = [
     ...BASE_LINKS,
-    ...(isMod   ? MOD_LINKS   : []),
-    ...(isAdmin ? ADMIN_LINKS : []),
+    ...(isMod      ? MOD_LINKS      : []),
+    ...(isVerifier ? VERIFIER_LINKS : []),
+    ...(isAdmin    ? ADMIN_LINKS    : []),
   ];
 
   async function handleLogout() {
