@@ -4,6 +4,16 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-20 — Task 1: Fix failing tests (make test green)
+**Agent**: coder (claude-sonnet-4-6)
+**Scope**: Fix two HTTP status code bugs in `main.py` exception handlers; all 108 integration tests now pass.
+**Changes**:
+- `backend/app/main.py`: `RequestValidationError` handler now returns 422 (was 400); `InvalidStateException` split out to return 409 Conflict (was grouped with `ValidationException` → 422).
+**Tests**: 108/108 passed. `make test` green.
+**Follow-ups**: Task 7 (Aadhaar real provider). Frontend wiring for upload presigned URLs.
+
+---
+
 ## 2026-04-19 — CLAUDE.md rework + activity log introduced
 **Agent**: coder (sonnet-4.6)
 **Scope**: Rewrite `CLAUDE.md` to be less strict / more judgment-based, add a cross-session activity log requirement, provide an improved onboarding prompt for fresh agents.
