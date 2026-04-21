@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 
 import { createPost, submitPost } from "@/lib/api/posts";
 import { ApiError } from "@/lib/api/client";
-import { postCategories, postUrgencies } from "@/lib/constants";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { CreatePostPayload } from "@/lib/types/api";
