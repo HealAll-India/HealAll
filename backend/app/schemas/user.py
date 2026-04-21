@@ -1,9 +1,9 @@
 """User profile schemas."""
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, Field
 
-from app.core.constants import AgeRange, UserRole
+from app.core.constants import AgeRange
 
 
 class UserProfileUpdate(BaseModel):

@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, require_any_role
 from app.core.constants import UserRole
 from app.db.session import get_db
-from app.models.user import User
 from app.models.report import ReportStatus
+from app.models.user import User
 from app.schemas.report import CreateReportRequest, ReportListResponse, ReportResponse
 from app.services import report_service
 

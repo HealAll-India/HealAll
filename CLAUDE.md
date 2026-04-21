@@ -1,188 +1,111 @@
-# Claude Code Configuration - RuFlo V3
+# HealAll — Agent Guide
 
-## Behavioral Rules (Always Enforced)
+Invite-only mutual-aid platform, India-first, web-only. **Repo**: `https://github.com/anupam8nith/HealAll.git` · branch `development`
 
-- Do what has been asked; nothing more, nothing less
-- NEVER create files unless they're absolutely necessary for achieving your goal
-- ALWAYS prefer editing an existing file to creating a new one
-- NEVER proactively create documentation files (*.md) or README files unless explicitly requested
-- NEVER save working files, text/mds, or tests to the root folder
-- Never continuously check status after spawning a swarm — wait for results
-- ALWAYS read a file before editing it
-- NEVER commit secrets, credentials, or .env files
+Deep-dive docs (read when relevant): `docs/ROADMAP.md`, `docs/CODE_REVIEW.md`, `docs/HealAll_Architecture_README_v1.md`
 
-## File Organization
+---
 
-- NEVER save to root folder — use the directories below
-- Use `/src` for source code files
-- Use `/tests` for test files
-- Use `/docs` for documentation and markdown files
-- Use `/config` for configuration files
-- Use `/scripts` for utility scripts
-- Use `/examples` for example code
+## Non-Obvious Rules
 
-## Project Architecture
+**Service-layer contract**: services call `db.add()` / `db.flush()` / `db.refresh()` — never `db.commit()`. Routes commit. Services raise from `app.core.exceptions`, never `HTTPException`. Global handler in `main.py` maps to HTTP codes.
 
-- Follow Domain-Driven Design with bounded contexts
-- Keep files under 500 lines
-- Use typed interfaces for all public APIs
-- Prefer TDD London School (mock-first) for new code
-- Use event sourcing for state changes
-- Ensure input validation at system boundaries
+**RBAC is defence-in-depth**: checks live at both route and service layer. Keep both. Moderators cannot act on `MODERATOR` / `ADMIN` / `HEAD_ADMIN` roles.
 
-### Project Config
+**Migrations are immutable**: never edit `alembic/versions/`. Add a new migration for any schema change.
 
-- **Topology**: hierarchical-mesh
-- **Max Agents**: 15
-- **Memory**: hybrid
-- **HNSW**: Enabled
-- **Neural**: Enabled
+**Tests need Docker running**: `make up` before `make test`. Tests hit a real DB (`healall_test`) — no mocks.
 
-## Build & Test
+**Test auth pattern** — don't drive the signup API. Instead:
+```python
+invite = InviteCode(code="TEST-XXXX", ...); db.add(invite); await db.commit()
+otp_plain = await auth_service.create_otp(db, user, "phone")
+# Admin role: set User.roles directly in DB
+# Feed tests: seed Post with status=PostStatus.ACTIVE.value via ORM
+# Cases: no POST /v1/cases endpoint — seed Case + Post via ORM
+```
+`conftest.py` has fixtures for this.
 
-```bash
-# Build
-npm run build
+**Security guards — don't remove**: see `docs/CODE_REVIEW.md` for full list. Key files: `api/v1/posts.py` (visibility check, soft-delete guard), `services/report_service.py` (self-report guard), `services/moderation_service.py` (role-hierarchy check), `services/case_service.py` (closure state guard). If you touch these files, verify guards are intact.
 
-# Test
-npm test
+---
 
-# Lint
-npm run lint
+## Working Style
+
+- Files under ~500 lines. Split at natural seams.
+- Prefer editing over creating.
+- Smallest version first. No silent scope creep.
+- Parallelise independent reads and Bash calls.
+- Don't commit secrets. `.env` is gitignored.
+
+---
+
+## Activity Log — Mandatory
+
+Write to `docs/ACTIVITY_LOG.md` as the **last step** of every task that made changes. Past agents have skipped this — don't. Future agents depend on it.
+
+```markdown
+## YYYY-MM-DD — <title>
+**Agent**: <model/role>
+**Scope**: <one line>
+**Changes**: <file: what + why, one bullet per file>
+**Tests**: <result or why skipped>
+**Follow-ups**: <undone work or "none">
 ```
 
-- ALWAYS run tests after making code changes
-- ALWAYS verify build succeeds before committing
+---
 
-## Security Rules
-
-- NEVER hardcode API keys, secrets, or credentials in source files
-- NEVER commit .env files or any file containing secrets
-- Always validate user input at system boundaries
-- Always sanitize file paths to prevent directory traversal
-- Run `npx @claude-flow/cli@latest security scan` after security-related changes
-
-## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
-
-- All operations MUST be concurrent/parallel in a single message
-- Use Claude Code's Task tool for spawning agents, not just MCP
-- ALWAYS batch ALL todos in ONE TodoWrite call (5-10+ minimum)
-- ALWAYS spawn ALL agents in ONE message with full instructions via Task tool
-- ALWAYS batch ALL file reads/writes/edits in ONE message
-- ALWAYS batch ALL Bash commands in ONE message
-
-## Swarm Orchestration
-
-- MUST initialize the swarm using CLI tools when starting complex tasks
-- MUST spawn concurrent agents using Claude Code's Task tool
-- Never use CLI tools alone for execution — Task tool agents do the actual work
-- MUST call CLI tools AND Task tool in ONE message for complex work
-
-### 3-Tier Model Routing (ADR-026)
-
-| Tier | Handler | Latency | Cost | Use Cases |
-|------|---------|---------|------|-----------|
-| **1** | Agent Booster (WASM) | <1ms | $0 | Simple transforms (var→const, add types) — Skip LLM |
-| **2** | Haiku | ~500ms | $0.0002 | Simple tasks, low complexity (<30%) |
-| **3** | Sonnet/Opus | 2-5s | $0.003-0.015 | Complex reasoning, architecture, security (>30%) |
-
-- Always check for `[AGENT_BOOSTER_AVAILABLE]` or `[TASK_MODEL_RECOMMENDATION]` before spawning agents
-- Use Edit tool directly when `[AGENT_BOOSTER_AVAILABLE]`
-
-## Swarm Configuration & Anti-Drift
-
-- ALWAYS use hierarchical topology for coding swarms
-- Keep maxAgents at 6-8 for tight coordination
-- Use specialized strategy for clear role boundaries
-- Use `raft` consensus for hive-mind (leader maintains authoritative state)
-- Run frequent checkpoints via `post-task` hooks
-- Keep shared memory namespace for all agents
+## Commands
 
 ```bash
-npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized
+# from /backend
+make up && make migrate   # first-time setup
+make dev                  # API on :8000
+make test / make test-cov
+make lint / make format
+make seed
+
+# from /frontend
+npm run dev               # :3000
+npm run build / npm run lint
 ```
 
-## Swarm Execution Rules
+---
 
-- ALWAYS use `run_in_background: true` for all agent Task calls
-- ALWAYS put ALL agent Task calls in ONE message for parallel execution
-- After spawning, STOP — do NOT add more tool calls or check status
-- Never poll TaskOutput or check swarm status — trust agents to return
-- When agent results arrive, review ALL results before proceeding
+## Remaining Tasks
 
-## V3 CLI Commands
+1. Make `make test` green — fix bugs, not tests.
+2. Wire notifications — MSG91 (SMS) + SMTP (email). Config in `Settings` exists.
+3. Start Celery — `make worker` ready; move OTP off request thread.
+4. File uploads — presigned-URL routes for MinIO (already in compose).
+5. CI — `.github/workflows/ci.yml`, lint + test, Docker services.
+6. Sentry — `sentry-sdk` in deps; init in `main.py` with `SENTRY_DSN`.
+7. Aadhaar verification — `verification_service.py` is a stub.
 
-### Core Commands
+---
 
-| Command | Subcommands | Description |
-|---------|-------------|-------------|
-| `init` | 4 | Project initialization |
-| `agent` | 8 | Agent lifecycle management |
-| `swarm` | 6 | Multi-agent swarm coordination |
-| `memory` | 11 | AgentDB memory with HNSW search |
-| `task` | 6 | Task creation and lifecycle |
-| `session` | 7 | Session state management |
-| `hooks` | 17 | Self-learning hooks + 12 workers |
-| `hive-mind` | 6 | Byzantine fault-tolerant consensus |
+## Dev Tools
 
-### Quick CLI Examples
+**Session workflow**: brainstorm → graphify query → plan → TDD → code → commit → review
 
-```bash
-npx @claude-flow/cli@latest init --wizard
-npx @claude-flow/cli@latest agent spawn -t coder --name my-coder
-npx @claude-flow/cli@latest swarm init --v3-mode
-npx @claude-flow/cli@latest memory search --query "authentication patterns"
-npx @claude-flow/cli@latest doctor --fix
-```
+- **graphify**: `graphify-out/GRAPH_REPORT.md` before architecture questions. Auto-updates on file write. Run `graphify hook install` once per machine (git hooks).
+- **mempalace**: 957-drawer MCP memory. `mempalace mine <dir>` for new files.
+- **episodic-memory**: `/episodic-memory:search-conversations` before "how to approach X" questions.
+- **caveman**: `/caveman:caveman-commit`, `/caveman:caveman-review`.
+- **superpowers**: brainstorm (`superpowers:brainstorming`) → plan (`superpowers:writing-plans`) → review (`superpowers:requesting-code-review`).
+- **review-loop**: `/review-loop:review-loop` after significant implementations.
 
-## Available Agents (60+ Types)
+---
 
-### Core Development
-`coder`, `reviewer`, `tester`, `planner`, `researcher`
+## Quick Navigation
 
-### Specialized
-`security-architect`, `security-auditor`, `memory-specialist`, `performance-engineer`
-
-### Swarm Coordination
-`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`
-
-### GitHub & Repository
-`pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`
-
-### SPARC Methodology
-`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`
-
-## Memory Commands Reference
-
-```bash
-# Store (REQUIRED: --key, --value; OPTIONAL: --namespace, --ttl, --tags)
-npx @claude-flow/cli@latest memory store --key "pattern-auth" --value "JWT with refresh" --namespace patterns
-
-# Search (REQUIRED: --query; OPTIONAL: --namespace, --limit, --threshold)
-npx @claude-flow/cli@latest memory search --query "authentication patterns"
-
-# List (OPTIONAL: --namespace, --limit)
-npx @claude-flow/cli@latest memory list --namespace patterns --limit 10
-
-# Retrieve (REQUIRED: --key; OPTIONAL: --namespace)
-npx @claude-flow/cli@latest memory retrieve --key "pattern-auth" --namespace patterns
-```
-
-## Quick Setup
-
-```bash
-claude mcp add claude-flow -- npx -y @claude-flow/cli@latest
-npx @claude-flow/cli@latest daemon start
-npx @claude-flow/cli@latest doctor --fix
-```
-
-## Claude Code vs CLI Tools
-
-- Claude Code's Task tool handles ALL execution: agents, file ops, code generation, git
-- CLI tools handle coordination via Bash: swarm init, memory, hooks, routing
-- NEVER use CLI tools as a substitute for Task tool agents
-
-## Support
-
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
+| Question | Where |
+|----------|-------|
+| API shape | `backend/app/api/v1/X.py` → `schemas/X.py` |
+| State transitions | `services/*_service.py` |
+| Auth-gating | `deps.py` + route `Depends(...)` |
+| Past bugs fixed | `docs/CODE_REVIEW.md` |
+| Roadmap | `docs/ROADMAP.md` |
+| Frontend API client | `frontend/lib/api/*.ts` |
+| Last agent's work | `docs/ACTIVITY_LOG.md` |
+| Test auth fixtures | `backend/tests/conftest.py` |

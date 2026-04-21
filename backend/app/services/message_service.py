@@ -5,7 +5,13 @@ from uuid import UUID
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import DuplicateException, ForbiddenException, InvalidStateException, NotFoundException, RateLimitException
+from app.core.exceptions import (
+    DuplicateException,
+    ForbiddenException,
+    InvalidStateException,
+    NotFoundException,
+    RateLimitException,
+)
 from app.models.message import Conversation, DMConsentRequest, DMConsentStatus, Message
 from app.models.post import Post
 from app.models.user import User

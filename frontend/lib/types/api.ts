@@ -390,3 +390,10 @@ export interface InviteCodeResponse {
   created_at: string;
   is_available: boolean;
 }
+
+export interface FeedFilters {
+  city: string;
+  category: string;
+  urgency: string;
+  search: string;
+}

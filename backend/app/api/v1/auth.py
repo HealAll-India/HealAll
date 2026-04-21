@@ -1,12 +1,11 @@
 """Authentication endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import get_settings
-from app.core.constants import VerificationLevel
 from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.user import User
@@ -32,6 +31,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def signup(
     request: Request,
     signup_data: SignupRequest,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SignupResponse:
     """
@@ -39,21 +39,17 @@ async def signup(
 
     Requires a valid invite code. Sends OTP to phone and email for verification.
     """
-    # Validate invite code
     await invite_service.validate_and_use_invite(db, signup_data.invite_code)
-
-    # Create user
     user = await auth_service.create_user(db, signup_data)
 
-    # Create OTPs
     phone_otp, _ = await auth_service.create_otp(db, user.phone, purpose="signup")
     email_otp, _ = await auth_service.create_otp(db, user.email, purpose="signup")
 
-    # Send OTPs (async in background in production, but sync for MVP)
-    await notification_service.send_otp_sms(user.phone, phone_otp)
-    await notification_service.send_otp_email(user.email, email_otp)
-
     await db.commit()
+
+    # Send OTPs after response — keeps request fast
+    background_tasks.add_task(notification_service.send_otp_sms, user.phone, phone_otp, "signup")
+    background_tasks.add_task(notification_service.send_otp_email, user.email, email_otp, "signup")
 
     pending = []
     if not user.phone_verified:
@@ -108,6 +104,7 @@ async def verify_otp(
 async def resend_otp(
     request: Request,
     resend_data: ResendOTPRequest,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ResendOTPResponse:
     """
@@ -115,18 +112,16 @@ async def resend_otp(
 
     Rate limited to 5 requests per hour.
     """
-    # Create new OTP
     otp, _ = await auth_service.create_otp(db, resend_data.phone_or_email, purpose="login")
 
-    # Send OTP
+    await db.commit()
+
     if resend_data.phone_or_email.startswith("+"):
-        await notification_service.send_otp_sms(resend_data.phone_or_email, otp)
+        background_tasks.add_task(notification_service.send_otp_sms, resend_data.phone_or_email, otp)
         medium = "phone"
     else:
-        await notification_service.send_otp_email(resend_data.phone_or_email, otp)
+        background_tasks.add_task(notification_service.send_otp_email, resend_data.phone_or_email, otp)
         medium = "email"
-
-    await db.commit()
 
     return ResendOTPResponse(message=f"OTP sent to {medium}")
 

@@ -1,11 +1,13 @@
 """FastAPI application factory and configuration."""
 import logging
 
+import sentry_sdk
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.router import router as v1_router
@@ -35,6 +37,14 @@ settings = get_settings()
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.APP_ENV,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+
     app = FastAPI(
         title="HealAll API",
         description="Backend API for the HealAll mutual-aid platform",
@@ -82,7 +92,9 @@ def create_app() -> FastAPI:
             status_code = status.HTTP_410_GONE
         elif isinstance(exc, RateLimitException):
             status_code = status.HTTP_429_TOO_MANY_REQUESTS
-        elif isinstance(exc, (InvalidStateException, ValidationException)):
+        elif isinstance(exc, InvalidStateException):
+            status_code = status.HTTP_409_CONFLICT
+        elif isinstance(exc, ValidationException):
             status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         else:
             status_code = status.HTTP_400_BAD_REQUEST
@@ -107,7 +119,7 @@ def create_app() -> FastAPI:
         ]
 
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=ErrorResponse(
                 error=ErrorInfo(
                     code="VALIDATION_ERROR",

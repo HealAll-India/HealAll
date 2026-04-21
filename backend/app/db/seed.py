@@ -9,7 +9,6 @@ from app.core.constants import AgeRange, UserRole, VerificationLevel
 from app.db.session import async_session_maker
 from app.models.invite import InviteCode
 from app.models.user import User
-from app.services.invite_service import create_invite_code
 
 
 async def seed():
