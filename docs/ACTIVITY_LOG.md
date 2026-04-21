@@ -4,6 +4,19 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-21 — Tasks 1–3: AppShell nav + shared types + CategoryBubbles
+**Agent**: coder (claude-sonnet-4-6)
+**Scope**: First three tasks of design system rollout — nav component, shared type, first feed component.
+**Changes**:
+- `frontend/public/logo.jpeg`: copied from `assets/logo.jpeg` so Next.js serves it as `/logo.jpeg`
+- `frontend/components/layout/app-shell.tsx`: full replacement — gradient logo img + wordmark, role-gated nav (BASE_LINKS / VERIFIER_LINKS / MOD_LINKS / ADMIN_LINKS tiers), active link uses `className="active"` not inline style; role strings lowercased to match backend enum; `case_verifier` gets its own Verify link tier
+- `frontend/lib/types/api.ts`: exported `FeedFilters` interface `{ city, category, urgency, search: string }` for shared use by feed page + sidebar
+- `frontend/components/feed/category-bubbles.tsx`: new — 7 emoji bubbles mapping backend category values to UI; active state via border + scale + glow; scrollable row
+**Tests**: `npm run build` — zero errors after each commit.
+**Follow-ups**: Tasks 4–11 (feed components + page polishes) — see entry below.
+
+---
+
 ## 2026-04-21 — Tasks 4–11: Design system rollout (feed, auth pages)
 **Agent**: coder (claude-sonnet-4-6)
 **Scope**: Wire FeedCard, FeedSidebar, and CategoryBubbles into a real feed layout; polish login/signup/verify-otp/posts pages with logo, real copy, and no Module-X labels.
