@@ -4,6 +4,18 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-22 — Railway deployment: migrations live, backend healthy
+**Agent**: claude-sonnet-4-6
+**Scope**: Fix Railway deploy chain so migrations run on startup and backend is reachable at healall-production.up.railway.app.
+**Changes**:
+- `backend/alembic/env.py`: Read DATABASE_URL from env; strip `sslmode=` (psycopg2 syntax) and pass `ssl='require'` via connect_args for asyncpg.
+- `backend/app/db/session.py`: Same sslmode→connect_args fix so app engine also works with Neon.
+- `backend/Dockerfile`: Change CMD from `uvicorn` directly to `bash start.sh` — Railway uses Dockerfile over nixpacks.toml, so migrations were bypassed.
+**Tests**: `alembic_version = 006` (head) confirmed in Neon. All 20 app tables created. `GET /health` → `{"status":"healthy","version":"0.1.0"}`.
+**Follow-ups**: Add api.healallindia.com custom domain in Railway → Cloudflare CNAME. Deploy frontend to Vercel. DNS for healallindia.com.
+
+---
+
 ## 2026-04-21 — Homepage hero landing page
 **Agent**: coder (claude-sonnet-4-6)
 **Scope**: Replace dev placeholder at `/` with proper hero landing page.
