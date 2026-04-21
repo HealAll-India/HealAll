@@ -4,6 +4,33 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-21 — Tasks 4–11: Design system rollout (feed, auth pages)
+**Agent**: coder (claude-sonnet-4-6)
+**Scope**: Wire FeedCard, FeedSidebar, and CategoryBubbles into a real feed layout; polish login/signup/verify-otp/posts pages with logo, real copy, and no Module-X labels.
+**Changes**:
+- `frontend/components/feed/feed-card.tsx`: new — avatar gradient, category emoji badge, 16:9 emoji photo area, "Offer Help" / "Share" action row, urgency pill.
+- `frontend/components/feed/feed-sidebar.tsx`: new — search input, urgency chips (All/High/Critical), city select, community stats panel, recent helpers list.
+- `frontend/app/feed/page.tsx`: full refactor — drops old inline card grid; uses `CategoryBubbles` + `FeedCard` list + `FeedSidebar` in `feed-layout` 2-col grid; `applyFilter` helper drives live re-fetch; `AuthRequired` guard hoisted to top-level early return.
+- `frontend/app/login/page.tsx`: return block replaced — centered card (400px max), logo + wordmark header, real copy ("Welcome back"), ghost Resend OTP button.
+- `frontend/app/signup/page.tsx`: return block replaced — 440px card, invite-only purple notice banner, inline "I want to…" role checkboxes with real labels.
+- `frontend/app/verify-otp/page.tsx`: full replacement — 6 individual digit inputs with auto-focus-next / backspace-focus-prev, green highlight on filled cells, Clear button, logo header.
+- `frontend/app/posts/new/page.tsx`: return block replaced — back link, section headers (WHAT DO YOU NEED / DETAILS / LOCATION), emoji category options, unused `postCategories`/`postUrgencies` imports removed.
+- `frontend/app/posts/[postId]/page.tsx`: return block replaced — feed-card style author header with avatar gradient + vbadge, "Send Message" CTA, Comments section with compact card style, Report section with ghost submit, "Back to feed" link; all "Module X" labels removed.
+**Tests**: `npm run build` — zero TypeScript/Next.js errors after each task.
+**Follow-ups**: Task 12 (visual verification pass) pending.
+
+---
+
+## 2026-04-21 — Bugfix: role casing + case_verifier nav
+**Agent**: coder (claude-sonnet-4-6)
+**Scope**: Fix two bugs in AppShell nav: uppercase role strings never matched backend lowercase enums, and case_verifier users had no nav link to their primary page.
+**Changes**:
+- `frontend/components/layout/app-shell.tsx`: Role checks lowercased to match backend `UserRole` enum (`moderator`, `admin`, `head_admin`); new `isVerifier` check for `case_verifier`; `VERIFIER_LINKS` constant added with `/admin/verification`; `/admin/verification` removed from `ADMIN_LINKS`; `visibleLinks` spread now includes `VERIFIER_LINKS` tier between mod and admin tiers.
+**Tests**: `npm run build` — zero errors.
+**Follow-ups**: none.
+
+---
+
 ## 2026-04-21 — Task 1: Logo + AppShell nav
 **Agent**: coder (claude-sonnet-4-6)
 **Scope**: Replace AppShell with role-gated nav, gradient logo wordmark, and fix teal inline styles.
