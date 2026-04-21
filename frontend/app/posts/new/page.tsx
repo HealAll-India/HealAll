@@ -58,87 +58,61 @@ export default function NewPostPage() {
 
   return (
     <main className="page">
-      <section className="card stack">
-        <h1>Create Post (Module 3)</h1>
-        <p className="muted">Draft and submit help requests.</p>
-      </section>
-
       {!hydrated ? null : token ? (
-        <section className="card">
-          <form className="grid" onSubmit={handleSubmit}>
-            <label>
-              Title
-              <input
-                value={payload.title}
-                onChange={(event) => setPayload((prev) => ({ ...prev, title: event.target.value }))}
-                minLength={5}
-                required
-              />
-            </label>
-            <label>
-              Description
-              <textarea
-                value={payload.description}
-                onChange={(event) => setPayload((prev) => ({ ...prev, description: event.target.value }))}
-                minLength={20}
-                required
-              />
-            </label>
-            <div className="row">
-              <label style={{ flex: 1 }}>
-                Category
-                <select
-                  value={payload.category}
-                  onChange={(event) =>
-                    setPayload((prev) => ({ ...prev, category: event.target.value as CreatePostPayload["category"] }))
-                  }
-                >
-                  {postCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
+        <>
+          <div>
+            <a href="/feed" style={{ fontSize: "13px", color: "#6b7280", display: "inline-flex", alignItems: "center", gap: "4px" }}>← Back to feed</a>
+          </div>
+          <section className="card stack">
+            <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 800 }}>Share a Request</h1>
+            <p className="muted">Describe what you need — our community will help.</p>
+          </section>
+          <section className="card">
+            <form className="grid" onSubmit={handleSubmit}>
+              <div>
+                <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>What do you need?</h3>
+                <div className="stack">
+                  <label>Title<input value={payload.title} onChange={e => setPayload(p => ({ ...p, title: e.target.value }))} placeholder="Brief description of your request" minLength={5} required /></label>
+                  <label>Description<textarea value={payload.description} onChange={e => setPayload(p => ({ ...p, description: e.target.value }))} placeholder="Share more details — who it's for, what's needed, timeline…" minLength={20} required /></label>
+                </div>
+              </div>
+              <div>
+                <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Details</h3>
+                <div className="row">
+                  <label style={{ flex: 1 }}>Category
+                    <select value={payload.category} onChange={e => setPayload(p => ({ ...p, category: e.target.value as CreatePostPayload["category"] }))}>
+                      <option value="urgent">🆘 Urgent</option>
+                      <option value="emotional_support">🤗 Emotional Support</option>
+                      <option value="mentorship">🎓 Mentorship</option>
+                      <option value="skill_sharing">🔧 Skill Sharing</option>
+                      <option value="navigation">🧭 Navigation Help</option>
+                      <option value="on_ground">🤝 On Ground</option>
+                    </select>
+                  </label>
+                  <label style={{ flex: 1 }}>Urgency
+                    <select value={payload.urgency} onChange={e => setPayload(p => ({ ...p, urgency: e.target.value as CreatePostPayload["urgency"] }))}>
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">🟡 High</option>
+                      <option value="critical">🔴 Critical</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location</h3>
+                <label>City<input value={payload.city} onChange={e => setPayload(p => ({ ...p, city: e.target.value }))} placeholder="Which city?" required /></label>
+              </div>
+              <label style={{ flexDirection: "row", alignItems: "center", gap: "8px", fontSize: "13px" }}>
+                <input type="checkbox" checked={submitNow} onChange={e => setSubmitNow(e.target.checked)} />
+                Submit immediately for community review
               </label>
-              <label style={{ flex: 1 }}>
-                Urgency
-                <select
-                  value={payload.urgency}
-                  onChange={(event) =>
-                    setPayload((prev) => ({ ...prev, urgency: event.target.value as CreatePostPayload["urgency"] }))
-                  }
-                >
-                  {postUrgencies.map((urgency) => (
-                    <option key={urgency} value={urgency}>
-                      {urgency}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              City
-              <input
-                value={payload.city}
-                onChange={(event) => setPayload((prev) => ({ ...prev, city: event.target.value }))}
-                required
-              />
-            </label>
-            <label>
-              <input
-                checked={submitNow}
-                onChange={(event) => setSubmitNow(event.target.checked)}
-                type="checkbox"
-              />
-              Submit immediately for verification
-            </label>
-            <button disabled={loading} type="submit">
-              {loading ? "Saving..." : "Create Post"}
-            </button>
-          </form>
-          {message ? <p className="success">{message}</p> : null}
-          {error ? <p className="error">{error}</p> : null}
-        </section>
+              <button disabled={loading} type="submit">{loading ? "Saving…" : "Post Request"}</button>
+            </form>
+            {message ? <p className="success">{message}</p> : null}
+            {error   ? <p className="error">{error}</p>     : null}
+          </section>
+        </>
       ) : (
         <AuthRequired />
       )}
