@@ -114,83 +114,68 @@ export default function PostDetailPage() {
     <main className="page">
       {!hydrated ? null : token ? (
         <>
-          <section className="card stack">
-            <h1>Post Detail (Module 3)</h1>
-            {loading ? <p className="muted">Loading...</p> : null}
-            {post ? (
-              <>
-                <div className="row">
-                  <h2 style={{ margin: 0 }}>{post.title}</h2>
-                  <span className="badge">{post.category}</span>
-                  <span className="badge warn">{post.urgency}</span>
-                  <span className="badge">{post.status}</span>
+          <div>
+            <a href="/feed" style={{ fontSize: "13px", color: "#6b7280", display: "inline-flex", alignItems: "center", gap: "4px" }}>← Back to feed</a>
+          </div>
+          {loading ? <p className="muted">Loading…</p> : null}
+          {post ? (
+            <>
+              <section className="card stack">
+                <div className="row" style={{ alignItems: "flex-start", gap: "10px" }}>
+                  <div style={{ width: "44px", height: "44px", borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#16a34a,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "16px" }}>
+                    {post.author.name[0].toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>
+                      {post.author.name}
+                      {post.author.verification_level >= 1 && <span className="vbadge">✓ Verified</span>}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#9ca3af" }}>{post.city} · L{post.author.verification_level}</div>
+                  </div>
+                  <span className={post.category === "urgent" ? "badge badge-urgent" : "badge"}>{post.category.replace(/_/g, " ")}</span>
+                  <span className={`badge${post.urgency === "critical" ? " badge-urgent" : ""}`}>{post.urgency}</span>
                 </div>
-                <p>{post.description}</p>
-                <p className="muted">
-                  {post.city} · by {post.author.name} · level {post.author.verification_level}
-                </p>
-                <button className="secondary" onClick={handleRequestDmConsent} type="button">
-                  Request DM Consent
-                </button>
-              </>
-            ) : null}
-          </section>
+                <h2 style={{ margin: "4px 0 0", fontSize: "20px", fontWeight: 800 }}>{post.title}</h2>
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{post.description}</p>
+                <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
+                  <button className="secondary" onClick={handleRequestDmConsent} type="button">💬 Send Message</button>
+                  <span className="badge" style={{ background: "#f9fafb", color: "#6b7280" }}>{post.status}</span>
+                </div>
+              </section>
 
-          <section className="card stack">
-            <h3>Comments (Module 5)</h3>
-            <form className="row" onSubmit={handleCreateComment}>
-              <input
-                value={commentBody}
-                onChange={(event) => setCommentBody(event.target.value)}
-                placeholder="Write a public comment"
-                style={{ flex: 1 }}
-              />
-              <button type="submit">Post Comment</button>
-            </form>
-
-            <div className="stack">
-              {comments.map((comment) => (
-                <article className="card" key={comment.id}>
-                  <p style={{ marginTop: 0 }}>{comment.body}</p>
-                  <p className="muted">
-                    {comment.author.name} · L{comment.author.verification_level}
-                  </p>
-                </article>
-              ))}
-              {!loading && comments.length === 0 ? <p className="muted">No comments yet.</p> : null}
-            </div>
-          </section>
-
-          <section className="card stack">
-            <h3>Report This Post (Module 6)</h3>
-            <form className="grid" onSubmit={handleReport}>
-              <label>
-                Reason
-                <select
-                  value={reportReason}
-                  onChange={(event) => setReportReason(event.target.value as ReportReason)}
-                >
-                  {reportReasons.map((reason) => (
-                    <option key={reason} value={reason}>
-                      {reason}
-                    </option>
+              <section className="card stack">
+                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Comments</h3>
+                <form className="row" onSubmit={handleCreateComment}>
+                  <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" style={{ flex: 1 }} />
+                  <button type="submit">Post</button>
+                </form>
+                <div className="stack">
+                  {comments.map(comment => (
+                    <article className="card" key={comment.id} style={{ padding: "12px 14px" }}>
+                      <p style={{ margin: "0 0 4px", fontSize: "13px" }}>{comment.body}</p>
+                      <p className="muted" style={{ fontSize: "11px" }}>{comment.author.name} · L{comment.author.verification_level}</p>
+                    </article>
                   ))}
-                </select>
-              </label>
-              <label>
-                Description
-                <textarea
-                  value={reportDescription}
-                  onChange={(event) => setReportDescription(event.target.value)}
-                  placeholder="Optional additional context"
-                />
-              </label>
-              <button type="submit">Submit Report</button>
-            </form>
-          </section>
+                  {!loading && comments.length === 0 ? <p className="muted">No comments yet.</p> : null}
+                </div>
+              </section>
 
+              <section className="card stack">
+                <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6b7280" }}>Report this post</h3>
+                <form className="grid" onSubmit={handleReport}>
+                  <label>Reason
+                    <select value={reportReason} onChange={e => setReportReason(e.target.value as ReportReason)}>
+                      {reportReasons.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </label>
+                  <label>Description (optional)<textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} placeholder="Additional context" /></label>
+                  <button className="ghost" type="submit" style={{ width: "fit-content" }}>Submit Report</button>
+                </form>
+              </section>
+            </>
+          ) : null}
           {message ? <p className="success">{message}</p> : null}
-          {error ? <p className="error">{error}</p> : null}
+          {error   ? <p className="error">{error}</p>     : null}
         </>
       ) : (
         <AuthRequired />
