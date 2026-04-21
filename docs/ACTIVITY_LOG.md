@@ -4,6 +4,16 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-21 — Homepage hero landing page
+**Agent**: coder (claude-sonnet-4-6)
+**Scope**: Replace dev placeholder at `/` with proper hero landing page.
+**Changes**:
+- `frontend/app/page.tsx`: centered hero — large logo + wordmark, headline, "Join HealAll" / "Sign in" CTAs, invite note, 6 category pills.
+**Tests**: `npm run build` — zero errors.
+**Follow-ups**: none.
+
+---
+
 ## 2026-04-21 — Tasks 1–3: AppShell nav + shared types + CategoryBubbles
 **Agent**: coder (claude-sonnet-4-6)
 **Scope**: First three tasks of design system rollout — nav component, shared type, first feed component.
