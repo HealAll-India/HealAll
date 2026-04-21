@@ -153,7 +153,7 @@ async def update_case(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     owner = None
     if case.owner_id:
@@ -188,7 +188,7 @@ async def offer_help(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return CaseHelperResponse(
         id=helper.id,
@@ -218,7 +218,7 @@ async def withdraw_help(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return CaseHelperResponse(
         id=helper.id,
@@ -251,7 +251,7 @@ async def add_case_note(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return CaseNoteResponse(
         id=note.id,
@@ -325,7 +325,7 @@ async def close_case(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return CaseClosureResponse(
         id=closure.id,
@@ -362,7 +362,7 @@ async def reopen_case(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     owner = None
     if detail_case.owner_id:

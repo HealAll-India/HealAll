@@ -1,5 +1,4 @@
 """Custom exception classes."""
-from typing import Any
 
 
 class HealAllException(Exception):

@@ -44,7 +44,7 @@ async def request_consent(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return ConsentRequestResponse(
         id=consent.id,
@@ -73,7 +73,7 @@ async def accept_consent(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return ConversationResponse(
         id=conversation.id,
@@ -101,7 +101,7 @@ async def decline_consent(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return ConsentRequestResponse(
         id=consent.id,
@@ -196,7 +196,7 @@ async def send_message(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateException("Resource already exists or constraint violated")
+        raise DuplicateException("Resource already exists or constraint violated") from None
 
     return MessageResponse(
         id=message.id,

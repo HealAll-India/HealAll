@@ -41,6 +41,9 @@ dev = [
     "flower>=2.0",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -51,7 +54,16 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "DTZ", "T20", "RET", "SIM", "ARG"]
-ignore = ["E501"]
+ignore = [
+    "E501",    # line too long — handled by formatter
+    "ARG001",  # unused function arg — FastAPI/slowapi require request/db/current_user in signatures
+    "ARG002",  # unused method arg — same reason
+    "N818",    # exception naming — HealAll uses domain naming convention
+    "B008",    # function call in default arg — idiomatic FastAPI Query()/Depends()
+    "T201",    # print found — seed.py is a CLI script
+    "UP042",   # StrEnum migration — separate cleanup task
+    "RET504",  # unnecessary assignment before return — readability choice
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

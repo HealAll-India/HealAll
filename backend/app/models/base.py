@@ -1,6 +1,5 @@
 """SQLAlchemy base and mixins."""
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
