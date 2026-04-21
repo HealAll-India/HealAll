@@ -26,9 +26,13 @@ from app.models.report import Report, ModerationAction
 config = context.config
 
 # Override DB URL from environment so Railway/production credentials work.
-db_url = os.environ.get("DATABASE_URL")
-if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+# Strip sslmode= (psycopg2 syntax); asyncpg uses connect_args ssl= instead.
+import re as _re
+_raw_db_url = os.environ.get("DATABASE_URL", "")
+_use_ssl = "sslmode=" in _raw_db_url
+if _raw_db_url:
+    _clean_url = _re.sub(r"[?&]sslmode=\w+", "", _raw_db_url).rstrip("?&")
+    config.set_main_option("sqlalchemy.url", _clean_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -82,10 +86,12 @@ async def run_async_migrations() -> None:
 
     """
 
+    connect_args = {"ssl": "require"} if _use_ssl else {}
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:
