@@ -1,0 +1,210 @@
+/* ── Landing page – hero ── */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.25rem 0;
+}
+
+.heroInner {
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+}
+
+/* ── Guidelines section ── */
+.guidelines {
+  margin: 4rem auto 3rem;
+  max-width: 680px;
+  padding: 0 1.25rem;
+  opacity: 0;
+  transform: translateY(28px);
+  animation: riseIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
+}
+
+@keyframes riseIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.guidelinesCard {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(22, 163, 74, 0.12),
+    0 4px 6px -1px rgba(0, 0, 0, 0.04),
+    0 10px 32px -4px rgba(0, 0, 0, 0.08),
+    /* stacked paper layers */
+    4px 6px 0 2px #e6f4ea,
+    8px 12px 0 2px #cce8d4;
+  background: #fff;
+  position: relative;
+}
+
+/* Top accent bar — brand gradient */
+.guidelinesCard::before {
+  content: '';
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, #16a34a 0%, #2563eb 100%);
+}
+
+/* Header */
+.guidelinesHeader {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #f0fdf4;
+}
+
+.guidelinesHeaderLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.docIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #dcfce7, #dbeafe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(22,163,74,0.15);
+}
+
+.guidelinesHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.importantBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  width: fit-content;
+  margin-bottom: 4px;
+}
+
+.importantBadge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.7); }
+}
+
+.guidelinesTitle {
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.guidelinesSubtitle {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 3px 0 0;
+  line-height: 1.4;
+}
+
+.openBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #16a34a, #2563eb);
+  padding: 7px 14px;
+  border-radius: 9999px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(22,163,74,0.3);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.openBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* PDF viewer */
+.pdfWrapper {
+  position: relative;
+  background: #f8fafc;
+}
+
+.pdfWrapper iframe {
+  display: block;
+  border: none;
+  width: 100%;
+  height: 520px;
+}
+
+/* Footer bar */
+.guidelinesFooter {
+  padding: 12px 24px;
+  border-top: 1px solid #f0fdf4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fafffe;
+}
+
+.footerNote {
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.footerLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: color 0.12s;
+}
+
+.footerLink:hover { color: #16a34a; }
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .guidelinesHeader {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .openBtn {
+    align-self: flex-start;
+  }
+  .pdfWrapper iframe {
+    height: 420px;
+  }
+}
