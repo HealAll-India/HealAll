@@ -60,6 +60,42 @@ export default function HomePage() {
           ))}
         </div>
 
+        {/* Community Guidelines */}
+        <div style={{ marginTop: "56px", textAlign: "left" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div>
+              <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#111827", margin: 0 }}>
+                📋 Community Guidelines
+              </h2>
+              <p style={{ fontSize: "12px", color: "#6b7280", margin: "4px 0 0" }}>
+                Read before joining — we hold everyone to these standards.
+              </p>
+            </div>
+            <a
+              href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: "12px", color: "#2563eb", fontWeight: 600, whiteSpace: "nowrap", marginLeft: "12px" }}
+            >
+              Open full ↗
+            </a>
+          </div>
+          <div style={{
+            borderRadius: "12px", overflow: "hidden",
+            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          }}>
+            <iframe
+              src="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/preview"
+              width="100%"
+              height="480"
+              allow="autoplay"
+              style={{ display: "block", border: "none" }}
+              title="HealAll Community Guidelines"
+            />
+          </div>
+        </div>
+
       </div>
     </main>
   );
