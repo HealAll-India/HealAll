@@ -4,6 +4,19 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-22 — Full production deploy: healallindia.com live
+**Agent**: claude-sonnet-4-6
+**Scope**: Deploy frontend to Vercel, wire custom domains, DNS on Cloudflare.
+**Changes**:
+- Vercel: deployed `frontend/` as `anupamkumarnith-1461s-projects/frontend`, env `NEXT_PUBLIC_API_BASE_URL=https://api.healallindia.com`
+- Vercel domains: added `healallindia.com` + `www.healallindia.com`
+- Cloudflare DNS: A records `@` + `www` → `76.76.21.21` (Vercel), CNAME `api` → `m9eweo1y.up.railway.app` (Railway)
+- Railway: updated `APP_ALLOWED_ORIGINS` to include healallindia.com + www + Vercel deploy URLs
+**Tests**: `GET https://api.healallindia.com/health` → `{"status":"healthy"}`. `GET https://healallindia.com` → 200, Vercel CDN hit. DB migration v006 confirmed.
+**Follow-ups**: www cert auto-provisioning (in progress). Add invite code to seed data for first user signup test. Consider enabling Cloudflare proxy back on www A record once cert is ready.
+
+---
+
 ## 2026-04-22 — Railway deployment: migrations live, backend healthy
 **Agent**: claude-sonnet-4-6
 **Scope**: Fix Railway deploy chain so migrations run on startup and backend is reachable at healall-production.up.railway.app.
