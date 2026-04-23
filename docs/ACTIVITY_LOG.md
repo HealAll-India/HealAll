@@ -4,6 +4,18 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-24 — Fix production API URL + Vercel deploy pipeline
+**Agent**: claude-sonnet-4-6
+**Scope**: Fix frontend hitting localhost:8000 in production; fix Vercel hook root directory; remove ruvnet co-author from git history.
+**Changes**:
+- Vercel project env: Added `NEXT_PUBLIC_API_BASE_URL=https://api.healallindia.com` for `production` + `preview` targets — was missing, causing all API calls to fall back to `localhost:8000`.
+- Vercel project settings: Set `rootDirectory=frontend` via REST API — hook-triggered deployments now build from the correct subdirectory instead of failing at 0ms.
+- Git history: Removed `Co-Authored-By: claude-flow <ruv@ruv.net>` from 2 early commits via `git filter-repo`; force-pushed main. ruvnet no longer appears in GitHub contributors graph (cache clears within hours).
+**Tests**: `curl healallindia.com` confirmed Developer Contribution section live. API URL fix verified by inspecting Vercel env vars.
+**Follow-ups**: Never use `vercel --prod` from `frontend/` dir — `rootDirectory=frontend` causes CLI to double the path. Always deploy via git push to main (hook fires automatically).
+
+---
+
 ## 2026-04-24 — Upgrade GitHub Actions to Node.js 20 (PR #7)
 **Agent**: claude-sonnet-4-6
 **Scope**: Bump deprecated @v4 actions to @v5 across all CI workflows before GitHub's June 2026 Node.js 16/18 retirement.
