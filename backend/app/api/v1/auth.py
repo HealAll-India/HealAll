@@ -43,18 +43,23 @@ async def signup(
     await invite_service.validate_and_use_invite(db, signup_data.invite_code)
     user = await auth_service.create_user(db, signup_data)
 
-    phone_otp, _ = await auth_service.create_otp(db, user.phone, purpose="signup")
+    # TEMP: Phone OTP bypassed — SMS/WhatsApp verification coming soon.
+    # Auto-verify phone so users reach PHONE_EMAIL_VERIFIED after email OTP.
+    # To restore: remove this line and uncomment the phone_otp block below.
+    user = await auth_service.mark_phone_verified(db, user)
+
+    # # SMS OTP (coming soon — wire back when WhatsApp/MSG91 is configured):
+    # phone_otp, _ = await auth_service.create_otp(db, user.phone, purpose="signup")
+    # celery_send_otp_sms.delay(str(user.phone), phone_otp, "signup")
+
     email_otp, _ = await auth_service.create_otp(db, user.email, purpose="signup")
 
     await db.commit()
 
-    # Dispatch OTP delivery to Celery worker for retry-capable async delivery
-    celery_send_otp_sms.delay(str(user.phone), phone_otp, "signup")
+    # Dispatch email OTP via Celery worker for retry-capable async delivery
     celery_send_otp_email.delay(str(user.email), email_otp, "signup")
 
     pending = []
-    if not user.phone_verified:
-        pending.append("phone")
     if not user.email_verified:
         pending.append("email")
 
@@ -63,7 +68,7 @@ async def signup(
         name=user.name,
         verification_level=user.verification_level,
         pending_verification=pending,
-        message="OTP sent to phone and email. Please verify to continue.",
+        message="OTP sent to your email. Please verify to continue.",
     )
 
 
