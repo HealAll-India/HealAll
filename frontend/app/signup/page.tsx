@@ -48,7 +48,9 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      const response = await signup(formData);
+      const rawPhone = formData.phone.trim().replace(/[\s\-().]/g, "");
+      const normalizedPhone = rawPhone.startsWith("+91") ? rawPhone : `+91${rawPhone.replace(/^\+/, "")}`;
+      const response = await signup({ ...formData, phone: normalizedPhone });
       setMessage(response.message);
       // Phone OTP bypassed (coming soon) — redirect to email verification
       router.push(`/verify-otp?phone_or_email=${encodeURIComponent(formData.email)}`);
@@ -77,8 +79,8 @@ export default function SignupPage() {
           <label>Full Name<input value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Your name" required /></label>
           <div className="row">
             <label style={{ flex: 1 }}>
-              Phone (+91…)
-              <input value={formData.phone} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} placeholder="+919999999999" required />
+              Phone
+              <input value={formData.phone} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} placeholder="9999999999 or +919999999999" required />
               <span style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px", display: "block" }}>📱 SMS verification coming soon</span>
             </label>
             <label style={{ flex: 1 }}>Email<input type="email" value={formData.email} onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))} required /></label>
