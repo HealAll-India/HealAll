@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     AADHAAR_API_KEY: str = ""
     AADHAAR_API_URL: str = ""
 
+    # Resend (HTTP-based email — no port blocking)
+    RESEND_API_KEY: str | None = None
+
     # Sentry
     SENTRY_DSN: str = ""
 

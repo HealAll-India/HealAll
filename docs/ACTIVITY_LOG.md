@@ -4,6 +4,18 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-23 — Fix Sentry errors: Resend email provider + bcrypt pin
+**Agent**: claude-sonnet-4-6
+**Scope**: Fix 2 Sentry-reported production errors from Railway logs.
+**Changes**:
+- `backend/app/core/config.py`: Added `RESEND_API_KEY: str | None = None` setting.
+- `backend/app/services/notification_service.py`: Added `ResendProvider` (HTTPS POST to api.resend.com — bypasses Railway's SMTP port block). Added `MSG91ResendProvider` (MSG91 for SMS + Resend for email). Updated `_select_provider()` to prefer Resend over SMTP: Resend+MSG91 > Resend > SMTP+MSG91 > SMTP > Console.
+- `backend/pyproject.toml`: Pinned `bcrypt>=4.0.1,<4.1` (was `<5`) to fix passlib 1.7.4 incompatibility with bcrypt≥4.1 (`__about__` attribute removed).
+**Tests**: `from app.services import notification_service` imports cleanly. Docker not running — full suite skipped.
+**Follow-ups**: User must sign up at resend.com, verify healall.in domain, get API key, set `RESEND_API_KEY` in Railway. Then Railway redeploy picks up both fixes.
+
+---
+
 ## 2026-04-22 — Full production deploy: healallindia.com live
 **Agent**: claude-sonnet-4-6
 **Scope**: Deploy frontend to Vercel, wire custom domains, DNS on Cloudflare.
