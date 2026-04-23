@@ -133,8 +133,9 @@ jobs:
         working-directory: backend
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: backend/coverage.xml
           flags: backend
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true

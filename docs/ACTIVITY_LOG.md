@@ -4,6 +4,20 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-24 — Upgrade GitHub Actions to Node.js 20 (PR #7)
+**Agent**: claude-sonnet-4-6
+**Scope**: Bump deprecated @v4 actions to @v5 across all CI workflows before GitHub's June 2026 Node.js 16/18 retirement.
+**Changes**:
+- `.github/workflows/backend-ci.yml`: `actions/checkout@v4` → `@v5`; `codecov/codecov-action@v4` → `@v5` (adds `token: ${{ secrets.CODECOV_TOKEN }}`; `continue-on-error: true` already present so public repo still works without secret).
+- `.github/workflows/ci.yml`: `actions/checkout@v4` → `@v5`.
+- `.github/workflows/frontend-ci.yml`: `actions/checkout@v4` → `@v5`; `actions/setup-node@v4` → `@v5`.
+- `.github/workflows/security-scan.yml`: `actions/checkout@v4` → `@v5`; `actions/setup-node@v4` → `@v5`.
+- `docs/ACTIVITY_LOG.md`: Added missing entry for PR #6 (ESLint/ruff/test fixes).
+**Tests**: No logic change — CI correctness verified by workflow syntax; deprecation warnings eliminated.
+**Follow-ups**: Set `CODECOV_TOKEN` secret in GitHub repo settings if private coverage uploads are needed.
+
+---
+
 ## 2026-04-24 — Fix CI lint failures (PR #6)
 **Agent**: claude-sonnet-4-6
 **Scope**: Unblock frontend and backend CI pipelines after Next.js 16 upgrade and ruff formatting drift.
