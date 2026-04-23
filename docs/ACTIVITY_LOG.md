@@ -4,6 +4,40 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-22 — Fix WhatsApp provider: async scope, error return, template support
+**Agent**: claude-sonnet-4-6
+**Scope**: Four code-review fixes to `WhatsAppProvider` in notification_service.py.
+**Changes**:
+- `backend/app/services/notification_service.py`: (1) Moved `resp.status_code` check inside the `async with httpx.AsyncClient` block — reading `.text` outside the block causes `ResponseClosed` on non-200 responses. (2) Non-200 branch now returns `False` instead of falling back to console, matching `MSG91Provider` pattern (console fallback remains only in the `except Exception` path). (3) `send_sms` now checks `self._template_name`; when set, builds a Meta-approved template payload (OTP extracted via regex) instead of a `type: "text"` payload — required for production unsolicited messages. `__init__` reads the new setting. (4) `send_email` now logs before delegating to console fallback.
+- `backend/app/core/config.py`: Added `WHATSAPP_OTP_TEMPLATE_NAME: str | None = None` setting after `WHATSAPP_PHONE_NUMBER_ID`.
+**Tests**: `ruff check` passes on both files. No new unit tests (HTTP mocking out of scope; covered by manual integration test with sandbox number).
+**Follow-ups**: Set `WHATSAPP_OTP_TEMPLATE_NAME=healall_otp` in Railway env once Meta template is approved.
+
+---
+
+## 2026-04-23 — Add WhatsApp OTP provider via Meta Cloud API
+**Agent**: claude-sonnet-4-6
+**Scope**: Add `WhatsAppProvider` and `WhatsAppSMTPProvider` to `notification_service.py`; update `_select_provider()` to prefer WhatsApp when configured.
+**Changes**:
+- `backend/app/services/notification_service.py`: Added `WhatsAppProvider` (Meta Cloud API v20.0, E.164 → digits-only, console fallback on error); added `WhatsAppSMTPProvider` (delegates SMS to WhatsApp, email to SMTP); updated `_select_provider()` to check `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` first, before MSG91, preserving existing fallback chain.
+**Tests**: `ruff check` passes. No unit tests added (provider covered by integration flow; mocking a live HTTP API is out of scope). Full test suite not run (Docker not up).
+**Follow-ups**: Add `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` to Railway env vars to activate. Settings stubs for these vars must exist in `app/core/config.py` (Task 1 prerequisite).
+
+---
+
+## 2026-04-23 — Production readiness: Celery OTP wiring + notification tasks + repo housekeeping
+**Agent**: claude-sonnet-4-6
+**Scope**: Wire OTP delivery through Celery, implement case/comment notification task bodies, update CLAUDE.md and gitignore.
+**Changes**:
+- `backend/app/api/v1/auth.py`: Replace FastAPI `BackgroundTasks` with Celery `.delay()` for OTP SMS/email in `signup` and `resend_otp`. Gives retry-with-backoff on delivery failure. Removes `BackgroundTasks` import/param from both routes.
+- `backend/app/worker/tasks.py`: Implement real bodies for `notify_case_update` and `notify_new_comment` — fetch user contact info from DB via `async_session_maker`, dispatch via `notification_service.send_sms/send_email`.
+- `.gitignore`: Add `/plans/` so local planning files aren't tracked.
+- `CLAUDE.md`: Fix branch reference (`development` → `main`), add production URL header, replace stale "7 Remaining Tasks" with accurate "Production Config" checklist.
+**Tests**: Syntax + ruff lint clean. Full suite skipped (Docker not running); last green run 108/108 on 2026-04-20. No DB schema changes.
+**Follow-ups**: Run `make test` with Docker to confirm Celery task dispatch doesn't break signup tests. User must set Railway env vars (SENTRY_DSN, MSG91_API_KEY, SMTP_*) and add Celery worker service.
+
+---
+
 ## 2026-04-22 — Full production deploy: healallindia.com live
 **Agent**: claude-sonnet-4-6
 **Scope**: Deploy frontend to Vercel, wire custom domains, DNS on Cloudflare.

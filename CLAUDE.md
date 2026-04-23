@@ -1,6 +1,7 @@
 # HealAll — Agent Guide
 
-Invite-only mutual-aid platform, India-first, web-only. **Repo**: `https://github.com/anupam8nith/HealAll.git` · branch `development`
+Invite-only mutual-aid platform, India-first, web-only. **Repo**: `https://github.com/anupam8nith/HealAll.git` · branch `main`
+**Production**: healallindia.com (frontend, Vercel) · api.healallindia.com (backend, Railway) · Neon PostgreSQL + Upstash Redis
 
 Deep-dive docs (read when relevant): `docs/ROADMAP.md`, `docs/CODE_REVIEW.md`, `docs/HealAll_Architecture_README_v1.md`
 
@@ -72,15 +73,25 @@ npm run build / npm run lint
 
 ---
 
-## Remaining Tasks
+## Production Status
 
-1. Make `make test` green — fix bugs, not tests.
-2. Wire notifications — MSG91 (SMS) + SMTP (email). Config in `Settings` exists.
-3. Start Celery — `make worker` ready; move OTP off request thread.
-4. File uploads — presigned-URL routes for MinIO (already in compose).
-5. CI — `.github/workflows/ci.yml`, lint + test, Docker services.
-6. Sentry — `sentry-sdk` in deps; init in `main.py` with `SENTRY_DSN`.
-7. Aadhaar verification — `verification_service.py` is a stub.
+All backend code complete. 108/108 tests pass. Production live since 2026-04-20.
+
+### Done ✅
+- Tests green (108/108)
+- Notifications: MSG91 + SMTP provider pattern in `services/notification_service.py`
+- Celery: `worker/celery_app.py` + `worker/tasks.py`; OTP tasks wired via `.delay()`
+- File uploads: presigned-URL routes in `api/v1/uploads.py` (profile, post, identity)
+- CI: 4 workflows in `.github/workflows/`
+- Sentry: conditional init in `main.py` (needs `SENTRY_DSN` env var in Railway)
+
+### Remaining — Production Config (user action in Railway)
+1. **Set `SENTRY_DSN`** — create project at sentry.io → Python/FastAPI → copy DSN
+2. **Set MSG91 vars** — `MSG91_API_KEY`, `MSG91_TEMPLATE_ID_OTP` from msg91.com dashboard
+3. **Set SMTP vars** — `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` (e.g. Postmark or Gmail)
+4. **Add Celery worker service on Railway** — same repo, command: `celery -A app.worker.celery_app worker --loglevel=info`
+5. **Production object storage** — set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_ENDPOINT_URL` for MinIO or S3
+6. **Aadhaar verification** — `verification_service.py` is a stub; wire DigiLocker API when ready
 
 ---
 
