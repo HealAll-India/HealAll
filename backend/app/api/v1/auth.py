@@ -1,7 +1,7 @@
 """Authentication endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -20,9 +20,11 @@ from app.schemas.auth import (
     VerifyOTPRequest,
     VerifyOTPResponse,
 )
-from app.services import auth_service, invite_service
-from app.worker.tasks import send_otp_email as celery_send_otp_email
-from app.worker.tasks import send_otp_sms as celery_send_otp_sms
+from app.services import auth_service, invite_service, notification_service
+
+# Celery tasks available for when worker service is deployed on Railway:
+# from app.worker.tasks import send_otp_email as celery_send_otp_email
+# from app.worker.tasks import send_otp_sms as celery_send_otp_sms
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,12 +35,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def signup(
     request: Request,
     signup_data: SignupRequest,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SignupResponse:
     """
     Register a new user (invite-only).
 
-    Requires a valid invite code. Sends OTP to phone and email for verification.
+    Requires a valid invite code. Sends OTP to email for verification.
     """
     await invite_service.validate_and_use_invite(db, signup_data.invite_code)
     user = await auth_service.create_user(db, signup_data)
@@ -56,8 +59,8 @@ async def signup(
 
     await db.commit()
 
-    # Dispatch email OTP via Celery worker for retry-capable async delivery
-    celery_send_otp_email.delay(str(user.email), email_otp, "signup")
+    # Send email OTP in background (switch to celery_send_otp_email.delay() when worker deployed)
+    background_tasks.add_task(notification_service.send_otp_email, user.email, email_otp, "signup")
 
     pending = []
     if not user.email_verified:
@@ -110,6 +113,7 @@ async def verify_otp(
 async def resend_otp(
     request: Request,
     resend_data: ResendOTPRequest,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ResendOTPResponse:
     """
@@ -122,10 +126,10 @@ async def resend_otp(
     await db.commit()
 
     if resend_data.phone_or_email.startswith("+"):
-        celery_send_otp_sms.delay(resend_data.phone_or_email, otp, "login")
+        background_tasks.add_task(notification_service.send_otp_sms, resend_data.phone_or_email, otp, "login")
         medium = "phone"
     else:
-        celery_send_otp_email.delay(resend_data.phone_or_email, otp, "login")
+        background_tasks.add_task(notification_service.send_otp_email, resend_data.phone_or_email, otp, "login")
         medium = "email"
 
     return ResendOTPResponse(message=f"OTP sent to {medium}")
