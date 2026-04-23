@@ -211,7 +211,7 @@
 
 /* ── Developer Contribution section ── */
 .contribute {
-  margin: 0 auto 4rem;
+  margin: 1rem auto 4rem;
   max-width: 680px;
   padding: 0 1.25rem;
   opacity: 0;
@@ -327,7 +327,7 @@
   color: #374151;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 12px;
+  margin: 0 0 12px;
 }
 
 .stackItem {
@@ -384,7 +384,21 @@
   align-items: center;
   justify-content: space-between;
   background: #fafafa;
+  border-top: 1px solid #f3f4f6;
 }
+
+.contributeFooterLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: color 0.12s;
+}
+
+.contributeFooterLink:hover { color: #1d4ed8; }
 
 .footerHint {
   font-size: 11px;

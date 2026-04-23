@@ -164,13 +164,15 @@ export default function HomePage() {
             {/* Right: Contribution areas */}
             <div className={s.contributionAreas}>
               <p className={s.panelLabel}>🌱 Contribution areas</p>
-              {[
-                { emoji: "🎨", label: "Frontend UI & UX",   color: "green"  },
-                { emoji: "⚙️", label: "API features",        color: "blue"   },
-                { emoji: "🧪", label: "Tests & coverage",    color: "purple" },
-                { emoji: "📝", label: "Docs & translations", color: "orange" },
-              ].map((area) => (
-                <div key={area.label} className={`${s.areaItem} ${s[area.color as keyof typeof s]}`}>
+              {(
+                [
+                  { emoji: "🎨", label: "Frontend UI & UX",   color: s.green  },
+                  { emoji: "⚙️", label: "API features",        color: s.blue   },
+                  { emoji: "🧪", label: "Tests & coverage",    color: s.purple },
+                  { emoji: "📝", label: "Docs & translations", color: s.orange },
+                ] as const
+              ).map((area) => (
+                <div key={area.label} className={`${s.areaItem} ${area.color}`}>
                   <span>{area.emoji}</span>
                   <span>{area.label}</span>
                 </div>
@@ -186,7 +188,7 @@ export default function HomePage() {
               href="https://github.com/anupam8nith/HealAll/blob/main/README.md"
               target="_blank"
               rel="noopener noreferrer"
-              className={s.footerLink}
+              className={s.contributeFooterLink}
             >
               Read README.md →
             </a>
