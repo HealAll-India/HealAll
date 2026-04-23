@@ -1,4 +1,5 @@
 """Notification service for SMS and email — pluggable provider pattern."""
+
 from __future__ import annotations
 
 import asyncio
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Abstract base
 # ---------------------------------------------------------------------------
 
+
 class NotificationProvider(ABC):
     """Abstract base for all notification providers."""
 
@@ -33,6 +35,7 @@ class NotificationProvider(ABC):
 # ConsoleProvider — default for development
 # ---------------------------------------------------------------------------
 
+
 class ConsoleProvider(NotificationProvider):
     """Logs notifications to the console instead of sending them."""
 
@@ -48,6 +51,7 @@ class ConsoleProvider(NotificationProvider):
 # ---------------------------------------------------------------------------
 # MSG91Provider — real SMS via MSG91 HTTP API, console fallback for email
 # ---------------------------------------------------------------------------
+
 
 class MSG91Provider(NotificationProvider):
     """Sends SMS via MSG91; falls back to console for email."""
@@ -91,6 +95,7 @@ class MSG91Provider(NotificationProvider):
 # WhatsAppProvider — Meta Cloud API (free tier: 1000 conversations/month)
 # ---------------------------------------------------------------------------
 
+
 class WhatsAppProvider(NotificationProvider):
     """Sends OTP via WhatsApp using Meta Cloud API; console fallback for email."""
 
@@ -126,10 +131,12 @@ class WhatsAppProvider(NotificationProvider):
                     "template": {
                         "name": self._template_name,
                         "language": {"code": "en"},
-                        "components": [{
-                            "type": "body",
-                            "parameters": [{"type": "text", "text": otp_value}],
-                        }],
+                        "components": [
+                            {
+                                "type": "body",
+                                "parameters": [{"type": "text", "text": otp_value}],
+                            }
+                        ],
                     },
                 }
             else:
@@ -146,9 +153,7 @@ class WhatsAppProvider(NotificationProvider):
                 if resp.status_code == 200:
                     logger.info("WhatsApp message sent to %s", phone)
                     return True
-                logger.error(
-                    "WhatsApp API error: status=%s body=%s", resp.status_code, resp.text
-                )
+                logger.error("WhatsApp API error: status=%s body=%s", resp.status_code, resp.text)
                 return False
         except Exception:
             logger.exception("WhatsAppProvider.send_sms error; falling back to console")
@@ -162,6 +167,7 @@ class WhatsAppProvider(NotificationProvider):
 # ---------------------------------------------------------------------------
 # SMTPProvider — real email via SMTP, console fallback for SMS
 # ---------------------------------------------------------------------------
+
 
 class SMTPProvider(NotificationProvider):
     """Sends email via SMTP; falls back to console for SMS."""
@@ -226,6 +232,7 @@ class SMTPProvider(NotificationProvider):
 # ResendProvider — email via Resend HTTPS API (works on Railway, no port block)
 # ---------------------------------------------------------------------------
 
+
 class ResendProvider(NotificationProvider):
     """Sends email via Resend API (HTTPS/443); falls back to console for SMS."""
 
@@ -269,6 +276,7 @@ class ResendProvider(NotificationProvider):
 # WhatsAppSMTPProvider — WhatsApp for OTP + SMTP for email
 # ---------------------------------------------------------------------------
 
+
 class WhatsAppSMTPProvider(NotificationProvider):
     """Delegates SMS/OTP to WhatsAppProvider and email to SMTPProvider."""
 
@@ -286,6 +294,7 @@ class WhatsAppSMTPProvider(NotificationProvider):
 # ---------------------------------------------------------------------------
 # CombinedProvider — MSG91 for SMS + SMTP for email
 # ---------------------------------------------------------------------------
+
 
 class CombinedProvider(NotificationProvider):
     """Delegates SMS to MSG91Provider and email to SMTPProvider."""
@@ -305,6 +314,7 @@ class CombinedProvider(NotificationProvider):
 # MSG91ResendProvider — MSG91 for SMS + Resend for email
 # ---------------------------------------------------------------------------
 
+
 class MSG91ResendProvider(NotificationProvider):
     """Delegates SMS to MSG91Provider and email to ResendProvider."""
 
@@ -322,6 +332,7 @@ class MSG91ResendProvider(NotificationProvider):
 # ---------------------------------------------------------------------------
 # Provider selection (at module-load time)
 # ---------------------------------------------------------------------------
+
 
 def _select_provider() -> NotificationProvider:
     has_resend = bool(settings.RESEND_API_KEY)
@@ -363,6 +374,7 @@ _provider: NotificationProvider = _select_provider()
 # Public interface — unchanged signatures; all callers continue to work
 # ---------------------------------------------------------------------------
 
+
 async def send_sms(phone: str, message: str) -> bool:
     """Send an SMS message via the configured provider."""
     return await _provider.send_sms(phone, message)
@@ -379,10 +391,7 @@ async def send_otp_sms(phone: str, otp_code: str, purpose: str = "verification")
     Matches the interface expected by auth.py and tasks.py callers.
     ``purpose`` defaults to 'verification' so existing 2-arg call sites continue to work.
     """
-    message = (
-        f"Your HealAll OTP for {purpose} is: {otp_code}. "
-        "Valid for 10 minutes. Do not share this code."
-    )
+    message = f"Your HealAll OTP for {purpose} is: {otp_code}. Valid for 10 minutes. Do not share this code."
     await _provider.send_sms(phone, message)
 
 

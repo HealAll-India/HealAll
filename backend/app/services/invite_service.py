@@ -1,4 +1,5 @@
 """Invite code service."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 

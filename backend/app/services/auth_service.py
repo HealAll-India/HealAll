@@ -1,4 +1,5 @@
 """Authentication service."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -77,8 +78,7 @@ async def create_otp(
     # Check rate limit
     one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
     result = await db.execute(
-        select(OTPAttempt)
-        .where(
+        select(OTPAttempt).where(
             OTPAttempt.phone_or_email == phone_or_email,
             OTPAttempt.created_at >= one_hour_ago,
         )
@@ -173,13 +173,9 @@ async def get_user_by_phone_or_email(db: AsyncSession, phone_or_email: str) -> U
     """Get user by phone or email."""
     # Try phone first (assuming it starts with +)
     if phone_or_email.startswith("+"):
-        result = await db.execute(
-            select(User).where(User.phone == phone_or_email, User.deleted_at.is_(None))
-        )
+        result = await db.execute(select(User).where(User.phone == phone_or_email, User.deleted_at.is_(None)))
     else:
-        result = await db.execute(
-            select(User).where(User.email == phone_or_email, User.deleted_at.is_(None))
-        )
+        result = await db.execute(select(User).where(User.email == phone_or_email, User.deleted_at.is_(None)))
 
     user = result.scalar_one_or_none()
     if not user:
@@ -219,8 +215,7 @@ async def verify_refresh_token(db: AsyncSession, token: str) -> RefreshToken:
     token_hash = hash_password(token)
 
     result = await db.execute(
-        select(RefreshToken)
-        .where(
+        select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
             RefreshToken.revoked_at.is_(None),
         )

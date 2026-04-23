@@ -1,4 +1,5 @@
 """Services for case lifecycle management."""
+
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -29,9 +30,7 @@ def _has_any_role(user: User, roles: set[str]) -> bool:
 
 async def _get_case_and_post(db: AsyncSession, case_id: UUID) -> tuple[Case, Post]:
     result = await db.execute(
-        select(Case, Post)
-        .join(Post, Case.post_id == Post.id)
-        .where(Case.id == case_id, Post.deleted_at.is_(None))
+        select(Case, Post).join(Post, Case.post_id == Post.id).where(Case.id == case_id, Post.deleted_at.is_(None))
     )
     row = result.one_or_none()
 
@@ -113,9 +112,7 @@ async def list_cases_for_user(
     count_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = count_result.scalar_one()
 
-    rows_result = await db.execute(
-        query.order_by(Case.updated_at.desc()).offset((page - 1) * per_page).limit(per_page)
-    )
+    rows_result = await db.execute(query.order_by(Case.updated_at.desc()).offset((page - 1) * per_page).limit(per_page))
     rows = list(rows_result.all())
 
     helper_counts = await _get_helper_counts(db, [row[0].id for row in rows])
@@ -150,9 +147,7 @@ async def update_case_owner(
     case, post = await _get_case_and_post(db, case_id)
 
     if owner_id is not None:
-        owner_result = await db.execute(
-            select(User).where(User.id == owner_id, User.deleted_at.is_(None))
-        )
+        owner_result = await db.execute(select(User).where(User.id == owner_id, User.deleted_at.is_(None)))
         owner = owner_result.scalar_one_or_none()
         if not owner:
             raise NotFoundException("Owner user not found")
@@ -276,9 +271,7 @@ async def list_case_notes(db: AsyncSession, case_id: UUID, current_user: User) -
         raise ForbiddenException("Only case team members can view notes")
 
     notes_result = await db.execute(
-        select(CaseNote)
-        .where(CaseNote.case_id == case_id)
-        .order_by(CaseNote.created_at.desc())
+        select(CaseNote).where(CaseNote.case_id == case_id).order_by(CaseNote.created_at.desc())
     )
     return list(notes_result.scalars().all())
 

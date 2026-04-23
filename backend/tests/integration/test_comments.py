@@ -1,4 +1,5 @@
 """Integration tests for the comment endpoints."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -9,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.invite import InviteCode
 from app.models.post import Post, PostStatus
 
-
 # ---------------------------------------------------------------------------
 # Shared auth helper
 # ---------------------------------------------------------------------------
+
 
 async def _create_authenticated_user(
     client: AsyncClient,
@@ -67,6 +68,7 @@ async def _create_authenticated_user(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def invite_code(db_session: AsyncSession) -> InviteCode:
@@ -138,6 +140,7 @@ async def _seed_active_post(db_session: AsyncSession, author_id) -> Post:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_add_comment(

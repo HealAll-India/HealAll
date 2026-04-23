@@ -1,4 +1,5 @@
 """Post service."""
+
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -36,9 +37,7 @@ async def create_post(
 
 async def get_post_by_id(db: AsyncSession, post_id: UUID) -> Post:
     """Get post by ID."""
-    result = await db.execute(
-        select(Post).where(Post.id == post_id, Post.deleted_at.is_(None))
-    )
+    result = await db.execute(select(Post).where(Post.id == post_id, Post.deleted_at.is_(None)))
     post = result.scalar_one_or_none()
 
     if not post:
@@ -151,10 +150,14 @@ async def get_feed(
     total = total_result.scalar_one()
 
     # Apply pagination and sorting
-    query = query.order_by(
-        Post.urgency.desc(),
-        Post.created_at.desc(),
-    ).limit(per_page).offset((page - 1) * per_page)
+    query = (
+        query.order_by(
+            Post.urgency.desc(),
+            Post.created_at.desc(),
+        )
+        .limit(per_page)
+        .offset((page - 1) * per_page)
+    )
 
     result = await db.execute(query)
     posts = list(result.scalars().all())

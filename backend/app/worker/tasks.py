@@ -1,4 +1,5 @@
 """Celery tasks for background processing of notifications and case events."""
+
 import asyncio
 import logging
 
@@ -25,10 +26,7 @@ def send_otp_sms(self: Task, phone: str, otp_code: str, purpose: str) -> bool:
 
     try:
         logger.info("Sending OTP SMS to %s for purpose=%s", phone, purpose)
-        message = (
-            f"Your HealAll OTP for {purpose} is: {otp_code}. "
-            "Valid for 10 minutes. Do not share this code."
-        )
+        message = f"Your HealAll OTP for {purpose} is: {otp_code}. Valid for 10 minutes. Do not share this code."
         result: bool = asyncio.run(notification_service.send_sms(phone, message))
         return result
     except Exception as exc:
@@ -69,6 +67,7 @@ def send_otp_email(self: Task, email: str, otp_code: str, purpose: str) -> bool:
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="worker.notify_case_update")
 def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list[str]) -> None:
     """Notify recipients about a case status update."""
+
     async def _dispatch() -> None:
         from uuid import UUID
 
@@ -80,9 +79,7 @@ def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list
 
         uuids = [UUID(rid) for rid in recipient_ids]
         async with async_session_maker() as db:
-            result = await db.execute(
-                select(User).where(User.id.in_(uuids), User.deleted_at.is_(None))
-            )
+            result = await db.execute(select(User).where(User.id.in_(uuids), User.deleted_at.is_(None)))
             users = result.scalars().all()
 
         short_id = case_id[:8]
@@ -91,14 +88,14 @@ def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list
             if user.phone_verified and user.phone:
                 await notification_service.send_sms(str(user.phone), message)
             if user.email_verified and user.email:
-                await notification_service.send_email(
-                    user.email, f"HealAll Case Update — {event}", message
-                )
+                await notification_service.send_email(user.email, f"HealAll Case Update — {event}", message)
 
     try:
         logger.info(
             "Case update notification: case_id=%s event=%s recipients=%s",
-            case_id, event, recipient_ids,
+            case_id,
+            event,
+            recipient_ids,
         )
         asyncio.run(_dispatch())
     except Exception as exc:
@@ -107,10 +104,9 @@ def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="worker.notify_new_comment")
-def notify_new_comment(
-    self: Task, post_id: str, commenter_name: str, post_author_id: str
-) -> None:
+def notify_new_comment(self: Task, post_id: str, commenter_name: str, post_author_id: str) -> None:
     """Notify a post author that a new comment has been added."""
+
     async def _dispatch() -> None:
         from uuid import UUID
 
@@ -121,11 +117,7 @@ def notify_new_comment(
         from app.services import notification_service
 
         async with async_session_maker() as db:
-            result = await db.execute(
-                select(User).where(
-                    User.id == UUID(post_author_id), User.deleted_at.is_(None)
-                )
-            )
+            result = await db.execute(select(User).where(User.id == UUID(post_author_id), User.deleted_at.is_(None)))
             author = result.scalar_one_or_none()
 
         if not author:
@@ -133,16 +125,16 @@ def notify_new_comment(
 
         message = f"{commenter_name} commented on your HealAll post."
         if author.email_verified and author.email:
-            await notification_service.send_email(
-                author.email, "New comment on your HealAll post", message
-            )
+            await notification_service.send_email(author.email, "New comment on your HealAll post", message)
         if author.phone_verified and author.phone:
             await notification_service.send_sms(str(author.phone), message)
 
     try:
         logger.info(
             "New comment notification: post_id=%s commenter=%s author=%s",
-            post_id, commenter_name, post_author_id,
+            post_id,
+            commenter_name,
+            post_author_id,
         )
         asyncio.run(_dispatch())
     except Exception as exc:

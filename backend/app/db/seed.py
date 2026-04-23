@@ -1,4 +1,5 @@
 """Database seeding script for development."""
+
 import asyncio
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -17,9 +18,7 @@ async def seed():
         print("🌱 Seeding database...")
 
         # Check if admin already exists
-        result = await session.execute(
-            select(User).where(User.email == "admin@healall.in")
-        )
+        result = await session.execute(select(User).where(User.email == "admin@healall.in"))
         existing_admin = result.scalar_one_or_none()
 
         if existing_admin:
@@ -54,13 +53,11 @@ async def seed():
         # Create demo invite codes
         invite_codes_to_create = [
             ("HEAL-DEMO001", 10, 365),  # Multi-use code for testing
-            ("HEAL-TEMP001", 1, 30),    # Single-use temp code
+            ("HEAL-TEMP001", 1, 30),  # Single-use temp code
         ]
 
         for code, max_uses, days in invite_codes_to_create:
-            result = await session.execute(
-                select(InviteCode).where(InviteCode.code == code)
-            )
+            result = await session.execute(select(InviteCode).where(InviteCode.code == code))
             existing_invite = result.scalar_one_or_none()
 
             if existing_invite:
