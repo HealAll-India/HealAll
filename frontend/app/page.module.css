@@ -208,3 +208,220 @@
     height: 420px;
   }
 }
+
+/* ── Developer Contribution section ── */
+.contribute {
+  margin: 1rem auto 4rem;
+  max-width: 680px;
+  padding: 0 1.25rem;
+  opacity: 0;
+  transform: translateY(28px);
+  animation: riseIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+}
+
+.contributeCard {
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 4px 6px -1px rgba(0, 0, 0, 0.04),
+    0 10px 24px -4px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.contributeCard::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, #111827 0%, #2563eb 100%);
+}
+
+.contributeHeader {
+  padding: 20px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.contributeHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contributeIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.contributeHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contributeLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.contributeTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.githubBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #111827;
+  padding: 8px 15px;
+  border-radius: 9999px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.githubBtn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.contributeBody {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.techStack {
+  padding: 18px 20px;
+  border-right: 1px solid #f3f4f6;
+}
+
+.contributionAreas {
+  padding: 18px 20px;
+}
+
+.panelLabel {
+  font-size: 11px;
+  font-weight: 800;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 12px;
+}
+
+.stackItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.stackItem:last-child {
+  margin-bottom: 0;
+}
+
+.stackEmoji {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.stackName {
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.stackSub {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.areaItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.areaItem:last-child {
+  margin-bottom: 0;
+}
+
+.green  { background: #f0fdf4; color: #15803d; }
+.blue   { background: #eff6ff; color: #1d4ed8; }
+.purple { background: #faf5ff; color: #7c3aed; }
+.orange { background: #fff7ed; color: #c2410c; }
+
+.contributeFooter {
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fafafa;
+  border-top: 1px solid #f3f4f6;
+}
+
+.contributeFooterLink {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: color 0.12s;
+}
+
+.contributeFooterLink:hover { color: #1d4ed8; }
+
+.footerHint {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+@media (max-width: 600px) {
+  .contributeHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .githubBtn {
+    align-self: flex-start;
+  }
+
+  .contributeBody {
+    grid-template-columns: 1fr;
+  }
+
+  .techStack {
+    border-right: none;
+    border-bottom: 1px solid #f3f4f6;
+  }
+}
