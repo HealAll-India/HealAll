@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str | None = "noreply@healall.in"
     SMTP_FROM_NAME: str | None = "HealAll"
 
+    # WhatsApp (Meta Cloud API — replaces SMS)
+    WHATSAPP_TOKEN: str | None = None
+    WHATSAPP_PHONE_NUMBER_ID: str | None = None
+    WHATSAPP_OTP_TEMPLATE_NAME: str | None = None  # e.g. "healall_otp"; if set, uses template format
+
     # Aadhaar
     AADHAAR_PROVIDER: str = "stub"
     AADHAAR_API_KEY: str = ""
