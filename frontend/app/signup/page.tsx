@@ -50,7 +50,8 @@ export default function SignupPage() {
     try {
       const response = await signup(formData);
       setMessage(response.message);
-      router.push(`/verify-otp?phone_or_email=${encodeURIComponent(formData.phone)}`);
+      // Phone OTP bypassed (coming soon) — redirect to email verification
+      router.push(`/verify-otp?phone_or_email=${encodeURIComponent(formData.email)}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Signup failed");
     } finally {
@@ -75,7 +76,11 @@ export default function SignupPage() {
           <label>Invite Code<input value={formData.invite_code} onChange={e => setFormData(prev => ({ ...prev, invite_code: e.target.value }))} placeholder="HEAL-XXXXXX" required /></label>
           <label>Full Name<input value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Your name" required /></label>
           <div className="row">
-            <label style={{ flex: 1 }}>Phone (+91…)<input value={formData.phone} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} placeholder="+919999999999" required /></label>
+            <label style={{ flex: 1 }}>
+              Phone (+91…)
+              <input value={formData.phone} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} placeholder="+919999999999" required />
+              <span style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px", display: "block" }}>📱 SMS verification coming soon</span>
+            </label>
             <label style={{ flex: 1 }}>Email<input type="email" value={formData.email} onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))} required /></label>
           </div>
           <div className="row">
