@@ -4,6 +4,16 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-24 — Fix signup 422: auto-normalize phone to E.164 (PR #9)
+**Agent**: claude-sonnet-4-6
+**Scope**: Signup was returning 422 Unprocessable Content when users entered bare 10-digit phone numbers.
+**Changes**:
+- `frontend/app/signup/page.tsx`: In `handleSubmit`, normalize phone before API call — strip whitespace/dashes/parens, prepend `+91` if not already present. Updated placeholder to clarify both `9999999999` and `+919999999999` formats work.
+**Tests**: Manual — 422 reproduced with bare number, confirmed fix normalizes to `+917876302026` before sending.
+**Follow-ups**: none
+
+---
+
 ## 2026-04-24 — Fix production API URL + Vercel deploy pipeline
 **Agent**: claude-sonnet-4-6
 **Scope**: Fix frontend hitting localhost:8000 in production; fix Vercel hook root directory; remove ruvnet co-author from git history.
