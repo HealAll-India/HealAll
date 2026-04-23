@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     # WhatsApp (Meta Cloud API — replaces SMS)
     WHATSAPP_TOKEN: str | None = None
     WHATSAPP_PHONE_NUMBER_ID: str | None = None
+    WHATSAPP_OTP_TEMPLATE_NAME: str | None = None  # e.g. "healall_otp"; if set, uses template format
 
     # Aadhaar
     AADHAAR_PROVIDER: str = "stub"

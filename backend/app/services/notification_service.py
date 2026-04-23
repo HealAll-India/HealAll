@@ -99,11 +99,14 @@ class WhatsAppProvider(NotificationProvider):
     def __init__(self) -> None:
         self._token = settings.WHATSAPP_TOKEN or ""
         self._phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID or ""
+        self._template_name = settings.WHATSAPP_OTP_TEMPLATE_NAME or ""
         self._console = ConsoleProvider()
 
     async def send_sms(self, phone: str, message: str) -> bool:
         """Send message via WhatsApp. `phone` is E.164 format (+919876543210)."""
         try:
+            import re
+
             import httpx
 
             url = f"{self._API_BASE}/{self._phone_number_id}/messages"
@@ -111,26 +114,48 @@ class WhatsAppProvider(NotificationProvider):
                 "Authorization": f"Bearer {self._token}",
                 "Content-Type": "application/json",
             }
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": phone.lstrip("+"),  # Meta wants digits only: 919876543210
-                "type": "text",
-                "text": {"body": message},
-            }
+
+            if self._template_name:
+                # Production: use approved template (required for unsolicited messages)
+                otp_match = re.search(r"\b(\d+)\b", message)
+                otp_value = otp_match.group(1) if otp_match else message
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": phone.lstrip("+"),
+                    "type": "template",
+                    "template": {
+                        "name": self._template_name,
+                        "language": {"code": "en"},
+                        "components": [{
+                            "type": "body",
+                            "parameters": [{"type": "text", "text": otp_value}],
+                        }],
+                    },
+                }
+            else:
+                # Sandbox/test: text messages work for manually added test numbers
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": phone.lstrip("+"),
+                    "type": "text",
+                    "text": {"body": message},
+                }
+
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                logger.info("WhatsApp message sent to %s", phone)
-                return True
-            logger.error(
-                "WhatsApp API error: status=%s body=%s", resp.status_code, resp.text
-            )
-            return await self._console.send_sms(phone, message)
+                if resp.status_code == 200:
+                    logger.info("WhatsApp message sent to %s", phone)
+                    return True
+                logger.error(
+                    "WhatsApp API error: status=%s body=%s", resp.status_code, resp.text
+                )
+                return False
         except Exception:
             logger.exception("WhatsAppProvider.send_sms error; falling back to console")
             return await self._console.send_sms(phone, message)
 
     async def send_email(self, to: str, subject: str, body: str) -> bool:
+        logger.info("WhatsAppProvider has no email capability; using console fallback")
         return await self._console.send_email(to, subject, body)
 
 
