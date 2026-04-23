@@ -1,18 +1,45 @@
+# ============================================================
+# HealAll — root .gitignore
+# Per-area ignores live in backend/.gitignore and frontend/.gitignore
+# ============================================================
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
 
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json
 
-# Node
+# Node (root-level tooling only; frontend has its own)
 node_modules/
 package-lock.json
+package.json
 
 # Generated
 graphify-out/
 backend/graphify-out/
 
-# Claude worktrees (ephemeral)
+# Claude Code / agent tooling — local state only
 .claude/worktrees/
+.claude/settings.local.json
+.claude-flow/
+.swarm/
+.superpowers/
 
-# Local planning files
+# IDEs / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local plans / drafts (keep out of repo unless explicitly added)
 /plans/
+plans/
