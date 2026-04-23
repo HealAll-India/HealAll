@@ -4,6 +4,21 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-24 — Fix CI lint failures (PR #6)
+**Agent**: claude-sonnet-4-6
+**Scope**: Unblock frontend and backend CI pipelines after Next.js 16 upgrade and ruff formatting drift.
+**Changes**:
+- `frontend/eslint.config.mjs`: Created ESLint 9 flat config (`[...nextConfig]`) — Next.js 16 dropped `next lint`, requires flat config file.
+- `frontend/package.json`: Changed `"lint": "next lint"` → `"lint": "eslint ."` — `next lint` removed in Next.js 16.
+- `frontend/lib/hooks/use-hydrated.ts`: Added `eslint-disable-next-line react-hooks/set-state-in-effect` — false positive on `setHydrated(true)` inside `useEffect`.
+- `backend/tests/integration/test_messages.py`: Fixed ruff C405 (`set([...])` → `{...}`) and N817 (`InviteCode as IC` → `InviteCode`).
+- `backend/tests/` (all files): `ruff check --fix` + `ruff format` — fixed import ordering (I001) and formatting drift across 69 files.
+- `backend/tests/integration/test_auth_flow.py`: Updated `test_complete_auth_flow` — phone is auto-verified at signup so `pending_verification` no longer contains `"phone"`; removed phone OTP creation and verification steps.
+**Tests**: All CI checks green on PR #6 before merge. 108/108 passing.
+**Follow-ups**: Vercel auto-deploy not triggered after merge — manual `vercel --prod` needed.
+
+---
+
 ## 2026-04-24 — Add developer contribution section to landing page
 **Agent**: claude-sonnet-4-6
 **Scope**: New static card on landing page showcasing open-source contribution for developers.
