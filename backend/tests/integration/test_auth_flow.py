@@ -55,34 +55,14 @@ async def test_complete_auth_flow(
     data = response.json()
     assert data["name"] == "Test User"
     assert data["verification_level"] == VerificationLevel.UNVERIFIED
-    assert "phone" in data["pending_verification"]
+    # Phone is auto-verified at signup (SMS OTP bypassed, coming soon)
+    assert "phone" not in data["pending_verification"]
     assert "email" in data["pending_verification"]
     user_id = data["id"]
 
-    # Note: In a real test, we'd capture OTP from logs or mock the notification service
-    # For now, we'll create OTPs directly
-
-    # Step 2: Create OTP for phone verification (simulating what the service does)
     from app.services.auth_service import create_otp
 
-    phone_otp_plain, _ = await create_otp(
-        db_session,
-        signup_data["phone"],
-        "signup",
-    )
-
-    # Step 3: Verify phone
-    verify_phone_data = {
-        "phone_or_email": signup_data["phone"],
-        "otp_code": phone_otp_plain,
-    }
-
-    response = await client.post("/v1/auth/verify-otp", json=verify_phone_data)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["verified"] is True
-
-    # Step 4: Create and verify email OTP
+    # Step 2: Verify email OTP (phone auto-verified at signup)
     email_otp_plain, _ = await create_otp(
         db_session,
         signup_data["email"],
