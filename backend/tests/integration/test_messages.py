@@ -8,10 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invite import InviteCode
-from app.models.message import Conversation, DMConsentRequest, DMConsentStatus
+from app.models.message import DMConsentStatus
 from app.models.post import Post, PostStatus
 from app.models.user import User
-
 
 # ---------------------------------------------------------------------------
 # Shared auth helper
@@ -252,7 +251,7 @@ async def test_accept_consent_creates_conversation(
     assert resp.status_code == 200
     data = resp.json()
     assert data["consent_id"] == request_id
-    assert set([data["user_a"], data["user_b"]]) == {user_id_a, user_id_b}
+    assert {data["user_a"], data["user_b"]} == {user_id_a, user_id_b}
     assert data["ended_at"] is None
 
 
@@ -396,10 +395,9 @@ async def test_message_requires_consent(
     )
 
     # Create a third user with no involvement
-    from app.services.auth_service import create_otp
-    from app.models.invite import InviteCode as IC
+    from app.models.invite import InviteCode
 
-    third_invite = IC(
+    third_invite = InviteCode(
         code="MSG-INVITE-003",
         created_by=uuid4(),
         max_uses=5,
