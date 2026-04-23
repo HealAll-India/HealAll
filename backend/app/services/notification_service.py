@@ -151,6 +151,49 @@ class SMTPProvider(NotificationProvider):
 
 
 # ---------------------------------------------------------------------------
+# ResendProvider — email via Resend HTTPS API (works on Railway, no port block)
+# ---------------------------------------------------------------------------
+
+class ResendProvider(NotificationProvider):
+    """Sends email via Resend API (HTTPS/443); falls back to console for SMS."""
+
+    def __init__(self) -> None:
+        self._api_key = settings.RESEND_API_KEY or ""
+        self._from_email = settings.SMTP_FROM_EMAIL or "noreply@healall.in"
+        self._from_name = settings.SMTP_FROM_NAME or "HealAll"
+        self._console = ConsoleProvider()
+
+    async def send_email(self, to: str, subject: str, body: str) -> bool:
+        try:
+            import httpx
+
+            headers = {
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "from": f"{self._from_name} <{self._from_email}>",
+                "to": [to],
+                "subject": subject,
+                "text": body,
+            }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post("https://api.resend.com/emails", headers=headers, json=payload)
+                if resp.status_code in (200, 201):
+                    logger.info("Resend email sent to %s", to)
+                    return True
+                logger.error("Resend email failed: status=%s body=%s", resp.status_code, resp.text)
+                return False
+        except Exception:
+            logger.exception("ResendProvider.send_email error; falling back to console")
+            return await self._console.send_email(to, subject, body)
+
+    async def send_sms(self, phone: str, message: str) -> bool:
+        logger.info("ResendProvider has no SMS capability; using console fallback")
+        return await self._console.send_sms(phone, message)
+
+
+# ---------------------------------------------------------------------------
 # CombinedProvider — MSG91 for SMS + SMTP for email
 # ---------------------------------------------------------------------------
 
@@ -169,13 +212,38 @@ class CombinedProvider(NotificationProvider):
 
 
 # ---------------------------------------------------------------------------
+# MSG91ResendProvider — MSG91 for SMS + Resend for email
+# ---------------------------------------------------------------------------
+
+class MSG91ResendProvider(NotificationProvider):
+    """Delegates SMS to MSG91Provider and email to ResendProvider."""
+
+    def __init__(self) -> None:
+        self._sms = MSG91Provider()
+        self._email = ResendProvider()
+
+    async def send_sms(self, phone: str, message: str) -> bool:
+        return await self._sms.send_sms(phone, message)
+
+    async def send_email(self, to: str, subject: str, body: str) -> bool:
+        return await self._email.send_email(to, subject, body)
+
+
+# ---------------------------------------------------------------------------
 # Provider selection (at module-load time)
 # ---------------------------------------------------------------------------
 
 def _select_provider() -> NotificationProvider:
+    has_resend = bool(settings.RESEND_API_KEY)
     has_msg91 = bool(settings.MSG91_API_KEY)
     has_smtp = bool(settings.SMTP_HOST)
 
+    if has_msg91 and has_resend:
+        logger.info("NotificationProvider: MSG91ResendProvider (MSG91 SMS + Resend email)")
+        return MSG91ResendProvider()
+    if has_resend:
+        logger.info("NotificationProvider: ResendProvider (Resend email, SMS console)")
+        return ResendProvider()
     if has_msg91 and has_smtp:
         logger.info("NotificationProvider: CombinedProvider (MSG91 + SMTP)")
         return CombinedProvider()
