@@ -1,4 +1,5 @@
 """Integration tests for the users module."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -9,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.invite import InviteCode
 from app.services.auth_service import create_otp
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 async def _create_invite(db: AsyncSession, code: str) -> InviteCode:
     invite = InviteCode(
@@ -70,6 +71,7 @@ async def _signup_and_login(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def user_invite(db_session: AsyncSession) -> InviteCode:
     return await _create_invite(db_session, "USER-INVITE-001")
@@ -87,7 +89,9 @@ async def auth_token_and_id(
     user_invite: InviteCode,
 ) -> tuple[str, str]:
     return await _signup_and_login(
-        client, db_session, user_invite.code,
+        client,
+        db_session,
+        user_invite.code,
         phone="+919822000001",
         email="userstest1@example.com",
         name="Primary Test User",
@@ -112,7 +116,9 @@ async def second_user_token_and_id(
     user2_invite: InviteCode,
 ) -> tuple[str, str]:
     return await _signup_and_login(
-        client, db_session, user2_invite.code,
+        client,
+        db_session,
+        user2_invite.code,
         phone="+919822000002",
         email="userstest2@example.com",
         name="Secondary Test User",
@@ -133,6 +139,7 @@ async def second_user_id(second_user_token_and_id: tuple[str, str]) -> str:
 # ---------------------------------------------------------------------------
 # GET /v1/users/me
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_my_profile(client: AsyncClient, auth_headers: dict[str, str], current_user_id: str):
@@ -179,6 +186,7 @@ async def test_get_my_profile_verification_levels(
 # ---------------------------------------------------------------------------
 # PATCH /v1/users/me
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_update_my_profile(client: AsyncClient, auth_headers: dict[str, str]):
@@ -227,6 +235,7 @@ async def test_update_my_profile_name_too_short(client: AsyncClient, auth_header
 # ---------------------------------------------------------------------------
 # POST /v1/users/me/skills
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_add_skill(client: AsyncClient, auth_headers: dict[str, str]):
@@ -277,6 +286,7 @@ async def test_add_skill_unauthenticated(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # DELETE /v1/users/me/skills/{skill_id}
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_remove_skill(client: AsyncClient, auth_headers: dict[str, str]):
@@ -333,6 +343,7 @@ async def test_remove_skill_belonging_to_another_user(
 # PATCH /v1/users/me/privacy
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_update_privacy(client: AsyncClient, auth_headers: dict[str, str]):
     """PATCH /v1/users/me/privacy updates privacy settings."""
@@ -374,6 +385,7 @@ async def test_update_privacy_unauthenticated(client: AsyncClient):
 # ---------------------------------------------------------------------------
 # GET /v1/users/{user_id} — public profile
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_public_profile(

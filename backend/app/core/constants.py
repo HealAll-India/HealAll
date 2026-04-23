@@ -1,9 +1,11 @@
 """Application constants and enums."""
+
 from enum import Enum
 
 
 class VerificationLevel(int, Enum):
     """User verification levels."""
+
     UNVERIFIED = 0  # Not verified
     PHONE_EMAIL_VERIFIED = 1  # Phone + email verified
     ID_VERIFIED = 2  # Government ID verified (Aadhaar)
@@ -12,6 +14,7 @@ class VerificationLevel(int, Enum):
 
 class UserRole(str, Enum):
     """User roles in the system."""
+
     HELP_SEEKER = "help_seeker"
     HELPER = "helper"
     CASE_VERIFIER = "case_verifier"
@@ -23,6 +26,7 @@ class UserRole(str, Enum):
 
 class AgeRange(str, Enum):
     """Age range options."""
+
     TEEN = "13-17"
     YOUNG_ADULT = "18-24"
     ADULT = "25-34"

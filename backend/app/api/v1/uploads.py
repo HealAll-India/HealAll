@@ -1,4 +1,5 @@
 """Presigned upload URL endpoints."""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -26,9 +27,7 @@ async def presign_profile_photo(
 ) -> PresignedUploadResponse:
     """Return a presigned PUT URL to upload the current user's profile photo."""
     key = upload_service.profile_photo_key(str(current_user.id), body.file_name)
-    url = upload_service.generate_presigned_put(
-        settings.S3_BUCKET_MEDIA, key, body.content_type, _EXPIRES_IN
-    )
+    url = upload_service.generate_presigned_put(settings.S3_BUCKET_MEDIA, key, body.content_type, _EXPIRES_IN)
     return PresignedUploadResponse(
         upload_url=url,
         object_key=key,
@@ -46,9 +45,7 @@ async def presign_post_attachment(
 ) -> PresignedUploadResponse:
     """Return a presigned PUT URL to upload a file attachment for a post."""
     key = upload_service.post_attachment_key(str(post_id), body.file_name)
-    url = upload_service.generate_presigned_put(
-        settings.S3_BUCKET_MEDIA, key, body.content_type, _EXPIRES_IN
-    )
+    url = upload_service.generate_presigned_put(settings.S3_BUCKET_MEDIA, key, body.content_type, _EXPIRES_IN)
     return PresignedUploadResponse(
         upload_url=url,
         object_key=key,
@@ -68,9 +65,7 @@ async def presign_identity_document(
     Uploads go to the identity-ephemeral bucket — shorter retention, stricter ACL.
     """
     key = upload_service.identity_document_key(str(current_user.id), body.file_name)
-    url = upload_service.generate_presigned_put(
-        settings.S3_BUCKET_IDENTITY, key, body.content_type, _EXPIRES_IN
-    )
+    url = upload_service.generate_presigned_put(settings.S3_BUCKET_IDENTITY, key, body.content_type, _EXPIRES_IN)
     return PresignedUploadResponse(
         upload_url=url,
         object_key=key,

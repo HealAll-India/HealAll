@@ -1,4 +1,5 @@
 """Post endpoints."""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -73,9 +74,7 @@ async def get_post(
         raise NotFoundException("Post not found") from None
 
     # Get author info — use scalar_one_or_none to avoid 500 on deleted authors
-    author_result = await db.execute(
-        select(User).where(User.id == post.author_id)
-    )
+    author_result = await db.execute(select(User).where(User.id == post.author_id))
     author = author_result.scalar_one_or_none()
     if not author:
         raise NotFoundException("Post not found") from None

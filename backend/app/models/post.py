@@ -1,4 +1,5 @@
 """Post (help request) models."""
+
 from enum import Enum
 from uuid import UUID, uuid4
 
@@ -12,6 +13,7 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 class PostStatus(str, Enum):
     """Post status."""
+
     DRAFT = "draft"
     SUBMITTED = "submitted"
     NEEDS_INFO = "needs_info"
@@ -23,6 +25,7 @@ class PostStatus(str, Enum):
 
 class PostCategory(str, Enum):
     """Post categories."""
+
     EMOTIONAL_SUPPORT = "emotional_support"
     MENTORSHIP = "mentorship"
     SKILL_SHARING = "skill_sharing"
@@ -33,6 +36,7 @@ class PostCategory(str, Enum):
 
 class PostUrgency(str, Enum):
     """Post urgency levels."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"

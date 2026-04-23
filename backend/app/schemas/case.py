@@ -1,4 +1,5 @@
 """Case lifecycle schemas."""
+
 from datetime import datetime
 from enum import Enum
 from uuid import UUID

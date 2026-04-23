@@ -1,4 +1,5 @@
 """Pytest configuration and fixtures."""
+
 from collections.abc import AsyncGenerator
 
 import asyncpg
@@ -76,6 +77,7 @@ async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create a test client."""
+
     async def override_get_db():
         yield db_session
 

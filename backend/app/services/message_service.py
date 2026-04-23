@@ -1,4 +1,5 @@
 """Services for consent-based direct messaging."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -79,9 +80,7 @@ async def request_consent(
     )
     recent_declined = recent_declined_result.scalar_one_or_none()
     if recent_declined:
-        raise RateLimitException(
-            "Consent was declined recently. Retry after 7 days."
-        )
+        raise RateLimitException("Consent was declined recently. Retry after 7 days.")
 
     consent = DMConsentRequest(
         from_user_id=current_user.id,
@@ -124,9 +123,7 @@ async def accept_consent(
     consent.status = DMConsentStatus.ACCEPTED.value
     consent.responded_at = datetime.now(UTC)
 
-    existing_result = await db.execute(
-        select(Conversation).where(Conversation.consent_id == consent.id)
-    )
+    existing_result = await db.execute(select(Conversation).where(Conversation.consent_id == consent.id))
     conversation = existing_result.scalar_one_or_none()
 
     if not conversation:

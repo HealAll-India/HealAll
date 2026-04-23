@@ -1,4 +1,5 @@
 """User profile service."""
+
 from uuid import UUID
 
 from sqlalchemy import select
@@ -14,9 +15,7 @@ from app.schemas.user import UpdatePrivacyRequest, UserProfileUpdate
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User:
     """Get user by ID with skills loaded."""
     result = await db.execute(
-        select(User)
-        .options(selectinload(User.skills))
-        .where(User.id == user_id, User.deleted_at.is_(None))
+        select(User).options(selectinload(User.skills)).where(User.id == user_id, User.deleted_at.is_(None))
     )
     user = result.scalar_one_or_none()
 
@@ -49,12 +48,7 @@ async def update_user_profile(
 async def add_skill(db: AsyncSession, user_id: UUID, skill: str) -> UserSkill:
     """Add skill to user profile."""
     # Check if skill already exists
-    result = await db.execute(
-        select(UserSkill).where(
-            UserSkill.user_id == user_id,
-            UserSkill.skill == skill
-        )
-    )
+    result = await db.execute(select(UserSkill).where(UserSkill.user_id == user_id, UserSkill.skill == skill))
     existing = result.scalar_one_or_none()
 
     if existing:
@@ -70,12 +64,7 @@ async def add_skill(db: AsyncSession, user_id: UUID, skill: str) -> UserSkill:
 
 async def remove_skill(db: AsyncSession, user_id: UUID, skill_id: UUID) -> None:
     """Remove skill from user profile."""
-    result = await db.execute(
-        select(UserSkill).where(
-            UserSkill.id == skill_id,
-            UserSkill.user_id == user_id
-        )
-    )
+    result = await db.execute(select(UserSkill).where(UserSkill.id == skill_id, UserSkill.user_id == user_id))
     skill = result.scalar_one_or_none()
 
     if not skill:
@@ -90,9 +79,7 @@ async def get_or_create_privacy_settings(
     user_id: UUID,
 ) -> UserPrivacySettings:
     """Get or create privacy settings for user."""
-    result = await db.execute(
-        select(UserPrivacySettings).where(UserPrivacySettings.user_id == user_id)
-    )
+    result = await db.execute(select(UserPrivacySettings).where(UserPrivacySettings.user_id == user_id))
     settings = result.scalar_one_or_none()
 
     if not settings:
@@ -129,10 +116,7 @@ async def block_user(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> Us
 
     # Check if already blocked
     result = await db.execute(
-        select(UserBlock).where(
-            UserBlock.blocker_id == blocker_id,
-            UserBlock.blocked_id == blocked_id
-        )
+        select(UserBlock).where(UserBlock.blocker_id == blocker_id, UserBlock.blocked_id == blocked_id)
     )
     existing = result.scalar_one_or_none()
 
@@ -150,10 +134,7 @@ async def block_user(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> Us
 async def unblock_user(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> None:
     """Unblock a user."""
     result = await db.execute(
-        select(UserBlock).where(
-            UserBlock.blocker_id == blocker_id,
-            UserBlock.blocked_id == blocked_id
-        )
+        select(UserBlock).where(UserBlock.blocker_id == blocker_id, UserBlock.blocked_id == blocked_id)
     )
     block = result.scalar_one_or_none()
 
@@ -167,9 +148,7 @@ async def unblock_user(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) -> 
 async def get_blocked_users(db: AsyncSession, user_id: UUID) -> list[UserBlock]:
     """Get list of blocked users."""
     result = await db.execute(
-        select(UserBlock)
-        .where(UserBlock.blocker_id == user_id)
-        .order_by(UserBlock.created_at.desc())
+        select(UserBlock).where(UserBlock.blocker_id == user_id).order_by(UserBlock.created_at.desc())
     )
     return list(result.scalars().all())
 

@@ -1,4 +1,5 @@
 """Integration tests for the verification queue API endpoints."""
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +9,6 @@ from app.core.security import create_access_token
 from app.models.post import Post, PostCategory, PostStatus, PostUrgency
 from app.models.user import User
 from app.models.verification import VerificationDecision
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

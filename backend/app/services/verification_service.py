@@ -1,4 +1,5 @@
 """Services for verifier queue and decision actions."""
+
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -29,11 +30,7 @@ async def get_pending_posts(
     total_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = total_result.scalar_one()
 
-    result = await db.execute(
-        query.order_by(Post.created_at.asc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )
+    result = await db.execute(query.order_by(Post.created_at.asc()).offset((page - 1) * per_page).limit(per_page))
     posts = list(result.scalars().all())
 
     return posts, total
@@ -41,18 +38,14 @@ async def get_pending_posts(
 
 async def get_post_for_decision(db: AsyncSession, post_id: UUID) -> Post:
     """Load a post and validate that it can still be actioned by a verifier."""
-    result = await db.execute(
-        select(Post).where(Post.id == post_id, Post.deleted_at.is_(None))
-    )
+    result = await db.execute(select(Post).where(Post.id == post_id, Post.deleted_at.is_(None)))
     post = result.scalar_one_or_none()
 
     if not post:
         raise NotFoundException("Post not found")
 
     if post.status not in VERIFICATION_ALLOWED_FROM:
-        raise InvalidStateException(
-            "This post cannot be actioned from its current status"
-        )
+        raise InvalidStateException("This post cannot be actioned from its current status")
 
     return post
 
@@ -81,9 +74,7 @@ async def apply_verification_decision(
     if decision == VerificationDecision.VERIFIED:
         post.status = PostStatus.ACTIVE.value
 
-        existing_case_result = await db.execute(
-            select(Case).where(Case.post_id == post.id)
-        )
+        existing_case_result = await db.execute(select(Case).where(Case.post_id == post.id))
         existing_case = existing_case_result.scalar_one_or_none()
 
         if existing_case:

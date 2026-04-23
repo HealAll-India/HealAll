@@ -1,4 +1,5 @@
 """Main v1 router aggregating all routes."""
+
 from fastapi import APIRouter
 
 from app.api.v1 import (
