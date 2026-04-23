@@ -31,6 +31,19 @@ otp_plain = await auth_service.create_otp(db, user, "phone")
 
 ---
 
+## Git Workflow — Mandatory
+
+**Never push directly to `main`.** Always:
+1. `git checkout -b <type>/<short-description>` — create feature branch
+2. Commit work on that branch
+3. `gh pr create` — open PR
+4. Review (use `superpowers:requesting-code-review` skill)
+5. Merge into main only after review passes
+
+Branch naming: `feat/`, `fix/`, `chore/`, `docs/` prefixes.
+
+---
+
 ## Working Style
 
 - Files under ~500 lines. Split at natural seams.
