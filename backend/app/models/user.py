@@ -1,4 +1,5 @@
 """User model and related tables."""
+
 from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -40,9 +41,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     # Relationships
     skills: Mapped[list["UserSkill"]] = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
-        "RefreshToken",
-        back_populates="user",
-        cascade="all, delete-orphan"
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
@@ -63,9 +62,7 @@ class UserSkill(Base):
     )
     skill: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "skill", name="uq_user_skill"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "skill", name="uq_user_skill"),)
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="skills")
@@ -95,6 +92,7 @@ class RefreshToken(Base, TimestampMixin):
     def is_expired(self) -> bool:
         """Check if token is expired."""
         from datetime import UTC, datetime
+
         return datetime.now(UTC) > self.expires_at
 
     @property
@@ -120,6 +118,7 @@ class OTPAttempt(Base, TimestampMixin):
     def is_expired(self) -> bool:
         """Check if OTP is expired."""
         from datetime import UTC, datetime
+
         return datetime.now(UTC) > self.expires_at
 
     @property

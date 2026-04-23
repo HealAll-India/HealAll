@@ -1,4 +1,5 @@
 """Moderation reports and actions models."""
+
 from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
@@ -68,9 +69,7 @@ class Report(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=ReportStatus.PENDING.value, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
-    __table_args__ = (
-        UniqueConstraint("reporter_id", "target_type", "target_id", name="uq_reporter_target"),
-    )
+    __table_args__ = (UniqueConstraint("reporter_id", "target_type", "target_id", name="uq_reporter_target"),)
 
 
 class ModerationAction(Base):

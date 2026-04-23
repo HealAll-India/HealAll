@@ -1,4 +1,5 @@
 """Authentication schemas."""
+
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -8,6 +9,7 @@ from app.core.constants import AgeRange, UserRole
 
 class SignupRequest(BaseModel):
     """Signup request."""
+
     name: str = Field(..., min_length=2, max_length=120)
     phone: str = Field(..., pattern=r"^\+91\d{10}$")
     email: EmailStr
@@ -29,6 +31,7 @@ class SignupRequest(BaseModel):
 
 class SignupResponse(BaseModel):
     """Signup response."""
+
     id: UUID
     name: str
     verification_level: int
@@ -38,12 +41,14 @@ class SignupResponse(BaseModel):
 
 class VerifyOTPRequest(BaseModel):
     """OTP verification request."""
+
     phone_or_email: str
     otp_code: str = Field(..., min_length=6, max_length=6)
 
 
 class VerifyOTPResponse(BaseModel):
     """OTP verification response."""
+
     verified: bool
     verification_level: int
     message: str
@@ -51,22 +56,26 @@ class VerifyOTPResponse(BaseModel):
 
 class ResendOTPRequest(BaseModel):
     """Resend OTP request."""
+
     phone_or_email: str
 
 
 class ResendOTPResponse(BaseModel):
     """Resend OTP response."""
+
     message: str
 
 
 class LoginRequest(BaseModel):
     """Login request."""
+
     phone_or_email: str
     otp_code: str = Field(..., min_length=6, max_length=6)
 
 
 class TokenResponse(BaseModel):
     """Token response."""
+
     access_token: str
     token_type: str = "bearer"
     expires_in: int
@@ -75,6 +84,7 @@ class TokenResponse(BaseModel):
 
 class UserInfo(BaseModel):
     """User information in token response."""
+
     id: UUID
     name: str
     email: str
@@ -88,9 +98,11 @@ class UserInfo(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request (token comes from httpOnly cookie)."""
+
     pass
 
 
 class RevokeTokenRequest(BaseModel):
     """Revoke token request."""
+
     pass

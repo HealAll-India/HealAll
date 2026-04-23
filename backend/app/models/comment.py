@@ -1,4 +1,5 @@
 """Public post comments model."""
+
 from datetime import datetime
 from uuid import UUID, uuid4
 

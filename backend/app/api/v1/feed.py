@@ -1,4 +1,5 @@
 """Feed endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -41,9 +42,7 @@ async def get_feed(
     author_ids = list({post.author_id for post in posts})
 
     # Fetch all authors in one query
-    authors_result = await db.execute(
-        select(User).where(User.id.in_(author_ids))
-    )
+    authors_result = await db.execute(select(User).where(User.id.in_(author_ids)))
     authors = {author.id: author for author in authors_result.scalars().all()}
 
     items = []

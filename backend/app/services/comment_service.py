@@ -1,4 +1,5 @@
 """Services for post comments."""
+
 from uuid import UUID
 
 from sqlalchemy import select
@@ -30,14 +31,10 @@ async def _get_visible_post(db: AsyncSession, post_id: UUID) -> Post:
 
 
 async def _get_hidden_author_ids(db: AsyncSession, viewer_id: UUID) -> set[UUID]:
-    blocked_result = await db.execute(
-        select(UserBlock.blocked_id).where(UserBlock.blocker_id == viewer_id)
-    )
+    blocked_result = await db.execute(select(UserBlock.blocked_id).where(UserBlock.blocker_id == viewer_id))
     blocked_ids = set(blocked_result.scalars().all())
 
-    blocked_by_result = await db.execute(
-        select(UserBlock.blocker_id).where(UserBlock.blocked_id == viewer_id)
-    )
+    blocked_by_result = await db.execute(select(UserBlock.blocker_id).where(UserBlock.blocked_id == viewer_id))
     blocked_ids.update(blocked_by_result.scalars().all())
 
     return blocked_ids
@@ -77,18 +74,13 @@ async def list_comments(db: AsyncSession, post_id: UUID, current_user: User) -> 
 
 async def delete_comment(db: AsyncSession, comment_id: UUID, current_user: User) -> Comment:
     """Soft delete comment (author/admin/head_admin)."""
-    result = await db.execute(
-        select(Comment).where(Comment.id == comment_id, Comment.deleted_at.is_(None))
-    )
+    result = await db.execute(select(Comment).where(Comment.id == comment_id, Comment.deleted_at.is_(None)))
     comment = result.scalar_one_or_none()
 
     if not comment:
         raise NotFoundException("Comment not found")
 
-    is_admin = any(
-        role in {UserRole.ADMIN.value, UserRole.HEAD_ADMIN.value}
-        for role in current_user.roles
-    )
+    is_admin = any(role in {UserRole.ADMIN.value, UserRole.HEAD_ADMIN.value} for role in current_user.roles)
     if comment.author_id != current_user.id and not is_admin:
         raise ForbiddenException("Only author/admin can delete this comment")
 

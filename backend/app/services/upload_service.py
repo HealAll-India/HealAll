@@ -1,4 +1,5 @@
 """Upload service — generates presigned PUT URLs for MinIO/S3."""
+
 import uuid
 
 import boto3

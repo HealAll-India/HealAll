@@ -1,4 +1,5 @@
 """Post schemas."""
+
 from datetime import datetime
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from app.models.post import PostCategory, PostUrgency
 
 class CreatePostRequest(BaseModel):
     """Create a new help request post."""
+
     title: str = Field(..., min_length=5, max_length=200)
     description: str = Field(..., min_length=20, max_length=5000)
     category: PostCategory
@@ -19,6 +21,7 @@ class CreatePostRequest(BaseModel):
 
 class UpdatePostRequest(BaseModel):
     """Update a post."""
+
     title: str | None = Field(None, min_length=5, max_length=200)
     description: str | None = Field(None, min_length=20, max_length=5000)
     category: PostCategory | None = None
@@ -28,6 +31,7 @@ class UpdatePostRequest(BaseModel):
 
 class AuthorInfo(BaseModel):
     """Post author information."""
+
     id: UUID
     name: str
     verification_level: int
@@ -35,6 +39,7 @@ class AuthorInfo(BaseModel):
 
 class PostResponse(BaseModel):
     """Post response."""
+
     id: UUID
     title: str
     description: str
@@ -49,6 +54,7 @@ class PostResponse(BaseModel):
 
 class PostSummary(BaseModel):
     """Post summary for feed."""
+
     id: UUID
     title: str
     description: str  # Will be truncated in service layer
@@ -62,6 +68,7 @@ class PostSummary(BaseModel):
 
 class FeedResponse(BaseModel):
     """Feed response with pagination."""
+
     items: list[PostSummary]
     page: int
     per_page: int

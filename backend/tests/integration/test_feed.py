@@ -1,4 +1,5 @@
 """Integration tests for the feed module."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -13,6 +14,7 @@ from app.services.auth_service import create_otp
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 async def _create_invite(db: AsyncSession, code: str) -> InviteCode:
     invite = InviteCode(
@@ -76,6 +78,7 @@ async def _seed_active_post(
 ) -> Post:
     """Insert a post directly with ACTIVE status so it appears in the feed."""
     from uuid import UUID
+
     post = Post(
         author_id=UUID(author_id),
         title=title,
@@ -95,6 +98,7 @@ async def _seed_active_post(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def feed_invite(db_session: AsyncSession) -> InviteCode:
     return await _create_invite(db_session, "FEED-INVITE-001")
@@ -112,7 +116,9 @@ async def auth_headers_and_id(
     feed_invite: InviteCode,
 ) -> tuple[dict[str, str], str]:
     token, user_id = await _signup_and_login(
-        client, db_session, feed_invite.code,
+        client,
+        db_session,
+        feed_invite.code,
         phone="+919811000001",
         email="feeduser1@example.com",
     )
@@ -140,7 +146,9 @@ async def second_auth_headers_and_id(
     feed_invite2: InviteCode,
 ) -> tuple[dict[str, str], str]:
     token, user_id = await _signup_and_login(
-        client, db_session, feed_invite2.code,
+        client,
+        db_session,
+        feed_invite2.code,
         phone="+919811000002",
         email="feeduser2@example.com",
         name="Feed User Two",
@@ -151,6 +159,7 @@ async def second_auth_headers_and_id(
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_feed_requires_auth(client: AsyncClient):
@@ -191,6 +200,7 @@ async def test_feed_does_not_return_draft_posts(
 ):
     """GET /v1/feed does not return posts in DRAFT status."""
     from uuid import UUID
+
     draft_post = Post(
         author_id=UUID(viewer_user_id),
         title="Draft post should not appear in feed",
@@ -236,12 +246,14 @@ async def test_feed_filter_by_category(
 ):
     """GET /v1/feed?category= filters posts by category."""
     await _seed_active_post(
-        db_session, viewer_user_id,
+        db_session,
+        viewer_user_id,
         title="Mentorship category feed test post",
         category=PostCategory.MENTORSHIP.value,
     )
     await _seed_active_post(
-        db_session, viewer_user_id,
+        db_session,
+        viewer_user_id,
         title="Skill sharing category feed test post",
         category=PostCategory.SKILL_SHARING.value,
     )
@@ -266,12 +278,14 @@ async def test_feed_filter_by_urgency(
 ):
     """GET /v1/feed?urgency= filters posts by urgency level."""
     await _seed_active_post(
-        db_session, viewer_user_id,
+        db_session,
+        viewer_user_id,
         title="Critical urgency feed test post here",
         urgency=PostUrgency.CRITICAL.value,
     )
     await _seed_active_post(
-        db_session, viewer_user_id,
+        db_session,
+        viewer_user_id,
         title="Low urgency feed test post here now",
         urgency=PostUrgency.LOW.value,
     )
@@ -296,12 +310,14 @@ async def test_feed_search(
 ):
     """GET /v1/feed?search= filters posts by keyword in title or description."""
     await _seed_active_post(
-        db_session, viewer_user_id,
+        db_session,
+        viewer_user_id,
         title="Unique wheelchair access ramp search test",
         description="Looking for help with wheelchair ramp installation near my building.",
     )
     await _seed_active_post(
-        db_session, viewer_user_id,
+        db_session,
+        viewer_user_id,
         title="Completely unrelated post with different content",
         description="This post has nothing to do with wheelchairs or ramps at all.",
     )
@@ -338,7 +354,8 @@ async def test_feed_pagination(
     """GET /v1/feed respects page and per_page query params."""
     for i in range(4):
         await _seed_active_post(
-            db_session, viewer_user_id,
+            db_session,
+            viewer_user_id,
             title=f"Pagination feed test post number {i + 1}",
         )
 
@@ -370,7 +387,8 @@ async def test_feed_pagination_has_next(
     """GET /v1/feed has_next is True when more pages exist, False on the last page."""
     for i in range(3):
         await _seed_active_post(
-            db_session, viewer_user_id,
+            db_session,
+            viewer_user_id,
             title=f"Has next test post number {i + 1} feed item",
         )
 

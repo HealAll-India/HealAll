@@ -1,4 +1,5 @@
 """Integration tests for the case lifecycle endpoints."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -13,6 +14,7 @@ from app.models.post import Post, PostStatus
 # ---------------------------------------------------------------------------
 # Shared auth helper
 # ---------------------------------------------------------------------------
+
 
 async def _create_authenticated_user(
     client: AsyncClient,
@@ -68,6 +70,7 @@ async def _create_authenticated_user(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def invite_code(db_session: AsyncSession) -> InviteCode:
@@ -162,15 +165,15 @@ async def _get_seeker_user_id(db_session: AsyncSession) -> object:
     from sqlalchemy import select
 
     from app.models.user import User as UserModel
-    result = await db_session.execute(
-        select(UserModel).where(UserModel.phone == "+919000000001")
-    )
+
+    result = await db_session.execute(select(UserModel).where(UserModel.phone == "+919000000001"))
     return result.scalar_one().id
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_create_case_from_post(
@@ -240,9 +243,7 @@ async def test_add_case_helper(
     seeker_id = await _get_seeker_user_id(db_session)
     _post, case = await _seed_case(db_session, seeker_id)
 
-    resp = await client.post(
-        f"/v1/cases/{case.id}/helpers", headers=helper_headers
-    )
+    resp = await client.post(f"/v1/cases/{case.id}/helpers", headers=helper_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["case_id"] == str(case.id)
@@ -269,9 +270,7 @@ async def test_add_case_note(
         "support_type": "emotional",
         "hours_contributed": 1.5,
     }
-    resp = await client.post(
-        f"/v1/cases/{case.id}/notes", json=payload, headers=seeker_headers
-    )
+    resp = await client.post(f"/v1/cases/{case.id}/notes", json=payload, headers=seeker_headers)
     assert resp.status_code == 201
     data = resp.json()
     assert data["body"] == payload["body"]
@@ -321,9 +320,7 @@ async def test_update_case_status(
         "closure_remarks": "The issue has been fully resolved.",
         "impact_consent": False,
     }
-    resp = await client.post(
-        f"/v1/cases/{case.id}/close", json=payload, headers=seeker_headers
-    )
+    resp = await client.post(f"/v1/cases/{case.id}/close", json=payload, headers=seeker_headers)
     assert resp.status_code == 200
     data = resp.json()
     # Post author is not a verifier so this becomes a closure request

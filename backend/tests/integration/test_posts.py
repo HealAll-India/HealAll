@@ -1,4 +1,5 @@
 """Integration tests for the posts module."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -13,6 +14,7 @@ from app.services.auth_service import create_otp
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 async def _create_invite(db: AsyncSession, code: str = "POST-INVITE-001") -> InviteCode:
     invite = InviteCode(
@@ -71,6 +73,7 @@ async def _signup_and_login(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 async def invite(db_session: AsyncSession) -> InviteCode:
     return await _create_invite(db_session, "POST-INVITE-001")
@@ -84,7 +87,9 @@ async def second_invite(db_session: AsyncSession) -> InviteCode:
 @pytest.fixture
 async def auth_headers(client: AsyncClient, db_session: AsyncSession, invite: InviteCode) -> dict[str, str]:
     token = await _signup_and_login(
-        client, db_session, invite.code,
+        client,
+        db_session,
+        invite.code,
         phone="+919800000001",
         email="postuser1@example.com",
     )
@@ -98,7 +103,9 @@ async def other_auth_headers(
     second_invite: InviteCode,
 ) -> dict[str, str]:
     token = await _signup_and_login(
-        client, db_session, second_invite.code,
+        client,
+        db_session,
+        second_invite.code,
         phone="+919800000002",
         email="postuser2@example.com",
         name="Other Post User",
@@ -118,6 +125,7 @@ _VALID_POST = {
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_create_post_authenticated(client: AsyncClient, auth_headers: dict[str, str]):

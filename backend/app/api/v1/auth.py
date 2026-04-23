@@ -1,4 +1,5 @@
 """Authentication endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status

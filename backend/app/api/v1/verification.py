@@ -1,4 +1,5 @@
 """Verification queue endpoints."""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -20,9 +21,7 @@ from app.schemas.verification import (
 )
 from app.services import verification_service
 
-VERIFIER_DEPENDENCY = Depends(
-    require_any_role([UserRole.CASE_VERIFIER, UserRole.ADMIN, UserRole.HEAD_ADMIN])
-)
+VERIFIER_DEPENDENCY = Depends(require_any_role([UserRole.CASE_VERIFIER, UserRole.ADMIN, UserRole.HEAD_ADMIN]))
 
 router = APIRouter(prefix="/verification", tags=["verification"])
 

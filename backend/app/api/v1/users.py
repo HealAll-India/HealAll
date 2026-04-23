@@ -1,4 +1,5 @@
 """User profile endpoints."""
+
 from typing import Annotated
 from uuid import UUID
 
@@ -106,6 +107,7 @@ async def get_user_profile(
     is_blocked = await user_service.is_user_blocked(db, current_user.id, user_id)
     if is_blocked:
         from app.core.exceptions import ForbiddenException
+
         raise ForbiddenException("Cannot view this profile")
 
     return PublicUserProfile(

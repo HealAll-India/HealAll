@@ -1,4 +1,5 @@
 """Moderation action endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status

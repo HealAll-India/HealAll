@@ -1,4 +1,5 @@
 """Invite code model."""
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -26,6 +27,7 @@ class InviteCode(Base, TimestampMixin):
     def is_expired(self) -> bool:
         """Check if invite code is expired."""
         from datetime import UTC, datetime
+
         return datetime.now(UTC) > self.expires_at
 
     @property

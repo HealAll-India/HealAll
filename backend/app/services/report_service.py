@@ -1,4 +1,5 @@
 """Services for user moderation reports."""
+
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -16,9 +17,7 @@ async def _validate_target_exists(db: AsyncSession, target_type: ReportTargetTyp
     if target_type == ReportTargetType.POST:
         result = await db.execute(select(Post.id).where(Post.id == target_id, Post.deleted_at.is_(None)))
     elif target_type == ReportTargetType.COMMENT:
-        result = await db.execute(
-            select(Comment.id).where(Comment.id == target_id, Comment.deleted_at.is_(None))
-        )
+        result = await db.execute(select(Comment.id).where(Comment.id == target_id, Comment.deleted_at.is_(None)))
     elif target_type == ReportTargetType.MESSAGE:
         result = await db.execute(select(Message.id).where(Message.id == target_id))
     elif target_type == ReportTargetType.USER:
@@ -90,9 +89,7 @@ async def list_reports(
         query = query.where(Report.status == status.value)
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
-    rows = await db.execute(
-        query.order_by(Report.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
-    )
+    rows = await db.execute(query.order_by(Report.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
     return list(rows.scalars().all()), total
 
 

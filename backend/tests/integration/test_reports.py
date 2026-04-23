@@ -1,4 +1,5 @@
 """Integration tests for the reports API endpoints."""
+
 from uuid import uuid4
 
 import pytest

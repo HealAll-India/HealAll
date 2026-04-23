@@ -1,4 +1,5 @@
 """Security utilities for authentication and authorization."""
+
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -87,11 +88,13 @@ def has_any_role(user_roles: list[str], required_roles: list[UserRole]) -> bool:
 def generate_otp() -> str:
     """Generate a random 6-digit OTP."""
     from app.core.constants import OTP_LENGTH
+
     return "".join(str(secrets.randbelow(10)) for _ in range(OTP_LENGTH))
 
 
 def generate_invite_code() -> str:
     """Generate a unique invite code."""
     from app.core.constants import INVITE_CODE_LENGTH, INVITE_CODE_PREFIX
+
     code = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(INVITE_CODE_LENGTH))
     return f"{INVITE_CODE_PREFIX}{code}"

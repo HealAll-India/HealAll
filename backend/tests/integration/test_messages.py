@@ -1,4 +1,5 @@
 """Integration tests for the consent-based messaging endpoints."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -15,6 +16,7 @@ from app.models.user import User
 # ---------------------------------------------------------------------------
 # Shared auth helper
 # ---------------------------------------------------------------------------
+
 
 async def _create_authenticated_user(
     client: AsyncClient,
@@ -69,6 +71,7 @@ async def _create_authenticated_user(
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def invite_code(db_session: AsyncSession) -> InviteCode:
@@ -174,6 +177,7 @@ async def _setup_accepted_conversation(
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_request_dm_consent(
@@ -296,9 +300,7 @@ async def test_list_conversations(
     headers_a, user_id_a = user_a
     headers_b, user_id_b = user_b
 
-    conversation_id = await _setup_accepted_conversation(
-        client, db_session, headers_a, user_id_a, headers_b, user_id_b
-    )
+    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, user_id_a, headers_b, user_id_b)
 
     resp = await client.get("/v1/messages/conversations", headers=headers_a)
     assert resp.status_code == 200
@@ -319,9 +321,7 @@ async def test_send_message(
     headers_a, user_id_a = user_a
     headers_b, user_id_b = user_b
 
-    conversation_id = await _setup_accepted_conversation(
-        client, db_session, headers_a, user_id_a, headers_b, user_id_b
-    )
+    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, user_id_a, headers_b, user_id_b)
 
     resp = await client.post(
         f"/v1/messages/conversations/{conversation_id}",
@@ -347,9 +347,7 @@ async def test_get_messages(
     headers_a, user_id_a = user_a
     headers_b, user_id_b = user_b
 
-    conversation_id = await _setup_accepted_conversation(
-        client, db_session, headers_a, user_id_a, headers_b, user_id_b
-    )
+    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, user_id_a, headers_b, user_id_b)
 
     # Send two messages from A, one from B
     await client.post(
@@ -390,9 +388,7 @@ async def test_message_requires_consent(
     headers_b, user_id_b = user_b
 
     # Accept conversation between A and B
-    conversation_id = await _setup_accepted_conversation(
-        client, db_session, headers_a, user_id_a, headers_b, user_id_b
-    )
+    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, user_id_a, headers_b, user_id_b)
 
     # Create a third user with no involvement
     from app.models.invite import InviteCode

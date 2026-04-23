@@ -1,4 +1,5 @@
 """FastAPI application factory and configuration."""
+
 import logging
 
 import sentry_sdk
@@ -113,10 +114,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """Handle Pydantic validation errors."""
-        details = [
-            {"field": ".".join(str(loc) for loc in err["loc"]), "message": err["msg"]}
-            for err in exc.errors()
-        ]
+        details = [{"field": ".".join(str(loc) for loc in err["loc"]), "message": err["msg"]} for err in exc.errors()]
 
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

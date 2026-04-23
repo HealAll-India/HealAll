@@ -1,4 +1,5 @@
 """Services for moderation actions and enforcement."""
+
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -79,10 +80,7 @@ async def apply_moderation_action(
 
     # Fetch the acting moderator to check privilege level
     actor = await _get_user_or_404(db, acted_by)
-    actor_is_admin = any(
-        role in {UserRole.ADMIN.value, UserRole.HEAD_ADMIN.value}
-        for role in actor.roles
-    )
+    actor_is_admin = any(role in {UserRole.ADMIN.value, UserRole.HEAD_ADMIN.value} for role in actor.roles)
     target_is_privileged = any(
         role in {UserRole.MODERATOR.value, UserRole.ADMIN.value, UserRole.HEAD_ADMIN.value}
         for role in target_user.roles
@@ -144,9 +142,7 @@ async def list_moderation_actions(
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = await db.execute(
-        query.order_by(ModerationAction.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
+        query.order_by(ModerationAction.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
     )
     return list(rows.scalars().all()), total
 

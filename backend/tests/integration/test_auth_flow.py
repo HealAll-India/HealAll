@@ -1,4 +1,5 @@
 """Integration tests for the complete auth flow."""
+
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -125,10 +126,7 @@ async def test_complete_auth_flow(
     access_token = data["access_token"]
 
     # Step 6: Test authenticated endpoint (logout)
-    response = await client.post(
-        "/v1/auth/logout",
-        headers={"Authorization": f"Bearer {access_token}"}
-    )
+    response = await client.post("/v1/auth/logout", headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert "message" in response.json()
 
