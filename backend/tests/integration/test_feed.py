@@ -10,7 +10,6 @@ from app.models.invite import InviteCode
 from app.models.post import Post, PostCategory, PostStatus, PostUrgency
 from app.services.auth_service import create_otp
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------

@@ -9,7 +9,6 @@ from app.models.post import Post, PostCategory, PostStatus, PostUrgency
 from app.models.user import User
 from app.models.verification import VerificationDecision
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

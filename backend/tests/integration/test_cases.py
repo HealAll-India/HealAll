@@ -9,8 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.case import Case, CaseStatus
 from app.models.invite import InviteCode
 from app.models.post import Post, PostStatus
-from app.models.user import User
-
 
 # ---------------------------------------------------------------------------
 # Shared auth helper
@@ -162,6 +160,7 @@ async def _seed_case(db_session: AsyncSession, author_id) -> tuple[Post, Case]:
 
 async def _get_seeker_user_id(db_session: AsyncSession) -> object:
     from sqlalchemy import select
+
     from app.models.user import User as UserModel
     result = await db_session.execute(
         select(UserModel).where(UserModel.phone == "+919000000001")

@@ -7,10 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import UserRole
 from app.core.security import create_access_token
-from app.models.post import Post, PostStatus, PostCategory, PostUrgency
-from app.models.report import Report, ReportStatus, ReportTargetType, ReportReason
+from app.models.post import Post, PostCategory, PostStatus, PostUrgency
+from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
 from app.models.user import User
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

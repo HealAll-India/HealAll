@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.invite import InviteCode
 from app.models.post import Post, PostStatus
 
-
 # ---------------------------------------------------------------------------
 # Shared auth helper
 # ---------------------------------------------------------------------------

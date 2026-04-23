@@ -7,10 +7,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invite import InviteCode
-from app.models.post import Post, PostCategory, PostStatus, PostUrgency
-from app.models.user import User
+from app.models.post import PostCategory, PostStatus, PostUrgency
 from app.services.auth_service import create_otp
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
