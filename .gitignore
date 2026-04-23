@@ -13,3 +13,6 @@ backend/graphify-out/
 
 # Claude worktrees (ephemeral)
 .claude/worktrees/
+
+# Local planning files
+/plans/

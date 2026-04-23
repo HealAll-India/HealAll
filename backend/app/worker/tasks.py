@@ -68,28 +68,39 @@ def send_otp_email(self: Task, email: str, otp_code: str, purpose: str) -> bool:
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60, name="worker.notify_case_update")
 def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list[str]) -> None:
-    """Notify recipients about a case status update.
+    """Notify recipients about a case status update."""
+    async def _dispatch() -> None:
+        from uuid import UUID
 
-    Args:
-        case_id: Identifier of the case that was updated.
-        event: Description of the event (e.g. "assigned", "closed", "reopened").
-        recipient_ids: List of user IDs who should receive the notification.
-    """
+        from sqlalchemy import select
+
+        from app.db.session import async_session_maker
+        from app.models.user import User
+        from app.services import notification_service
+
+        uuids = [UUID(rid) for rid in recipient_ids]
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(User).where(User.id.in_(uuids), User.deleted_at.is_(None))
+            )
+            users = result.scalars().all()
+
+        short_id = case_id[:8]
+        for user in users:
+            message = f"HealAll case update ({short_id}): {event}."
+            if user.phone_verified and user.phone:
+                await notification_service.send_sms(str(user.phone), message)
+            if user.email_verified and user.email:
+                await notification_service.send_email(
+                    user.email, f"HealAll Case Update — {event}", message
+                )
+
     try:
         logger.info(
             "Case update notification: case_id=%s event=%s recipients=%s",
-            case_id,
-            event,
-            recipient_ids,
+            case_id, event, recipient_ids,
         )
-        for recipient_id in recipient_ids:
-            logger.info(
-                "Notifying user %s about case %s event: %s",
-                recipient_id,
-                case_id,
-                event,
-            )
-        # TODO: Replace with real push/email/SMS dispatch when providers are configured.
+        asyncio.run(_dispatch())
     except Exception as exc:
         logger.exception("notify_case_update failed for case_id=%s: %s", case_id, exc)
         raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1)) from exc
@@ -99,29 +110,41 @@ def notify_case_update(self: Task, case_id: str, event: str, recipient_ids: list
 def notify_new_comment(
     self: Task, post_id: str, commenter_name: str, post_author_id: str
 ) -> None:
-    """Notify a post author that a new comment has been added.
+    """Notify a post author that a new comment has been added."""
+    async def _dispatch() -> None:
+        from uuid import UUID
 
-    Args:
-        post_id: Identifier of the post that received the comment.
-        commenter_name: Display name of the user who commented.
-        post_author_id: User ID of the post author to notify.
-    """
+        from sqlalchemy import select
+
+        from app.db.session import async_session_maker
+        from app.models.user import User
+        from app.services import notification_service
+
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(User).where(
+                    User.id == UUID(post_author_id), User.deleted_at.is_(None)
+                )
+            )
+            author = result.scalar_one_or_none()
+
+        if not author:
+            return
+
+        message = f"{commenter_name} commented on your HealAll post."
+        if author.email_verified and author.email:
+            await notification_service.send_email(
+                author.email, "New comment on your HealAll post", message
+            )
+        if author.phone_verified and author.phone:
+            await notification_service.send_sms(str(author.phone), message)
+
     try:
         logger.info(
             "New comment notification: post_id=%s commenter=%s author=%s",
-            post_id,
-            commenter_name,
-            post_author_id,
+            post_id, commenter_name, post_author_id,
         )
-        logger.info(
-            "Notifying author %s that %s commented on post %s",
-            post_author_id,
-            commenter_name,
-            post_id,
-        )
-        # TODO: Replace with real push/email/SMS dispatch when providers are configured.
+        asyncio.run(_dispatch())
     except Exception as exc:
-        logger.exception(
-            "notify_new_comment failed for post_id=%s: %s", post_id, exc
-        )
+        logger.exception("notify_new_comment failed for post_id=%s: %s", post_id, exc)
         raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1)) from exc

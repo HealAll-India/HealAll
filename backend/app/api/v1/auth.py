@@ -22,6 +22,10 @@ from app.schemas.auth import (
 )
 from app.services import auth_service, invite_service, notification_service
 
+# Celery tasks available for when worker service is deployed on Railway:
+# from app.worker.tasks import send_otp_email as celery_send_otp_email
+# from app.worker.tasks import send_otp_sms as celery_send_otp_sms
+
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -37,23 +41,28 @@ async def signup(
     """
     Register a new user (invite-only).
 
-    Requires a valid invite code. Sends OTP to phone and email for verification.
+    Requires a valid invite code. Sends OTP to email for verification.
     """
     await invite_service.validate_and_use_invite(db, signup_data.invite_code)
     user = await auth_service.create_user(db, signup_data)
 
-    phone_otp, _ = await auth_service.create_otp(db, user.phone, purpose="signup")
+    # TEMP: Phone OTP bypassed — SMS/WhatsApp verification coming soon.
+    # Auto-verify phone so users reach PHONE_EMAIL_VERIFIED after email OTP.
+    # To restore: remove this line and uncomment the phone_otp block below.
+    user = await auth_service.mark_phone_verified(db, user)
+
+    # # SMS OTP (coming soon — wire back when WhatsApp/MSG91 is configured):
+    # phone_otp, _ = await auth_service.create_otp(db, user.phone, purpose="signup")
+    # celery_send_otp_sms.delay(str(user.phone), phone_otp, "signup")
+
     email_otp, _ = await auth_service.create_otp(db, user.email, purpose="signup")
 
     await db.commit()
 
-    # Send OTPs after response — keeps request fast
-    background_tasks.add_task(notification_service.send_otp_sms, user.phone, phone_otp, "signup")
+    # Send email OTP in background (switch to celery_send_otp_email.delay() when worker deployed)
     background_tasks.add_task(notification_service.send_otp_email, user.email, email_otp, "signup")
 
     pending = []
-    if not user.phone_verified:
-        pending.append("phone")
     if not user.email_verified:
         pending.append("email")
 
@@ -62,7 +71,7 @@ async def signup(
         name=user.name,
         verification_level=user.verification_level,
         pending_verification=pending,
-        message="OTP sent to phone and email. Please verify to continue.",
+        message="OTP sent to your email. Please verify to continue.",
     )
 
 
@@ -117,10 +126,10 @@ async def resend_otp(
     await db.commit()
 
     if resend_data.phone_or_email.startswith("+"):
-        background_tasks.add_task(notification_service.send_otp_sms, resend_data.phone_or_email, otp)
+        background_tasks.add_task(notification_service.send_otp_sms, resend_data.phone_or_email, otp, "login")
         medium = "phone"
     else:
-        background_tasks.add_task(notification_service.send_otp_email, resend_data.phone_or_email, otp)
+        background_tasks.add_task(notification_service.send_otp_email, resend_data.phone_or_email, otp, "login")
         medium = "email"
 
     return ResendOTPResponse(message=f"OTP sent to {medium}")
