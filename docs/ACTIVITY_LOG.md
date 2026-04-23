@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-22 — Fix WhatsApp provider: async scope, error return, template support
+**Agent**: claude-sonnet-4-6
+**Scope**: Four code-review fixes to `WhatsAppProvider` in notification_service.py.
+**Changes**:
+- `backend/app/services/notification_service.py`: (1) Moved `resp.status_code` check inside the `async with httpx.AsyncClient` block — reading `.text` outside the block causes `ResponseClosed` on non-200 responses. (2) Non-200 branch now returns `False` instead of falling back to console, matching `MSG91Provider` pattern (console fallback remains only in the `except Exception` path). (3) `send_sms` now checks `self._template_name`; when set, builds a Meta-approved template payload (OTP extracted via regex) instead of a `type: "text"` payload — required for production unsolicited messages. `__init__` reads the new setting. (4) `send_email` now logs before delegating to console fallback.
+- `backend/app/core/config.py`: Added `WHATSAPP_OTP_TEMPLATE_NAME: str | None = None` setting after `WHATSAPP_PHONE_NUMBER_ID`.
+**Tests**: `ruff check` passes on both files. No new unit tests (HTTP mocking out of scope; covered by manual integration test with sandbox number).
+**Follow-ups**: Set `WHATSAPP_OTP_TEMPLATE_NAME=healall_otp` in Railway env once Meta template is approved.
+
+---
+
 ## 2026-04-23 — Add WhatsApp OTP provider via Meta Cloud API
 **Agent**: claude-sonnet-4-6
 **Scope**: Add `WhatsAppProvider` and `WhatsAppSMTPProvider` to `notification_service.py`; update `_select_provider()` to prefer WhatsApp when configured.
