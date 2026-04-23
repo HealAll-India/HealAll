@@ -1,7 +1,7 @@
 """Authentication endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -20,7 +20,9 @@ from app.schemas.auth import (
     VerifyOTPRequest,
     VerifyOTPResponse,
 )
-from app.services import auth_service, invite_service, notification_service
+from app.services import auth_service, invite_service
+from app.worker.tasks import send_otp_email as celery_send_otp_email
+from app.worker.tasks import send_otp_sms as celery_send_otp_sms
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -31,7 +33,6 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def signup(
     request: Request,
     signup_data: SignupRequest,
-    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SignupResponse:
     """
@@ -47,9 +48,9 @@ async def signup(
 
     await db.commit()
 
-    # Send OTPs after response — keeps request fast
-    background_tasks.add_task(notification_service.send_otp_sms, user.phone, phone_otp, "signup")
-    background_tasks.add_task(notification_service.send_otp_email, user.email, email_otp, "signup")
+    # Dispatch OTP delivery to Celery worker for retry-capable async delivery
+    celery_send_otp_sms.delay(str(user.phone), phone_otp, "signup")
+    celery_send_otp_email.delay(str(user.email), email_otp, "signup")
 
     pending = []
     if not user.phone_verified:
@@ -104,7 +105,6 @@ async def verify_otp(
 async def resend_otp(
     request: Request,
     resend_data: ResendOTPRequest,
-    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ResendOTPResponse:
     """
@@ -117,10 +117,10 @@ async def resend_otp(
     await db.commit()
 
     if resend_data.phone_or_email.startswith("+"):
-        background_tasks.add_task(notification_service.send_otp_sms, resend_data.phone_or_email, otp)
+        celery_send_otp_sms.delay(resend_data.phone_or_email, otp, "login")
         medium = "phone"
     else:
-        background_tasks.add_task(notification_service.send_otp_email, resend_data.phone_or_email, otp)
+        celery_send_otp_email.delay(resend_data.phone_or_email, otp, "login")
         medium = "email"
 
     return ResendOTPResponse(message=f"OTP sent to {medium}")
