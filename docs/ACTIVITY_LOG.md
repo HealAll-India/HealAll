@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-24 — Add developer contribution section to landing page
+**Agent**: claude-sonnet-4-6
+**Scope**: New static card on landing page showcasing open-source contribution for developers.
+**Changes**:
+- `frontend/app/page.module.css`: Added `.contribute*` CSS classes — card with dark-to-blue accent bar, header, two-panel grid, tech stack items, contribution area coloured pills, footer, and responsive breakpoint (stacks to 1 col at ≤600px).
+- `frontend/app/page.tsx`: Added `<section className={s.contribute}>` after guidelines section — tech stack list (FastAPI, Next.js, PostgreSQL+Redis, Railway+Vercel) + contribution areas grid (Frontend, API, Tests, Docs) + GitHub CTA + README.md link. riseIn animation with 0.45s delay.
+**Tests**: `npm run build` → `✓ Compiled successfully`. Zero TypeScript or CSS module errors.
+**Follow-ups**: none
+
+---
+
 ## 2026-04-23 — Fix Sentry errors: Resend email provider + bcrypt pin
 **Agent**: claude-sonnet-4-6
 **Scope**: Fix 2 Sentry-reported production errors from Railway logs.

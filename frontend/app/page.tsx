@@ -115,6 +115,87 @@ export default function HomePage() {
 
         </div>
       </section>
+
+      {/* ── Developer Contribution ── */}
+      <section className={s.contribute}>
+        <div className={s.contributeCard}>
+
+          {/* Header */}
+          <div className={s.contributeHeader}>
+            <div className={s.contributeHeaderLeft}>
+              <div className={s.contributeIcon}>🛠️</div>
+              <div className={s.contributeHeaderText}>
+                <span className={s.contributeLabel}>Open Source</span>
+                <h2 className={s.contributeTitle}>Contribute as a Developer</h2>
+              </div>
+            </div>
+            <a
+              href="https://github.com/anupam8nith/HealAll"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={s.githubBtn}
+            >
+              View on GitHub ↗
+            </a>
+          </div>
+
+          {/* Two-panel body */}
+          <div className={s.contributeBody}>
+
+            {/* Left: Tech stack */}
+            <div className={s.techStack}>
+              <p className={s.panelLabel}>🔧 Tech stack</p>
+              {[
+                { emoji: "⚡", name: "FastAPI + SQLAlchemy", sub: "Python 3.12, async" },
+                { emoji: "⚛️", name: "Next.js 15", sub: "TypeScript, App Router" },
+                { emoji: "🐘", name: "PostgreSQL + Redis", sub: "Neon, Upstash" },
+                { emoji: "🚀", name: "Railway + Vercel", sub: "Backend + Frontend deploy" },
+              ].map((item) => (
+                <div key={item.name} className={s.stackItem}>
+                  <span className={s.stackEmoji}>{item.emoji}</span>
+                  <div>
+                    <div className={s.stackName}>{item.name}</div>
+                    <div className={s.stackSub}>{item.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Right: Contribution areas */}
+            <div className={s.contributionAreas}>
+              <p className={s.panelLabel}>🌱 Contribution areas</p>
+              {(
+                [
+                  { emoji: "🎨", label: "Frontend UI & UX",   color: s.green  },
+                  { emoji: "⚙️", label: "API features",        color: s.blue   },
+                  { emoji: "🧪", label: "Tests & coverage",    color: s.purple },
+                  { emoji: "📝", label: "Docs & translations", color: s.orange },
+                ] as const
+              ).map((area) => (
+                <div key={area.label} className={`${s.areaItem} ${area.color}`}>
+                  <span>{area.emoji}</span>
+                  <span>{area.label}</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+
+          {/* Footer */}
+          <div className={s.contributeFooter}>
+            <span className={s.footerHint}>⭐ Fork · open an issue · ship a PR</span>
+            <a
+              href="https://github.com/anupam8nith/HealAll/blob/main/README.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={s.contributeFooterLink}
+            >
+              Read README.md →
+            </a>
+          </div>
+
+        </div>
+      </section>
     </>
   );
 }
