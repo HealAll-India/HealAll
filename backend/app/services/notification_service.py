@@ -255,6 +255,7 @@ class ResendProvider(NotificationProvider):
     async def send_email(self, to: str, subject: str, body: str) -> bool:
         try:
             import httpx
+
             from app.services.email_templates import get_logo_attachment
 
             headers = {
