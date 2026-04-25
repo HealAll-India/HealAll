@@ -4,6 +4,16 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-25 — Real logo in email + favicon generation
+**Agent**: claude-sonnet-4-7
+**Scope**: Replace emoji logo in email with actual HealAll heart icon; generate favicons for website.
+**Changes**:
+- `frontend/public/favicon.ico` + `favicon-{16,32,48,64,128,256,512}.png` + `apple-icon.png` (new): Cropped from `logo.jpeg` — just the heart/hands icon, no text, white padding, generated with Pillow.
+- `frontend/app/layout.tsx`: Added full favicon metadata (16/32/64px PNG + ICO + 180px apple-touch), OpenGraph tags, improved title/description.
+- `backend/app/services/email_templates.py`: Logo pill replaced with `<img src="https://healallindia.com/favicon-128.png">` (72×72, rounded corners).
+**Tests**: Email sent to anupamkumar.nith@gmail.com — 200 OK.
+**Follow-ups**: Deploy Vercel (favicon live at healallindia.com/favicon-128.png once pushed). Open PR to merge feat/branded-email-templates.
+
 ## 2026-04-25 — Resend email setup + branded HTML email templates
 **Agent**: claude-sonnet-4-7
 **Scope**: Wire Resend as email provider in Railway; build branded HTML OTP + welcome email templates matching HealAll design system.
