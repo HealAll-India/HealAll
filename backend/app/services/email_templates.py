@@ -70,28 +70,17 @@ def _base(hero_html: str, body_html: str, preview_text: str = "") -> str:
         '            <td style="background:linear-gradient(140deg,#16a34a 0%,#1d55d4 100%);\n'
         '                       padding:40px 48px 36px;" class="hero-pad">\n'
         "\n"
-        "              <!-- logo pill -->\n"
+        "              <!-- logo -->\n"
         '              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n'
         "                <tr>\n"
-        '                  <td align="center" style="padding-bottom:22px;">\n'
-        '                    <table role="presentation" border="0" cellpadding="0" cellspacing="0">\n'
-        "                      <tr>\n"
-        '                        <td style="background:rgba(255,255,255,0.18);border-radius:12px;\n'
-        '                                   padding:9px 18px;">\n'
-        '                          <table role="presentation" border="0" cellpadding="0" cellspacing="0">\n'
-        "                            <tr>\n"
-        '                              <td style="padding-right:8px;font-size:20px;vertical-align:middle;\n'
-        '                                         line-height:1;">🤝</td>\n'
-        "                              <td style=\"vertical-align:middle;\">\n"
-        '                                <span style="font-family:\'DM Sans\',Arial,sans-serif;\n'
-        '                                             font-size:19px;font-weight:800;color:#ffffff;\n'
-        '                                             letter-spacing:-0.2px;">HealAll</span>\n'
-        "                              </td>\n"
-        "                            </tr>\n"
-        "                          </table>\n"
-        "                        </td>\n"
-        "                      </tr>\n"
-        "                    </table>\n"
+        '                  <td align="center" style="padding-bottom:20px;">\n'
+        "                    <!-- actual HealAll logo image -->\n"
+        '                    <img src="https://healallindia.com/favicon-128.png"\n'
+        '                         alt="HealAll"\n'
+        '                         width="72" height="72"\n'
+        '                         style="display:block;border:0;border-radius:16px;\n'
+        '                                background:rgba(255,255,255,0.15);\n'
+        '                                padding:6px;" />\n'
         "                  </td>\n"
         "                </tr>\n"
         "              </table>\n"
