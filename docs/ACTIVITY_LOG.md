@@ -4,6 +4,40 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-25 — Auto-login after OTP verification + CI fixes
+**Agent**: claude-sonnet-4-7
+**Scope**: Fix two signup flow bugs: email not sent on production, no auto-login after OTP verification.
+**Changes**:
+- `backend/app/schemas/auth.py`: `VerifyOTPResponse` gains optional `access_token`, `token_type`, `expires_in`, `user` fields.
+- `backend/app/api/v1/auth.py`: `verify_otp` endpoint now calls `create_tokens()` when `verification_level >= 1` and populates token fields in response. Fully verified users auto-login in one round-trip.
+- `frontend/app/verify-otp/page.tsx`: After successful OTP verification, if `access_token` present → `setSession()` → redirect to `/feed`. No extra manual login step.
+- `frontend/lib/types/api.ts`: `VerifyOtpResponse` extended with optional token fields.
+- `backend/app/services/email_templates.py`: ruff format fix (string concat style).
+- `backend/app/api/v1/auth.py`: ruff I001 import sort fix.
+- Railway: triggered redeploy to activate `RESEND_API_KEY` env var (set previously, not yet live).
+**Tests**: CI passing (Lint & Test ✅, frontend lint ✅, Vercel ✅). Manual test pending after PR merge + Railway deploy.
+**Follow-ups**: Merge PR #10 → Railway auto-deploys main → email + auto-login both live.
+
+## 2026-04-25 — Real logo in email + favicon generation
+**Agent**: claude-sonnet-4-7
+**Scope**: Replace emoji logo in email with actual HealAll heart icon; generate favicons for website.
+**Changes**:
+- `frontend/public/favicon.ico` + `favicon-{16,32,48,64,128,256,512}.png` + `apple-icon.png` (new): Cropped from `logo.jpeg` — just the heart/hands icon, no text, white padding, generated with Pillow.
+- `frontend/app/layout.tsx`: Added full favicon metadata (16/32/64px PNG + ICO + 180px apple-touch), OpenGraph tags, improved title/description.
+- `backend/app/services/email_templates.py`: Logo pill replaced with `<img src="https://healallindia.com/favicon-128.png">` (72×72, rounded corners).
+**Tests**: Email sent to anupamkumar.nith@gmail.com — 200 OK.
+**Follow-ups**: Deploy Vercel (favicon live at healallindia.com/favicon-128.png once pushed). Open PR to merge feat/branded-email-templates.
+
+## 2026-04-25 — Resend email setup + branded HTML email templates
+**Agent**: claude-sonnet-4-7
+**Scope**: Wire Resend as email provider in Railway; build branded HTML OTP + welcome email templates matching HealAll design system.
+**Changes**:
+- `backend/app/services/email_templates.py` (new): HTML email templates — `otp_email()` and `welcome_email()`. Table-based layout, inline styles, email-client safe. Matches globals.css design: green/blue gradient bar, DM Sans, `#16a34a`/`#2563eb` brand, OTP code in green `#f0fdf4` box, security warning in amber, footer with `healallindia.com`.
+- `backend/app/services/notification_service.py`: `send_otp_email()` and `send_welcome_email()` now use HTML templates from `email_templates.py`. `ResendProvider.send_email()` detects HTML body and sends `html` + `text` fallback. `SMTPProvider._build_message()` upgraded to `MIMEMultipart("alternative")` for HTML emails.
+- Railway env vars set (via CLI): `RESEND_API_KEY`, `SMTP_FROM_EMAIL=noreply@healallindia.com`, `SMTP_FROM_NAME=HealAll`. Domain `healallindia.com` verified in Resend dashboard.
+**Tests**: Manual — sent test OTP email to anupamkumar.nith@gmail.com from `noreply@healallindia.com` via Resend API, returned 200. HTML renders correctly with brand styling.
+**Follow-ups**: Redeploy Railway backend to pick up new env vars. Consider HTML preview in Celery tasks (tasks.py still sends plain text subject/body — would need update if Celery worker deployed).
+
 ## 2026-04-24 — Fix signup 422: auto-normalize phone to E.164 (PR #9)
 **Agent**: claude-sonnet-4-6
 **Scope**: Signup was returning 422 Unprocessable Content when users entered bare 10-digit phone numbers.

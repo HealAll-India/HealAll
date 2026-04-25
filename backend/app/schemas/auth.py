@@ -47,11 +47,21 @@ class VerifyOTPRequest(BaseModel):
 
 
 class VerifyOTPResponse(BaseModel):
-    """OTP verification response."""
+    """OTP verification response.
+
+    When the user becomes fully verified (verification_level >= 1), the response
+    also includes access_token + user so the frontend can auto-login without a
+    separate /token round-trip.
+    """
 
     verified: bool
     verification_level: int
     message: str
+    # Populated only when user is fully verified after this OTP
+    access_token: str | None = None
+    token_type: str = "bearer"
+    expires_in: int | None = None
+    user: "UserInfo | None" = None
 
 
 class ResendOTPRequest(BaseModel):

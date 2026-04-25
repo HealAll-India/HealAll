@@ -1,11 +1,15 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { verifyOtp } from "@/lib/api/auth";
 import { ApiError }  from "@/lib/api/client";
+import { useAuthStore } from "@/lib/stores/auth-store";
 
 export default function VerifyOtpPage() {
+  const router = useRouter();
+  const setSession = useAuthStore(s => s.setSession);
   const [phoneOrEmail, setPhoneOrEmail] = useState("");
   const [digits,       setDigits]       = useState(["", "", "", "", "", ""]);
   const [loading,      setLoading]      = useState(false);
@@ -39,7 +43,14 @@ export default function VerifyOtpPage() {
     setLoading(true);
     try {
       const res = await verifyOtp({ phone_or_email: phoneOrEmail, otp_code: digits.join("") });
-      setMessage(`${res.message} — verification level ${res.verification_level}`);
+      if (res.access_token && res.user) {
+        // Fully verified — auto-login and go to feed
+        setSession(res.access_token, res.user);
+        router.push("/feed");
+      } else {
+        // Partially verified (shouldn't happen in current flow, but handle gracefully)
+        setMessage(`${res.message} Please log in to continue.`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "OTP verification failed");
     } finally {
