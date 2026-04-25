@@ -4,6 +4,20 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-25 — Auto-login after OTP verification + CI fixes
+**Agent**: claude-sonnet-4-7
+**Scope**: Fix two signup flow bugs: email not sent on production, no auto-login after OTP verification.
+**Changes**:
+- `backend/app/schemas/auth.py`: `VerifyOTPResponse` gains optional `access_token`, `token_type`, `expires_in`, `user` fields.
+- `backend/app/api/v1/auth.py`: `verify_otp` endpoint now calls `create_tokens()` when `verification_level >= 1` and populates token fields in response. Fully verified users auto-login in one round-trip.
+- `frontend/app/verify-otp/page.tsx`: After successful OTP verification, if `access_token` present → `setSession()` → redirect to `/feed`. No extra manual login step.
+- `frontend/lib/types/api.ts`: `VerifyOtpResponse` extended with optional token fields.
+- `backend/app/services/email_templates.py`: ruff format fix (string concat style).
+- `backend/app/api/v1/auth.py`: ruff I001 import sort fix.
+- Railway: triggered redeploy to activate `RESEND_API_KEY` env var (set previously, not yet live).
+**Tests**: CI passing (Lint & Test ✅, frontend lint ✅, Vercel ✅). Manual test pending after PR merge + Railway deploy.
+**Follow-ups**: Merge PR #10 → Railway auto-deploys main → email + auto-login both live.
+
 ## 2026-04-25 — Real logo in email + favicon generation
 **Agent**: claude-sonnet-4-7
 **Scope**: Replace emoji logo in email with actual HealAll heart icon; generate favicons for website.
