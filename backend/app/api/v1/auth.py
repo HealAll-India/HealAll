@@ -100,13 +100,39 @@ async def verify_otp(
     else:
         user = await auth_service.mark_email_verified(db, user)
 
+    # Auto-login: issue tokens when user reaches full verification (level >= 1)
+    access_token = None
+    refresh_token = None
+    if user.verification_level >= 1:
+        access_token, refresh_token = await auth_service.create_tokens(db, user)
+
     await db.commit()
 
-    return VerifyOTPResponse(
+    resp = VerifyOTPResponse(
         verified=True,
         verification_level=user.verification_level,
         message=f"{'Phone' if verify_data.phone_or_email.startswith('+') else 'Email'} verified successfully!",
     )
+
+    if access_token:
+        resp.access_token = access_token
+        resp.expires_in = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        resp.user = UserInfo(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            phone=user.phone,
+            city=user.city,
+            age_range=user.age_range,
+            roles=user.roles,
+            verification_level=user.verification_level,
+            avatar_url=user.avatar_url,
+        )
+        # Set refresh token in httpOnly cookie on the Response object
+        # We need Response injected — handled below via background approach;
+        # for now return token in body (frontend stores it)
+
+    return resp
 
 
 @limiter.limit("5/hour")

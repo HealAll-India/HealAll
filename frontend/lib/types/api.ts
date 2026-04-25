@@ -58,6 +58,11 @@ export interface VerifyOtpResponse {
   verified: boolean;
   verification_level: number;
   message: string;
+  // Present when user becomes fully verified — use for auto-login
+  access_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  user?: UserInfo;
 }
 
 export interface ResendOtpRequest {

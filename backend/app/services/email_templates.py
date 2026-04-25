@@ -69,8 +69,8 @@ def _base(hero_html: str, body_html: str, preview_text: str = "") -> str:
         '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n'
         '  <meta http-equiv="X-UA-Compatible" content="IE=edge" />\n'
         '  <meta name="color-scheme" content="light" />\n'
-        '  <title>HealAll</title>\n'
-        "  <style type=\"text/css\">\n"
+        "  <title>HealAll</title>\n"
+        '  <style type="text/css">\n'
         "    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');\n"
         "    body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}\n"
         "    table,td{mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;}\n"
@@ -120,7 +120,7 @@ def _base(hero_html: str, body_html: str, preview_text: str = "") -> str:
         '                         alt="HealAll"\n'
         '                         width="72" height="72"\n'
         '                         style="display:block;border:0;border-radius:16px;\n'
-        '                                background:rgba(255,255,255,0.15);\n'
+        "                                background:rgba(255,255,255,0.15);\n"
         '                                padding:6px;" />\n'
         "                  </td>\n"
         "                </tr>\n"
@@ -143,14 +143,14 @@ def _base(hero_html: str, body_html: str, preview_text: str = "") -> str:
         "          <tr>\n"
         '            <td style="background:#f9fafb;padding:22px 48px;\n'
         '                       border-top:1px solid #e5e7eb;" class="foot-pad">\n'
-        '              <p style="margin:0 0 4px;font-family:\'DM Sans\',Arial,sans-serif;\n'
+        "              <p style=\"margin:0 0 4px;font-family:'DM Sans',Arial,sans-serif;\n"
         '                        font-size:12px;color:#9ca3af;line-height:1.6;">\n'
         '                <a href="https://healallindia.com"\n'
         '                   style="color:#16a34a;font-weight:700;text-decoration:none;">healallindia.com</a>\n'
         "                &nbsp;&middot;&nbsp; India's mutual-aid community\n"
         "                &nbsp;&middot;&nbsp; Invite-only\n"
         "              </p>\n"
-        '              <p style="margin:0;font-family:\'DM Sans\',Arial,sans-serif;\n'
+        "              <p style=\"margin:0;font-family:'DM Sans',Arial,sans-serif;\n"
         '                        font-size:11px;color:#d1d5db;line-height:1.5;">\n'
         "                If you didn't request this, ignore it &mdash; your account is safe.\n"
         "              </p>\n"
@@ -171,6 +171,7 @@ def _base(hero_html: str, body_html: str, preview_text: str = "") -> str:
 # OTP email
 # ---------------------------------------------------------------------------
 
+
 def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
     """Returns (subject, html_body) for an OTP email."""
     purpose_label = {
@@ -182,11 +183,11 @@ def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
     subject = f"{otp_code} is your HealAll code"
 
     hero = (
-        f'<h1 style="margin:0;font-family:\'DM Sans\',Arial,sans-serif;'
+        f"<h1 style=\"margin:0;font-family:'DM Sans',Arial,sans-serif;"
         f'font-size:26px;font-weight:800;color:#ffffff;line-height:1.2;">'
         f"Verify your {purpose_label}"
         f"</h1>"
-        f'<p style="margin:8px 0 0;font-family:\'DM Sans\',Arial,sans-serif;'
+        f"<p style=\"margin:8px 0 0;font-family:'DM Sans',Arial,sans-serif;"
         f'font-size:15px;color:rgba(255,255,255,0.82);line-height:1.6;">'
         f"Use the code below &mdash; it expires in&nbsp;<strong>10&nbsp;minutes</strong>."
         f"</p>"
@@ -202,14 +203,14 @@ def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
         '          <td align="center" class="otp-slab"\n'
         '              style="background:#111827;border-radius:16px;padding:28px 44px 24px;">\n'
         f'            <span class="otp-num"\n'
-        f'                  style="font-family:\'DM Sans\',Courier,monospace;'
-        f'font-size:56px;font-weight:800;letter-spacing:16px;'
+        f"                  style=\"font-family:'DM Sans',Courier,monospace;"
+        f"font-size:56px;font-weight:800;letter-spacing:16px;"
         f'color:#ffffff;display:block;line-height:1;text-align:center;">'
         f"{otp_code}"
         f"</span>\n"
-        f'            <span style="font-family:\'DM Sans\',Arial,sans-serif;'
-        f'font-size:11px;font-weight:700;color:#6b7280;'
-        f'text-transform:uppercase;letter-spacing:0.12em;'
+        f"            <span style=\"font-family:'DM Sans',Arial,sans-serif;"
+        f"font-size:11px;font-weight:700;color:#6b7280;"
+        f"text-transform:uppercase;letter-spacing:0.12em;"
         f'display:block;margin-top:12px;text-align:center;">'
         f"One-time password"
         f"</span>\n"
@@ -219,7 +220,6 @@ def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
         "    </td>\n"
         "  </tr>\n"
         "</table>\n"
-
         # ── Expiry row ──
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"'
         '       style="margin-bottom:12px;">\n'
@@ -228,19 +228,18 @@ def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
         '      <table role="presentation" border="0" cellpadding="0" cellspacing="0">\n'
         "        <tr>\n"
         '          <td style="font-size:20px;padding-right:12px;vertical-align:middle;">⏱</td>\n'
-        "          <td style=\"vertical-align:middle;\">\n"
-        '            <span style="font-family:\'DM Sans\',Arial,sans-serif;'
+        '          <td style="vertical-align:middle;">\n'
+        "            <span style=\"font-family:'DM Sans',Arial,sans-serif;"
         'font-size:14px;font-weight:600;color:#374151;">Expires in 10 minutes</span>\n'
-        '            <span style="font-family:\'DM Sans\',Arial,sans-serif;'
+        "            <span style=\"font-family:'DM Sans',Arial,sans-serif;"
         'font-size:13px;color:#9ca3af;display:block;margin-top:2px;">'
-        'Request a new code from the app if it expires.</span>\n'
+        "Request a new code from the app if it expires.</span>\n"
         "          </td>\n"
         "        </tr>\n"
         "      </table>\n"
         "    </td>\n"
         "  </tr>\n"
         "</table>\n"
-
         # ── Security row ──
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n'
         "  <tr>\n"
@@ -249,12 +248,12 @@ def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
         '      <table role="presentation" border="0" cellpadding="0" cellspacing="0">\n'
         "        <tr>\n"
         '          <td style="font-size:20px;padding-right:12px;vertical-align:middle;">🔒</td>\n'
-        "          <td style=\"vertical-align:middle;\">\n"
-        '            <span style="font-family:\'DM Sans\',Arial,sans-serif;'
+        '          <td style="vertical-align:middle;">\n'
+        "            <span style=\"font-family:'DM Sans',Arial,sans-serif;"
         'font-size:14px;font-weight:700;color:#92400e;">Never share this code</span>\n'
-        '            <span style="font-family:\'DM Sans\',Arial,sans-serif;'
+        "            <span style=\"font-family:'DM Sans',Arial,sans-serif;"
         'font-size:13px;color:#b45309;display:block;margin-top:2px;">'
-        'HealAll will never ask for your OTP over phone or chat.</span>\n'
+        "HealAll will never ask for your OTP over phone or chat.</span>\n"
         "          </td>\n"
         "        </tr>\n"
         "      </table>\n"
@@ -271,17 +270,18 @@ def otp_email(otp_code: str, purpose: str) -> tuple[str, str]:
 # Welcome email
 # ---------------------------------------------------------------------------
 
+
 def welcome_email(name: str) -> tuple[str, str]:
     """Returns (subject, html_body) for a post-signup welcome email."""
     first = name.split()[0] if name else "there"
     subject = f"Welcome to HealAll, {first}! 🤝"
 
     hero = (
-        f'<h1 style="margin:0;font-family:\'DM Sans\',Arial,sans-serif;'
+        f"<h1 style=\"margin:0;font-family:'DM Sans',Arial,sans-serif;"
         f'font-size:26px;font-weight:800;color:#ffffff;line-height:1.2;">'
         f"You're in, {first}!"
         f"</h1>"
-        f'<p style="margin:8px 0 0;font-family:\'DM Sans\',Arial,sans-serif;'
+        f"<p style=\"margin:8px 0 0;font-family:'DM Sans',Arial,sans-serif;"
         f'font-size:15px;color:rgba(255,255,255,0.82);line-height:1.6;">'
         f"Welcome to India's mutual-aid community."
         f"</p>"
@@ -292,10 +292,10 @@ def welcome_email(name: str) -> tuple[str, str]:
             '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n'
             "  <tr>\n"
             f'    <td style="background:{bg};border-radius:12px;padding:16px 20px;">\n'
-            f'      <span style="font-family:\'DM Sans\',Arial,sans-serif;font-size:14px;'
+            f"      <span style=\"font-family:'DM Sans',Arial,sans-serif;font-size:14px;"
             f'font-weight:700;color:{color};display:block;margin-bottom:3px;">'
             f"{icon}&nbsp; {title}</span>\n"
-            f'      <span style="font-family:\'DM Sans\',Arial,sans-serif;font-size:13px;'
+            f"      <span style=\"font-family:'DM Sans',Arial,sans-serif;font-size:13px;"
             f'color:#6b7280;line-height:1.6;display:block;">{desc}</span>\n'
             "    </td>\n"
             "  </tr>\n"
@@ -303,28 +303,41 @@ def welcome_email(name: str) -> tuple[str, str]:
         )
 
     body = (
-        '<p style="margin:0 0 24px;font-family:\'DM Sans\',Arial,sans-serif;'
+        "<p style=\"margin:0 0 24px;font-family:'DM Sans',Arial,sans-serif;"
         'font-size:15px;color:#374151;line-height:1.7;">'
         "HealAll is built on trust, respect, and the belief that communities"
         " can take care of their own. Here&rsquo;s how to get started:"
         "</p>\n"
-
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"'
         '       style="margin-bottom:28px;">\n'
-        "  <tr><td style=\"padding-bottom:10px;\">"
-        + _step("#f0fdf4", "#15803d", "🧑‍💼", "Complete your profile",
-                "Add skills and availability so the community knows how you can help.")
+        '  <tr><td style="padding-bottom:10px;">'
+        + _step(
+            "#f0fdf4",
+            "#15803d",
+            "🧑‍💼",
+            "Complete your profile",
+            "Add skills and availability so the community knows how you can help.",
+        )
         + "</td></tr>\n"
-        "  <tr><td style=\"padding-bottom:10px;\">"
-        + _step("#eff6ff", "#1d4ed8", "🗺️", "Browse help requests",
-                "See what your community needs — medicine, shelter, food, finance.")
+        '  <tr><td style="padding-bottom:10px;">'
+        + _step(
+            "#eff6ff",
+            "#1d4ed8",
+            "🗺️",
+            "Browse help requests",
+            "See what your community needs — medicine, shelter, food, finance.",
+        )
         + "</td></tr>\n"
         "  <tr><td>"
-        + _step("#faf5ff", "#7c3aed", "🪪", "Verify your identity",
-                "Aadhaar verification unlocks all features and builds community trust.")
+        + _step(
+            "#faf5ff",
+            "#7c3aed",
+            "🪪",
+            "Verify your identity",
+            "Aadhaar verification unlocks all features and builds community trust.",
+        )
         + "</td></tr>\n"
         "</table>\n"
-
         # CTA button
         '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n'
         "  <tr>\n"
@@ -334,9 +347,9 @@ def welcome_email(name: str) -> tuple[str, str]:
         '          <td style="background:linear-gradient(135deg,#16a34a 0%,#1d55d4 100%);\n'
         '                     border-radius:9999px;">\n'
         '            <a href="https://healallindia.com/feed"\n'
-        '               style="display:inline-block;font-family:\'DM Sans\',Arial,sans-serif;\n'
-        '                      font-size:15px;font-weight:700;color:#ffffff;\n'
-        '                      padding:14px 36px;border-radius:9999px;text-decoration:none;\n'
+        "               style=\"display:inline-block;font-family:'DM Sans',Arial,sans-serif;\n"
+        "                      font-size:15px;font-weight:700;color:#ffffff;\n"
+        "                      padding:14px 36px;border-radius:9999px;text-decoration:none;\n"
         '                      white-space:nowrap;">Go to Feed &rarr;</a>\n'
         "          </td>\n"
         "        </tr>\n"
