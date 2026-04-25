@@ -6,6 +6,7 @@ import asyncio
 import logging
 import smtplib
 from abc import ABC, abstractmethod
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from app.core.config import get_settings
@@ -181,11 +182,20 @@ class SMTPProvider(NotificationProvider):
         self._from_name = settings.SMTP_FROM_NAME or "HealAll"
         self._console = ConsoleProvider()
 
-    def _build_message(self, to: str, subject: str, body: str) -> MIMEText:
-        msg = MIMEText(body, "plain", "utf-8")
-        msg["Subject"] = subject
-        msg["From"] = f"{self._from_name} <{self._from_email}>"
-        msg["To"] = to
+    def _build_message(self, to: str, subject: str, body: str) -> MIMEMultipart | MIMEText:
+        is_html = body.lstrip().startswith("<!DOCTYPE") or body.lstrip().startswith("<html")
+        if is_html:
+            msg: MIMEMultipart | MIMEText = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"{self._from_name} <{self._from_email}>"
+            msg["To"] = to
+            msg.attach(MIMEText("Please view this email in an HTML-capable client.", "plain", "utf-8"))
+            msg.attach(MIMEText(body, "html", "utf-8"))
+        else:
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = subject
+            msg["From"] = f"{self._from_name} <{self._from_email}>"
+            msg["To"] = to
         return msg
 
     def _send_sync(self, to: str, subject: str, body: str) -> bool:
@@ -250,12 +260,18 @@ class ResendProvider(NotificationProvider):
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
             }
-            payload = {
+            # Detect HTML body; send both html + text fallback
+            is_html = body.lstrip().startswith("<!DOCTYPE") or body.lstrip().startswith("<html")
+            payload: dict = {
                 "from": f"{self._from_name} <{self._from_email}>",
                 "to": [to],
                 "subject": subject,
-                "text": body,
             }
+            if is_html:
+                payload["html"] = body
+                payload["text"] = "Please view this email in an HTML-capable client."
+            else:
+                payload["text"] = body
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post("https://api.resend.com/emails", headers=headers, json=payload)
                 if resp.status_code in (200, 201):
@@ -400,28 +416,15 @@ async def send_otp_email(email: str, otp_code: str, purpose: str = "verification
 
     ``purpose`` defaults to 'verification' so existing 2-arg call sites continue to work.
     """
-    subject = f"Your HealAll Verification Code ({purpose})"
-    body = (
-        f"Your HealAll verification code for {purpose} is: {otp_code}\n\n"
-        "This code will expire in 10 minutes.\n\n"
-        "If you did not request this code, please ignore this email.\n\n"
-        "Best regards,\nHealAll Team"
-    )
-    await _provider.send_email(email, subject, body)
+    from app.services.email_templates import otp_email as build_otp_email
+
+    subject, html_body = build_otp_email(otp_code, purpose)
+    await _provider.send_email(email, subject, html_body)
 
 
 async def send_welcome_email(email: str, name: str) -> bool:
     """Send a welcome email after successful signup."""
-    subject = "Welcome to HealAll!"
-    body = (
-        f"Hello {name},\n\n"
-        "Welcome to HealAll! We're excited to have you join our community of helpers and help-seekers.\n\n"
-        "Here's what you can do next:\n"
-        "1. Complete your profile by adding your skills and availability\n"
-        "2. Verify your identity (Aadhaar) to unlock all features\n"
-        "3. Start browsing help requests or post your own\n\n"
-        "Remember: HealAll is built on trust, respect, and mutual support. "
-        "Please read our Community Guidelines.\n\n"
-        "Best regards,\nHealAll Team"
-    )
-    return await _provider.send_email(email, subject, body)
+    from app.services.email_templates import welcome_email as build_welcome_email
+
+    subject, html_body = build_welcome_email(name)
+    return await _provider.send_email(email, subject, html_body)

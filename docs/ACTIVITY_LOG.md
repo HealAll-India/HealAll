@@ -4,6 +4,16 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-25 — Resend email setup + branded HTML email templates
+**Agent**: claude-sonnet-4-7
+**Scope**: Wire Resend as email provider in Railway; build branded HTML OTP + welcome email templates matching HealAll design system.
+**Changes**:
+- `backend/app/services/email_templates.py` (new): HTML email templates — `otp_email()` and `welcome_email()`. Table-based layout, inline styles, email-client safe. Matches globals.css design: green/blue gradient bar, DM Sans, `#16a34a`/`#2563eb` brand, OTP code in green `#f0fdf4` box, security warning in amber, footer with `healallindia.com`.
+- `backend/app/services/notification_service.py`: `send_otp_email()` and `send_welcome_email()` now use HTML templates from `email_templates.py`. `ResendProvider.send_email()` detects HTML body and sends `html` + `text` fallback. `SMTPProvider._build_message()` upgraded to `MIMEMultipart("alternative")` for HTML emails.
+- Railway env vars set (via CLI): `RESEND_API_KEY`, `SMTP_FROM_EMAIL=noreply@healallindia.com`, `SMTP_FROM_NAME=HealAll`. Domain `healallindia.com` verified in Resend dashboard.
+**Tests**: Manual — sent test OTP email to anupamkumar.nith@gmail.com from `noreply@healallindia.com` via Resend API, returned 200. HTML renders correctly with brand styling.
+**Follow-ups**: Redeploy Railway backend to pick up new env vars. Consider HTML preview in Celery tasks (tasks.py still sends plain text subject/body — would need update if Celery worker deployed).
+
 ## 2026-04-24 — Fix signup 422: auto-normalize phone to E.164 (PR #9)
 **Agent**: claude-sonnet-4-6
 **Scope**: Signup was returning 422 Unprocessable Content when users entered bare 10-digit phone numbers.
