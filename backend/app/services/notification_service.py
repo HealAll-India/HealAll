@@ -255,12 +255,12 @@ class ResendProvider(NotificationProvider):
     async def send_email(self, to: str, subject: str, body: str) -> bool:
         try:
             import httpx
+            from app.services.email_templates import get_logo_attachment
 
             headers = {
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
             }
-            # Detect HTML body; send both html + text fallback
             is_html = body.lstrip().startswith("<!DOCTYPE") or body.lstrip().startswith("<html")
             payload: dict = {
                 "from": f"{self._from_name} <{self._from_email}>",
@@ -270,9 +270,13 @@ class ResendProvider(NotificationProvider):
             if is_html:
                 payload["html"] = body
                 payload["text"] = "Please view this email in an HTML-capable client."
+                # Attach logo as inline CID so it renders in Gmail without "show images"
+                logo = get_logo_attachment()
+                if logo:
+                    payload["attachments"] = [logo]
             else:
                 payload["text"] = body
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.post("https://api.resend.com/emails", headers=headers, json=payload)
                 if resp.status_code in (200, 201):
                     logger.info("Resend email sent to %s", to)

@@ -2,6 +2,48 @@
 
 from __future__ import annotations
 
+import base64
+import os
+
+# ---------------------------------------------------------------------------
+# Inline logo attachment (CID embedding — works in Gmail without "show images")
+# ---------------------------------------------------------------------------
+
+_LOGO_PATH = os.path.join(os.path.dirname(__file__), "healall-logo.png")
+_LOGO_CID = "healall-logo"
+
+
+def _load_logo_b64() -> str:
+    """Load logo PNG as base64. Falls back to empty string if file not found."""
+    try:
+        abs_path = os.path.abspath(_LOGO_PATH)
+        with open(abs_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except FileNotFoundError:
+        return ""
+
+
+_LOGO_B64: str = _load_logo_b64()
+
+
+def get_logo_attachment() -> dict | None:
+    """
+    Return a Resend-compatible inline attachment dict for the HealAll logo,
+    or None if the file is not available.
+
+    Usage in Resend payload:
+        "attachments": [get_logo_attachment()]
+        In HTML: <img src="cid:healall-logo" ...>
+    """
+    if not _LOGO_B64:
+        return None
+    return {
+        "filename": "healall-logo.png",
+        "content": _LOGO_B64,
+        "content_id": _LOGO_CID,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -70,12 +112,11 @@ def _base(hero_html: str, body_html: str, preview_text: str = "") -> str:
         '            <td style="background:linear-gradient(140deg,#16a34a 0%,#1d55d4 100%);\n'
         '                       padding:40px 48px 36px;" class="hero-pad">\n'
         "\n"
-        "              <!-- logo -->\n"
+        "              <!-- logo (CID inline — no external URL needed) -->\n"
         '              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n'
         "                <tr>\n"
         '                  <td align="center" style="padding-bottom:20px;">\n'
-        "                    <!-- actual HealAll logo image -->\n"
-        '                    <img src="https://healallindia.com/favicon-128.png"\n'
+        f'                    <img src="cid:{_LOGO_CID}"\n'
         '                         alt="HealAll"\n'
         '                         width="72" height="72"\n'
         '                         style="display:block;border:0;border-radius:16px;\n'
