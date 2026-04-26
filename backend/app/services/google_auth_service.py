@@ -54,17 +54,13 @@ async def verify_google_token(token: str) -> dict:
 
 async def get_user_by_google_sub(db: AsyncSession, google_sub: str) -> User | None:
     """Find an active user by their Google subject ID."""
-    result = await db.execute(
-        select(User).where(User.google_sub == google_sub, User.deleted_at.is_(None))
-    )
+    result = await db.execute(select(User).where(User.google_sub == google_sub, User.deleted_at.is_(None)))
     return result.scalar_one_or_none()
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     """Find an active user by email."""
-    result = await db.execute(
-        select(User).where(User.email == email, User.deleted_at.is_(None))
-    )
+    result = await db.execute(select(User).where(User.email == email, User.deleted_at.is_(None)))
     return result.scalar_one_or_none()
 
 
@@ -95,9 +91,7 @@ async def create_google_user(
     if await get_user_by_email(db, email) is not None:
         raise DuplicateException("Email already registered")
 
-    existing_phone = await db.execute(
-        select(User).where(User.phone == signup_data.phone, User.deleted_at.is_(None))
-    )
+    existing_phone = await db.execute(select(User).where(User.phone == signup_data.phone, User.deleted_at.is_(None)))
     if existing_phone.scalar_one_or_none() is not None:
         raise DuplicateException("Phone number already registered")
 
@@ -146,6 +140,4 @@ async def resolve_google_login(db: AsyncSession, google_payload: dict) -> User:
         await link_google_sub(db, user, google_sub)
         return user
 
-    raise UnauthenticatedException(
-        "No HealAll account found for this Google account. Please sign up first."
-    )
+    raise UnauthenticatedException("No HealAll account found for this Google account. Please sign up first.")
