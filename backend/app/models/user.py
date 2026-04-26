@@ -35,6 +35,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     verification_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, index=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     suspended_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
