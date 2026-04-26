@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     # Resend (HTTP-based email — no port blocking)
     RESEND_API_KEY: str | None = None
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str | None = None
+
     # Sentry
     SENTRY_DSN: str = ""
 
