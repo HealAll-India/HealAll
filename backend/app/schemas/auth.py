@@ -106,6 +106,37 @@ class UserInfo(BaseModel):
     avatar_url: str | None = None
 
 
+class GoogleSignupRequest(BaseModel):
+    """Google OAuth signup request.
+
+    Frontend sends invite code + Google ID token + phone + profile fields.
+    Backend verifies token, creates user, returns JWT immediately.
+    """
+
+    invite_code: str = Field(..., min_length=5, max_length=20)
+    id_token: str = Field(..., min_length=10)
+    phone: str = Field(..., pattern=r"^\+91\d{10}$")
+    city: str = Field(..., min_length=2, max_length=100)
+    age_range: AgeRange
+    roles: list[UserRole] = Field(..., min_length=1)
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: list[UserRole]) -> list[UserRole]:
+        """Only helper and help_seeker roles allowed during signup."""
+        allowed = {UserRole.HELPER, UserRole.HELP_SEEKER}
+        for role in v:
+            if role not in allowed:
+                raise ValueError("Only 'helper' and 'help_seeker' roles allowed during signup")
+        return v
+
+
+class GoogleLoginRequest(BaseModel):
+    """Google OAuth login request."""
+
+    id_token: str = Field(..., min_length=10)
+
+
 class RefreshTokenRequest(BaseModel):
     """Refresh token request (token comes from httpOnly cookie)."""
 
