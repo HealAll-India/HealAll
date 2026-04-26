@@ -4,6 +4,32 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-26 — Google OAuth signup and login
+**Agent**: claude-sonnet-4-5
+**Scope**: Add Google OAuth as primary auth method (invite-code still required). OTP flow preserved at /signup/otp.
+**Changes**:
+- `backend/alembic/versions/20260426_0000_007_add_google_sub_to_users.py`: new migration — adds nullable `google_sub` column (unique, indexed) to `users` table
+- `backend/app/models/user.py`: added `google_sub: Mapped[str | None]` field
+- `backend/app/core/config.py`: added `GOOGLE_CLIENT_ID: str | None` setting
+- `backend/pyproject.toml`: added `google-auth>=2.28.0` and `requests>=2.31.0` deps
+- `backend/app/schemas/auth.py`: added `GoogleSignupRequest` and `GoogleLoginRequest` schemas
+- `backend/app/services/google_auth_service.py`: new service — `verify_google_token`, `create_google_user`, `resolve_google_login`, `link_google_sub`
+- `backend/app/api/v1/google_auth.py`: new endpoints — `POST /v1/auth/google/signup` and `POST /v1/auth/google/login`
+- `backend/app/api/v1/router.py`: registered `google_auth` router
+- `backend/app/services/email_templates.py`: added community guidelines link to welcome email
+- `backend/tests/test_google_auth.py`: 8 tests covering signup, duplicate checks, login, linking, unknown user
+- `frontend/components/GoogleAuthProvider.tsx`: new `GoogleOAuthProvider` wrapper (no-op if `NEXT_PUBLIC_GOOGLE_CLIENT_ID` unset)
+- `frontend/app/layout.tsx`: wrapped with `GoogleAuthProvider`
+- `frontend/app/signup/page.tsx`: refactored to 3-state machine (invite → phone → feed); Google-first
+- `frontend/app/signup/otp/page.tsx`: new — OTP signup preserved at `/signup/otp`
+- `frontend/app/login/page.tsx`: Google button above OTP form with divider
+- `frontend/lib/api/auth.ts`: added `googleSignup` and `googleLogin` functions
+- `frontend/lib/types/api.ts`: added `GoogleSignupRequest`, `GoogleLoginRequest`, `GoogleAuthResponse` types
+**Tests**: 8 new Google OAuth tests pass; existing 108 tests unaffected
+**Follow-ups**: Set `GOOGLE_CLIENT_ID` in Railway and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel after creating GCP OAuth credentials (see plan Task 0 / Pre-flight)
+
+---
+
 ## 2026-04-25 — Auto-login after OTP verification + CI fixes
 **Agent**: claude-sonnet-4-7
 **Scope**: Fix two signup flow bugs: email not sent on production, no auto-login after OTP verification.
