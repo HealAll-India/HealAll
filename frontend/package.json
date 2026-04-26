@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.5",
     "next": "^16.1.6",
     "react": "19.1.1",
     "react-dom": "19.1.1",

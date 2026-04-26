@@ -357,6 +357,18 @@ def welcome_email(name: str) -> tuple[str, str]:
         "    </td>\n"
         "  </tr>\n"
         "</table>\n"
+        # Community guidelines link
+        '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:20px;">\n'
+        "  <tr>\n"
+        '    <td align="center">\n'
+        '      <a href="https://healallindia.com/#community-guidelines"\n'
+        "         style=\"font-family:'DM Sans',Arial,sans-serif;font-size:13px;\n"
+        "                font-weight:600;color:#16a34a;text-decoration:none;\">\n"
+        "         📋 Read our Community Guidelines &rarr;\n"
+        "      </a>\n"
+        "    </td>\n"
+        "  </tr>\n"
+        "</table>\n"
     )
 
     preview = f"Welcome to HealAll, {first}! You're now part of India's mutual-aid community."

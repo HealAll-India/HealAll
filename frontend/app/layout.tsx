@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
+import GoogleAuthProvider from "@/components/GoogleAuthProvider";
 
 export const metadata: Metadata = {
   title: "HealAll — Helping in Any Way Possible",
@@ -32,7 +33,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <AppShell>{children}</AppShell>
+        <GoogleAuthProvider>
+          <AppShell>{children}</AppShell>
+        </GoogleAuthProvider>
       </body>
     </html>
   );
