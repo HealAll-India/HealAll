@@ -4,6 +4,18 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-26 — Privacy Policy and Terms of Service pages
+**Agent**: claude-sonnet-4-5
+**Scope**: Add /privacy-policy and /terms pages required for Google OAuth verification + footer links.
+**Changes**:
+- `frontend/app/privacy-policy/page.tsx`: Privacy Policy — data collected, usage, sharing (Google OAuth, Resend, Neon), rights, cookies, contact
+- `frontend/app/terms/page.tsx`: Terms of Service — eligibility, community rules, content policy, disclaimers, governing law (India)
+- `frontend/components/layout/app-shell.tsx`: added footer with Privacy Policy, Terms, Community Guidelines, Contact links
+**Tests**: no backend changes; TS + ESLint clean
+**Follow-ups**: submit for Google OAuth verification at console.cloud.google.com/apis/credentials/consent; verify healallindia.com in Google Search Console
+
+---
+
 ## 2026-04-26 — Google OAuth signup and login
 **Agent**: claude-sonnet-4-5
 **Scope**: Add Google OAuth as primary auth method (invite-code still required). OTP flow preserved at /signup/otp.
