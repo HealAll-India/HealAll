@@ -7,10 +7,13 @@ import { useRouter } from "next/navigation";
 import { googleLogin, login, resendOtp } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 
 export default function LoginPage() {
   const router = useRouter();
   const { setSession } = useAuthStore();
+
+  useAuthRedirect();
 
   const [phoneOrEmail, setPhoneOrEmail] = useState("");
   const [otpCode, setOtpCode]           = useState("");
