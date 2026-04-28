@@ -110,18 +110,14 @@ class TestGoogleSignup:
         # User is at level 1 — means both phone and email verified
         assert resp.json()["user"]["verification_level"] >= 1
 
-    async def test_duplicate_email_returns_409(
-        self, client: AsyncClient, invite: str, second_invite: str
-    ) -> None:
+    async def test_duplicate_email_returns_409(self, client: AsyncClient, invite: str, second_invite: str) -> None:
         """Second signup attempt with same Google account returns 409."""
         await client.post("/v1/auth/google/signup", json=SIGNUP_BODY)
         body2 = {**SIGNUP_BODY, "invite_code": "HEAL-GOGL02", "phone": "+919000000001"}
         resp = await client.post("/v1/auth/google/signup", json=body2)
         assert resp.status_code == 409
 
-    async def test_duplicate_phone_returns_409(
-        self, client: AsyncClient, invite: str, second_invite: str
-    ) -> None:
+    async def test_duplicate_phone_returns_409(self, client: AsyncClient, invite: str, second_invite: str) -> None:
         """Second signup with same phone returns 409."""
         await client.post("/v1/auth/google/signup", json=SIGNUP_BODY)
 
@@ -143,18 +139,14 @@ class TestGoogleSignup:
 
 
 class TestGoogleLogin:
-    async def test_login_after_google_signup(
-        self, client: AsyncClient, invite: str
-    ) -> None:
+    async def test_login_after_google_signup(self, client: AsyncClient, invite: str) -> None:
         """Google login works after Google signup."""
         await client.post("/v1/auth/google/signup", json=SIGNUP_BODY)
         resp = await client.post("/v1/auth/google/login", json={"id_token": "fake-google-id-token-for-testing"})
         assert resp.status_code == 200
         assert resp.json()["access_token"]
 
-    async def test_login_links_otp_user(
-        self, client: AsyncClient, otp_user: User
-    ) -> None:
+    async def test_login_links_otp_user(self, client: AsyncClient, otp_user: User) -> None:
         """Google login links google_sub to existing OTP-registered user."""
         resp = await client.post("/v1/auth/google/login", json={"id_token": "fake-google-id-token-for-testing"})
         assert resp.status_code == 200
