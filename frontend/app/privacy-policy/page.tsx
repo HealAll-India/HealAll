@@ -127,11 +127,21 @@ export default function PrivacyPolicyPage() {
         </p>
       </Section>
 
-      <Section title="9. Cookies">
+      <Section title="9. Cookies and Local Storage">
         <p>
-          We use only a single essential cookie: <code>healall_refresh</code>, an httpOnly cookie that stores
-          your refresh token for session management. We do not use tracking or advertising cookies.
+          We use one essential cookie and one localStorage entry:
         </p>
+        <ul>
+          <li>
+            <strong><code>healall_refresh</code></strong> — an httpOnly, secure cookie storing your refresh
+            token. Cannot be read by JavaScript.
+          </li>
+          <li>
+            <strong><code>healall-auth</code> (localStorage)</strong> — stores your access token and basic
+            profile information on your device for session persistence. Cleared on logout.
+          </li>
+        </ul>
+        <p>We do not use tracking, analytics, or advertising cookies.</p>
       </Section>
 
       <Section title="10. Changes to This Policy">

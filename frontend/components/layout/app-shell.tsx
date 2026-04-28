@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
       {children}
-      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "20px 24px", marginTop: "auto" }}>
+      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "20px 24px", marginTop: "48px" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "13px", color: "#9ca3af" }}>
           <span>© 2026 HealAll</span>
           <Link href="/privacy-policy" style={{ color: "#6b7280" }}>Privacy Policy</Link>
