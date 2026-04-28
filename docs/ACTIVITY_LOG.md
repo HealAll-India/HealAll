@@ -4,6 +4,16 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-04-28 — Fix GoogleOAuthProvider prerender crash (PR #13)
+**Agent**: claude-sonnet-4-6
+**Scope**: Fix `next build` crash on `/login` when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset.
+**Changes**:
+- `frontend/components/GoogleAuthProvider.tsx`: Removed conditional bare-children fallback. Always renders `<GoogleOAuthProvider clientId={clientId}>` so the context is available during static prerender. All 17 pages now generate cleanly.
+**Tests**: `npm run build` ✓ (was crashing), `npm run lint` ✓, `npm run typecheck` ✓.
+**Follow-ups**: Merge PR #13. Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel + `GOOGLE_CLIENT_ID` in Railway for Google OAuth to work in production.
+
+---
+
 ## 2026-04-26 — Privacy Policy and Terms of Service pages
 **Agent**: claude-sonnet-4-5
 **Scope**: Add /privacy-policy and /terms pages required for Google OAuth verification + footer links.
