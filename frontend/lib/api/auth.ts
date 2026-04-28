@@ -1,5 +1,8 @@
 import { apiPost } from "@/lib/api/client";
 import type {
+  GoogleAuthResponse,
+  GoogleLoginRequest,
+  GoogleSignupRequest,
   LoginRequest,
   ResendOtpRequest,
   ResendOtpResponse,
@@ -28,4 +31,12 @@ export function login(payload: LoginRequest) {
 
 export function logout(token: string) {
   return apiPost<{ message: string }>("/v1/auth/logout", { token });
+}
+
+export function googleSignup(payload: GoogleSignupRequest) {
+  return apiPost<GoogleAuthResponse>("/v1/auth/google/signup", { data: payload });
+}
+
+export function googleLogin(payload: GoogleLoginRequest) {
+  return apiPost<GoogleAuthResponse>("/v1/auth/google/login", { data: payload });
 }

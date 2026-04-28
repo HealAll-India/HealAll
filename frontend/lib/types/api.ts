@@ -396,6 +396,22 @@ export interface InviteCodeResponse {
   is_available: boolean;
 }
 
+export interface GoogleSignupRequest {
+  invite_code: string;
+  id_token: string;
+  phone: string;
+  city: string;
+  age_range: AgeRange;
+  roles: Extract<UserRole, "help_seeker" | "helper">[];
+}
+
+export interface GoogleLoginRequest {
+  id_token: string;
+}
+
+// Google signup and login both return the same shape as OTP token login
+export type GoogleAuthResponse = TokenResponse;
+
 export interface FeedFilters {
   city: string;
   category: string;
