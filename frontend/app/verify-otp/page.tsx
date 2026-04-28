@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { verifyOtp } from "@/lib/api/auth";
 import { ApiError }  from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
+  useAuthRedirect();
   const setSession = useAuthStore(s => s.setSession);
   const [phoneOrEmail, setPhoneOrEmail] = useState("");
   const [digits,       setDigits]       = useState(["", "", "", "", "", ""]);

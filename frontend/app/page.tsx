@@ -1,9 +1,11 @@
 import Link from "next/link";
 import s from "./page.module.css";
+import { AuthRedirect } from "@/components/auth/auth-redirect";
 
 export default function HomePage() {
   return (
     <>
+      <AuthRedirect />
       {/* ── Hero ── */}
       <div className={s.hero}>
         <div className={s.heroInner}>
@@ -64,7 +66,7 @@ export default function HomePage() {
       </div>
 
       {/* ── Community Guidelines ── */}
-      <section className={s.guidelines}>
+      <section id="community-guidelines" className={s.guidelines}>
         <div className={s.guidelinesCard}>
 
           {/* Header */}

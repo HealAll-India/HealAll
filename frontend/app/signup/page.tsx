@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { googleSignup } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
+import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 import { ageRanges } from "@/lib/constants";
 import type { AgeRange, UserRole } from "@/lib/types/api";
 
@@ -21,6 +22,8 @@ interface GoogleData {
 export default function SignupPage() {
   const router = useRouter();
   const setSession = useAuthStore(s => s.setSession);
+
+  useAuthRedirect();
 
   const [step, setStep]               = useState<Step>("invite");
   const [inviteCode, setInviteCode]   = useState("");

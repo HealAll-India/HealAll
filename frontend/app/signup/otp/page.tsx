@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 
 import { signup } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 import { ageRanges } from "@/lib/constants";
 import type { SignupRequest } from "@/lib/types/api";
 
 export default function OtpSignupPage() {
   const router = useRouter();
+  useAuthRedirect();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
