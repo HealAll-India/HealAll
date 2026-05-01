@@ -3,13 +3,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.exceptions import DuplicateException, NotFoundException
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.post import PostStatus
 from app.models.user import User
@@ -26,8 +27,10 @@ from app.services import post_service
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
+@limiter.limit("30/hour")
 @router.post("", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
+    request: Request,
     post_data: CreatePostRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -145,8 +148,10 @@ async def delete_post(
         raise DuplicateException("Resource already exists or constraint violated") from None
 
 
+@limiter.limit("10/hour")
 @router.post("/{post_id}/submit", response_model=PostResponse)
 async def submit_post(
+    request: Request,
     post_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

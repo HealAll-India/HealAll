@@ -2,11 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_any_role
 from app.core.constants import UserRole
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.report import ReportStatus
 from app.models.user import User
@@ -18,8 +19,10 @@ MODERATION_ROLES = [UserRole.MODERATOR, UserRole.ADMIN, UserRole.HEAD_ADMIN]
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
+@limiter.limit("10/hour")
 @router.post("", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 async def create_report(
+    request: Request,
     payload: CreateReportRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

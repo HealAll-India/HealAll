@@ -418,3 +418,13 @@ export interface FeedFilters {
   urgency: string;
   search: string;
 }
+
+export interface AdminStatsResponse {
+  total_users: number;
+  verified_users: number;
+  suspended_users: number;
+  active_posts: number;
+  open_cases: number;
+  pending_verifications: number;
+  pending_reports: number;
+}
