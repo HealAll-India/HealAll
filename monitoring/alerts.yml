@@ -1,0 +1,41 @@
+groups:
+  - name: healall_api
+    interval: 30s
+    rules:
+      # Error rate > 5% over 5-minute window
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HealAll API error rate above 5%"
+          description: "{{ $value | humanizePercentage }} of requests are returning 5xx."
+
+      # p95 latency > 2s
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, handler)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HealAll API p95 latency above 2s"
+          description: "Handler {{ $labels.handler }} p95 latency is {{ $value | humanizeDuration }}."
+
+      # API down (no scrape data for 1 minute)
+      - alert: APIDown
+        expr: up{job="healall_api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HealAll API is down"
+          description: "No metrics from healall_api for more than 1 minute."

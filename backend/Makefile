@@ -1,4 +1,4 @@
-.PHONY: install up down logs db-shell migrate rollback seed test lint format clean worker flower
+.PHONY: install up down logs db-shell migrate rollback seed test lint format clean worker flower monitoring
 
 install:
 	pip install -e ".[dev]"
@@ -54,3 +54,6 @@ worker:
 
 flower:
 	celery -A app.worker.celery_app flower --port=5555
+
+monitoring:
+	docker compose --profile monitoring up -d prometheus grafana
