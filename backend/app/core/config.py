@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     # Sentry
     SENTRY_DSN: str = ""
 
+    # Metrics
+    METRICS_ENABLED: bool = True
+
     @field_validator("APP_ALLOWED_ORIGINS")
     @classmethod
     def parse_cors_origins(cls, v: str) -> list[str]:
