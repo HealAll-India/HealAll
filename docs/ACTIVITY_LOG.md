@@ -4,6 +4,22 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-01 — Prometheus + Grafana metrics (Phase 4.3)
+**Agent**: claude-sonnet-4-6
+**Scope**: Expose /metrics from FastAPI and add a local monitoring stack with pre-built dashboard and alert rules.
+**Changes**:
+- `backend/pyproject.toml`: Added `prometheus-fastapi-instrumentator>=7.0.0`.
+- `backend/app/main.py`: Wired `Instrumentator` — exposes `/metrics`, excludes `/health` and `/metrics` from instrumentation, gated by `METRICS_ENABLED`.
+- `backend/app/core/config.py`: Added `METRICS_ENABLED: bool = True` setting.
+- `backend/docker-compose.yml`: Added `prometheus` + `grafana` services under `monitoring` profile; added `prometheus_data` + `grafana_data` volumes.
+- `backend/Makefile`: Added `make monitoring` target.
+- `monitoring/prometheus.yml`: Scrapes `host.docker.internal:8000/metrics` every 15s.
+- `monitoring/alerts.yml`: Three alert rules — `HighErrorRate` (5xx >5%, 2m), `HighLatency` (p95 >2s, 5m), `APIDown` (up==0, 1m).
+- `monitoring/grafana/provisioning/`: Auto-provision Prometheus datasource + dashboard path.
+- `monitoring/grafana/dashboards/healall.json`: Pre-built 6-panel dashboard (request rate, error %, latency percentiles, in-flight, slowest handlers, top handlers by volume).
+**Tests**: ruff check + format clean. No DB-dependent tests (no schema changes). CI will verify on PR.
+**Follow-ups**: Set `GRAFANA_ADMIN_PASSWORD` in local `.env` before running `make monitoring`. On Railway, `/metrics` is publicly accessible — add IP allowlist or basic auth if needed in production.
+
 ## 2026-04-28 — Fix GoogleOAuthProvider prerender crash (PR #13)
 **Agent**: claude-sonnet-4-6
 **Scope**: Fix `next build` crash on `/login` when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset.
