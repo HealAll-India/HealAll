@@ -4,6 +4,25 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-01 — Admin dashboard, rate limiting, deployment guide update
+**Agent**: claude-sonnet-4-6
+**Scope**: Admin stats endpoint + dashboard page, rate limits on all write endpoints, update DEPLOYMENT.md.
+**Changes**:
+- `backend/app/schemas/admin.py` (new): `AdminStatsResponse` schema.
+- `backend/app/services/admin_service.py` (new): `get_platform_stats()` — aggregate counts for users (total/verified/suspended), active posts, open cases, pending verifications, pending reports.
+- `backend/app/api/v1/admin.py` (new): `GET /v1/admin/stats` — requires ADMIN or HEAD_ADMIN.
+- `backend/app/api/v1/router.py`: Register admin router.
+- `backend/app/api/v1/posts.py`: `@limiter.limit` on create_post (30/hr), submit_post (10/hr).
+- `backend/app/api/v1/comments.py`: `@limiter.limit("60/minute")` on create_comment.
+- `backend/app/api/v1/messages.py`: `@limiter.limit` on request_consent (20/hr), send_message (60/min).
+- `backend/app/api/v1/reports.py`: `@limiter.limit("10/hour")` on create_report.
+- `frontend/lib/api/admin.ts` (new): `getAdminStats()` client function.
+- `frontend/lib/types/api.ts`: Added `AdminStatsResponse` interface.
+- `frontend/app/admin/dashboard/page.tsx` (new): Stat cards grid with accent colours, links to verification/moderation queues. Fixes broken nav link.
+- `docs/DEPLOYMENT.md`: Updated migration version (007), added new env vars (Google OAuth, Resend, MSG91, WhatsApp, METRICS_ENABLED), added Google OAuth setup section and metrics section.
+**Tests**: ruff check + format clean; `npm run build` 18/18 pages ✓. CI will verify.
+**Follow-ups**: SSE real-time notifications (Phase 5.1) is the next major feature gap.
+
 ## 2026-05-01 — Prometheus + Grafana metrics (Phase 4.3)
 **Agent**: claude-sonnet-4-6
 **Scope**: Expose /metrics from FastAPI and add a local monitoring stack with pre-built dashboard and alert rules.

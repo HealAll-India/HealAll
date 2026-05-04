@@ -138,7 +138,7 @@ Vercel Dashboard → Project → Settings → Git → Connect GitHub → select 
 
 | What to check | Where to find it | What's healthy |
 |--------------|-----------------|----------------|
-| Migration version | SQL Editor → `SELECT version_num FROM alembic_version;` | `006` |
+| Migration version | SQL Editor → `SELECT version_num FROM alembic_version;` | `007` |
 | Table count | SQL Editor → `SELECT count(*) FROM information_schema.tables WHERE table_schema='public';` | `20` |
 | Active connections | Monitoring → Connections | <20 (pooled) |
 | Query latency | Monitoring → Latency | <50ms avg |
@@ -414,8 +414,46 @@ All set in Railway → Service → Variables.
 | `SMS_PROVIDER` | SMS provider | `stub` (→ `msg91` when wired) |
 | `EMAIL_PROVIDER` | Email provider | `stub` (→ `smtp` when wired) |
 | `EMAIL_FROM` | From address | `noreply@healallindia.com` |
-| `SENTRY_DSN` | Sentry project DSN | *(not yet set)* |
+| `SENTRY_DSN` | Sentry project DSN | *(optional)* |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `123456789.apps.googleusercontent.com` |
+| `RESEND_API_KEY` | Resend email API key | `re_...` |
+| `SMTP_FROM_EMAIL` | Sender email address | `noreply@healallindia.com` |
+| `SMTP_FROM_NAME` | Sender display name | `HealAll` |
+| `MSG91_API_KEY` | MSG91 SMS key | *(optional — WhatsApp preferred)* |
+| `WHATSAPP_TOKEN` | Meta Cloud API token | *(optional)* |
+| `WHATSAPP_PHONE_NUMBER_ID` | Meta phone number ID | *(optional)* |
+| `WHATSAPP_OTP_TEMPLATE_NAME` | Approved OTP template | `healall_otp` |
+| `METRICS_ENABLED` | Expose `/metrics` endpoint | `true` |
+
+**Vercel env vars** (set in Vercel dashboard → Project → Settings → Environment Variables):
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api.healallindia.com` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client ID |
 
 ---
 
-*Last updated: 2026-04-22 — HealAll v0.1.0 production launch*
+## Google OAuth Setup
+
+1. Go to [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)
+2. Create OAuth 2.0 Client ID → Web application
+3. Authorised JavaScript origins: `https://healallindia.com`
+4. Authorised redirect URIs: `https://healallindia.com` (no redirect needed for popup flow)
+5. Copy the **Client ID**
+6. Set in Railway: `railway variables --set "GOOGLE_CLIENT_ID=<id>"`
+7. Set in Vercel: `NEXT_PUBLIC_GOOGLE_CLIENT_ID=<id>` for production + preview
+
+---
+
+## Metrics
+
+`GET /metrics` is exposed by FastAPI via `prometheus-fastapi-instrumentator`.
+
+To disable in production: `railway variables --set "METRICS_ENABLED=false"`
+
+For local monitoring: `cd backend && make monitoring` starts Prometheus (:9090) and Grafana (:3001).
+
+---
+
+*Last updated: 2026-05-01 — HealAll v0.2.0 (Google OAuth, Prometheus metrics, admin dashboard)*

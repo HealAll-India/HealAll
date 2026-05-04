@@ -3,12 +3,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.exceptions import DuplicateException
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.message import (
@@ -24,12 +25,14 @@ from app.services import message_service
 router = APIRouter(prefix="/messages", tags=["messages"])
 
 
+@limiter.limit("20/hour")
 @router.post(
     "/request-consent",
     response_model=ConsentRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def request_consent(
+    request: Request,
     payload: RequestConsentRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -179,8 +182,10 @@ async def get_conversation(
     )
 
 
+@limiter.limit("60/minute")
 @router.post("/conversations/{conversation_id}", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
 async def send_message(
+    request: Request,
     conversation_id: UUID,
     payload: SendMessageRequest,
     current_user: Annotated[User, Depends(get_current_user)],
