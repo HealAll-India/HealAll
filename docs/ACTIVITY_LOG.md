@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-04 — Cases UI overhaul
+**Agent**: claude-sonnet-4-6
+**Scope**: Replace placeholder cases pages with proper case list and detail UI.
+**Changes**:
+- `frontend/app/cases/page.tsx`: Rewritten — `CaseCard` with colour-coded status badge (open=blue, in_progress=amber, pending_closure=orange, closed=gray, invalid=red), urgency colour, helper count, city/category metadata, total count header, empty state linking to feed.
+- `frontend/app/cases/[caseId]/page.tsx`: Rewritten — full detail page with back-link, header (title, status badge, metadata row, owner name), "Offer Help" action (only shown for active cases), "Reopen" (only shown for closed), notes section (chronological with time-ago stamps), add-note form, closure section with resolution type dropdown and remarks (hidden for closed cases). `withAction` helper consolidates loading/error state across async actions.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: Add "Request DM" button to case detail when consent messaging is surfaced from post pages.
+
+---
+
 ## 2026-05-04 — Fix Google OAuth button mobile alignment
 **Agent**: claude-sonnet-4-6
 **Scope**: Google sign-in/sign-up button overflowed container on narrow mobile screens due to hardcoded pixel widths.
