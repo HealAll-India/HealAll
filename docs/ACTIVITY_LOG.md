@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-04 — Messages UI overhaul
+**Agent**: claude-sonnet-4-6
+**Scope**: Replace placeholder messages pages with a real conversation list and chat-bubble thread UI.
+**Changes**:
+- `frontend/app/messages/page.tsx`: Rewritten — clean conversation list with `ConvCard` component showing the other participant (truncated ID), time-ago timestamp, and empty state. Removed the raw-UUID accept/decline form (no list-pending-requests endpoint exists). Single `useEffect` data-fetch pattern.
+- `frontend/app/messages/[conversationId]/page.tsx`: Rewritten — chat-bubble layout with green bubbles for outgoing, grey for incoming. Header with back-arrow and participant label. Auto-scrolls to latest message. Disabled input when conversation is ended. Restores typed text on send failure.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: Add a "Request DM" button on post pages; add pending consent request list once a backend endpoint exists.
+
+---
+
 ## 2026-05-04 — Fix Google OAuth button mobile alignment
 **Agent**: claude-sonnet-4-6
 **Scope**: Google sign-in/sign-up button overflowed container on narrow mobile screens due to hardcoded pixel widths.
