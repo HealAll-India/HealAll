@@ -1,7 +1,7 @@
 "use client";
 
 import { GoogleLogin } from "@react-oauth/google";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { googleSignup } from "@/lib/api/auth";
@@ -24,6 +24,20 @@ export default function SignupPage() {
   const setSession = useAuthStore(s => s.setSession);
 
   useAuthRedirect();
+
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const [googleBtnWidth, setGoogleBtnWidth] = useState(376);
+
+  useEffect(() => {
+    const el = googleBtnRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setGoogleBtnWidth(Math.floor(w));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const [step, setStep]               = useState<Step>("invite");
   const [inviteCode, setInviteCode]   = useState("");
@@ -127,14 +141,14 @@ export default function SignupPage() {
               </label>
 
               {/* Google sign-up button */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+              <div ref={googleBtnRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", width: "100%", overflow: "hidden" }}>
                 <GoogleLogin
                   onSuccess={cr => cr.credential && handleGoogleSuccess(cr.credential)}
                   onError={() => setError("Google sign-in failed. Please try again.")}
                   text="continue_with"
                   shape="rectangular"
                   theme="outline"
-                  width="376"
+                  width={googleBtnWidth}
                 />
                 <span style={{ fontSize: "11px", color: "#9ca3af" }}>
                   Google provides your name and email

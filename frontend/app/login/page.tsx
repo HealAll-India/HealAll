@@ -1,7 +1,7 @@
 "use client";
 
 import { GoogleLogin } from "@react-oauth/google";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { googleLogin, login, resendOtp } from "@/lib/api/auth";
@@ -14,6 +14,20 @@ export default function LoginPage() {
   const { setSession } = useAuthStore();
 
   useAuthRedirect();
+
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const [googleBtnWidth, setGoogleBtnWidth] = useState(340);
+
+  useEffect(() => {
+    const el = googleBtnRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setGoogleBtnWidth(Math.floor(w));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const [phoneOrEmail, setPhoneOrEmail] = useState("");
   const [otpCode, setOtpCode]           = useState("");
@@ -83,14 +97,14 @@ export default function LoginPage() {
         </p>
 
         {/* ── Google sign-in — primary ── */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", marginBottom: "20px" }}>
+        <div ref={googleBtnRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", marginBottom: "20px", width: "100%", overflow: "hidden" }}>
           <GoogleLogin
             onSuccess={cr => cr.credential && handleGoogleSuccess(cr.credential)}
             onError={() => setError("Google sign-in failed. Please try again.")}
             text="signin_with"
             shape="rectangular"
             theme="outline"
-            width="340"
+            width={googleBtnWidth}
           />
         </div>
 
