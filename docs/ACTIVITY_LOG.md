@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-04 — Fix Google OAuth button mobile alignment
+**Agent**: claude-sonnet-4-6
+**Scope**: Google sign-in/sign-up button overflowed container on narrow mobile screens due to hardcoded pixel widths.
+**Changes**:
+- `frontend/app/login/page.tsx`: Replaced `width="340"` with a `ResizeObserver` ref that measures the container and passes the live pixel width to `<GoogleLogin>`. Container gets `overflow: hidden` to prevent bleed.
+- `frontend/app/signup/page.tsx`: Same pattern — replaced `width="376"` with dynamic measurement from a ref.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: none.
+
+---
+
 ## 2026-05-01 — Admin dashboard, rate limiting, deployment guide update
 **Agent**: claude-sonnet-4-6
 **Scope**: Admin stats endpoint + dashboard page, rate limits on all write endpoints, update DEPLOYMENT.md.
