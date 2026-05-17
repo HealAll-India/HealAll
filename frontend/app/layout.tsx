@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import GoogleAuthProvider from "@/components/GoogleAuthProvider";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "HealAll — Helping in Any Way Possible",
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GoogleAuthProvider>
           <AppShell>{children}</AppShell>
         </GoogleAuthProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
