@@ -9,29 +9,49 @@ import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { MyUserProfile } from "@/lib/types/api";
 
+function RolePill({ role }: { role: string }) {
+  const labels: Record<string, string> = {
+    help_seeker: "Help seeker",
+    helper: "Helper",
+    moderator: "Moderator",
+    admin: "Admin",
+    head_admin: "Head admin",
+  };
+  return (
+    <span
+      style={{
+        background: "#f3f4f6",
+        color: "#374151",
+        fontSize: "11px",
+        fontWeight: 600,
+        padding: "2px 10px",
+        borderRadius: "999px",
+      }}
+    >
+      {labels[role] ?? role}
+    </span>
+  );
+}
+
 export default function ProfilePage() {
   const hydrated = useHydrated();
-  const token = useAuthStore((state) => state.accessToken);
-  const setSession = useAuthStore((state) => state.setSession);
-  const sessionUser = useAuthStore((state) => state.user);
+  const token = useAuthStore((s) => s.accessToken);
+  const setSession = useAuthStore((s) => s.setSession);
+  const sessionUser = useAuthStore((s) => s.user);
 
   const [profile, setProfile] = useState<MyUserProfile | null>(null);
   const [newSkill, setNewSkill] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   async function loadProfile() {
-    if (!token) {
-      return;
-    }
-
+    if (!token) return;
     setLoading(true);
     setError(null);
-
     try {
-      const response = await getMyProfile(token);
-      setProfile(response);
+      setProfile(await getMyProfile(token));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load profile");
     } finally {
@@ -40,200 +60,269 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
-    if (token) {
-      void loadProfile();
-    }
+    if (token) void loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  async function saveProfile(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!token || !profile) {
-      return;
-    }
-
+  async function saveProfile(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!token || !profile) return;
+    setSaving(true);
     setError(null);
-    setMessage(null);
-
+    setSuccess(null);
     try {
       const updated = await updateMyProfile(token, {
         name: profile.name,
         city: profile.city,
         bio: profile.bio ?? "",
-        avatar_url: profile.avatar_url ?? ""
+        avatar_url: profile.avatar_url ?? "",
       });
       setProfile(updated);
       if (sessionUser) {
         setSession(token, { ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
       }
-      setMessage("Profile updated.");
+      setSuccess("Profile updated.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to update profile");
+    } finally {
+      setSaving(false);
     }
   }
 
   async function savePrivacy() {
-    if (!token || !profile) {
-      return;
-    }
-
+    if (!token || !profile) return;
+    setSaving(true);
     setError(null);
-    setMessage(null);
-
+    setSuccess(null);
     try {
       const privacy = await updatePrivacy(token, profile.privacy_settings);
       setProfile((prev) => (prev ? { ...prev, privacy_settings: privacy } : prev));
-      setMessage("Privacy settings updated.");
+      setSuccess("Privacy settings saved.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to update privacy");
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function createSkill() {
-    if (!token || !newSkill.trim()) {
-      return;
-    }
-
+  async function handleAddSkill() {
+    if (!token || !newSkill.trim()) return;
+    setSaving(true);
     setError(null);
-    setMessage(null);
-
+    setSuccess(null);
     try {
       await addSkill(token, newSkill.trim());
       setNewSkill("");
       await loadProfile();
-      setMessage("Skill added.");
+      setSuccess("Skill added.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add skill");
+    } finally {
+      setSaving(false);
     }
   }
 
+  if (!hydrated) return null;
+  if (!token) return <AuthRequired />;
+
   return (
     <main className="page">
-      {!hydrated ? null : token ? (
+      {/* Profile hero */}
+      {profile && (
         <>
-          <section className="card stack">
-            <h1>My Profile (Module 2)</h1>
-            {loading ? <p className="muted">Loading...</p> : null}
-            {profile ? (
-              <form className="grid" onSubmit={saveProfile}>
+          <section className="prof-hero" style={{ marginBottom: "22px" }}>
+            <div className="prof-hero__cover" />
+            {/* Avatar */}
+            <span
+              className="av av-xl"
+              style={{
+                background: "linear-gradient(135deg, #16a34a, #2563eb)",
+                position: "relative", zIndex: 1,
+              }}
+            >
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatar_url} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "9999px" }} />
+              ) : (
+                profile.name[0]?.toUpperCase()
+              )}
+            </span>
+
+            {/* Info */}
+            <div className="prof-hero__about">
+              <div className="prof-hero__name">
+                {profile.name}
+                {profile.verification_level >= 1 && (
+                  <span className="vpill">✓ Verified · L{profile.verification_level}</span>
+                )}
+              </div>
+              <div className="prof-hero__handle">
+                📍 {profile.city}
+                {profile.age_range ? ` · ${profile.age_range}` : ""}
+              </div>
+              {profile.bio && <p className="prof-hero__bio">{profile.bio}</p>}
+              <div className="prof-hero__meta">
+                {profile.email_verified && <span>✓ Email verified</span>}
+                {profile.phone_verified && <span>✓ Phone verified</span>}
+                {profile.roles.map((r) => <RolePill key={r} role={r} />)}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="prof-hero__actions">
+              <button type="button" style={{ fontSize: "13px" }}>Edit profile</button>
+            </div>
+          </section>
+
+          {/* Stats grid */}
+          <div className="stats-grid" style={{ marginBottom: "24px" }}>
+            <div className="stat">
+              <div className="stat__label">Verification</div>
+              <div className="stat__num">L{profile.verification_level}</div>
+              <div className="stat__sub">{profile.verification_level === 0 ? "Not verified" : "Verified member"}</div>
+            </div>
+            <div className="stat">
+              <div className="stat__label">Skills</div>
+              <div className="stat__num">{profile.skills.length}</div>
+              <div className="stat__sub">Ways to help</div>
+            </div>
+            <div className="stat">
+              <div className="stat__label">Email</div>
+              <div className="stat__num" style={{ fontSize: "16px", lineHeight: 1.6 }}>{profile.email_verified ? "✓" : "—"}</div>
+              <div className="stat__sub">{profile.email_verified ? "Verified" : "Not verified"}</div>
+            </div>
+            <div className="stat">
+              <div className="stat__label">Phone</div>
+              <div className="stat__num" style={{ fontSize: "16px", lineHeight: 1.6 }}>{profile.phone_verified ? "✓" : "—"}</div>
+              <div className="stat__sub">{profile.phone_verified ? "Verified" : "Not verified"}</div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {loading && !profile && (
+        <section className="card"><p className="muted">Loading profile…</p></section>
+      )}
+
+      {profile && (
+        <>
+          {/* Edit details */}
+          <section className="card stack" style={{ marginBottom: "16px" }}>
+            <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Edit profile</h2>
+            <form className="stack" onSubmit={saveProfile} style={{ gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <label>
                   Name
                   <input
                     value={profile.name}
-                    onChange={(event) => setProfile((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
+                    onChange={(e) => setProfile((p) => p ? { ...p, name: e.target.value } : p)}
+                    required
                   />
                 </label>
                 <label>
                   City
                   <input
                     value={profile.city}
-                    onChange={(event) => setProfile((prev) => (prev ? { ...prev, city: event.target.value } : prev))}
+                    onChange={(e) => setProfile((p) => p ? { ...p, city: e.target.value } : p)}
+                    required
                   />
                 </label>
-                <label>
-                  Bio
-                  <textarea
-                    value={profile.bio ?? ""}
-                    onChange={(event) => setProfile((prev) => (prev ? { ...prev, bio: event.target.value } : prev))}
-                  />
-                </label>
-                <label>
-                  Avatar URL
-                  <input
-                    value={profile.avatar_url ?? ""}
-                    onChange={(event) =>
-                      setProfile((prev) => (prev ? { ...prev, avatar_url: event.target.value || null } : prev))
-                    }
-                  />
-                </label>
-                <button type="submit">Save Profile</button>
-              </form>
-            ) : null}
+              </div>
+              <label>
+                Bio
+                <textarea
+                  value={profile.bio ?? ""}
+                  onChange={(e) => setProfile((p) => p ? { ...p, bio: e.target.value } : p)}
+                  placeholder="Tell the community a bit about yourself…"
+                  rows={3}
+                  style={{ resize: "vertical" }}
+                />
+              </label>
+              <button type="submit" disabled={saving} style={{ width: "fit-content" }}>
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </form>
           </section>
 
-          {profile ? (
-            <section className="card stack">
-              <h3>Privacy Settings</h3>
-              <label>
-                <input
-                  checked={profile.privacy_settings.show_email}
-                  onChange={(event) =>
-                    setProfile((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            privacy_settings: { ...prev.privacy_settings, show_email: event.target.checked }
-                          }
-                        : prev
-                    )
-                  }
-                  type="checkbox"
-                />
-                Show email
-              </label>
-              <label>
-                <input
-                  checked={profile.privacy_settings.show_phone}
-                  onChange={(event) =>
-                    setProfile((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            privacy_settings: { ...prev.privacy_settings, show_phone: event.target.checked }
-                          }
-                        : prev
-                    )
-                  }
-                  type="checkbox"
-                />
-                Show phone
-              </label>
-              <label>
-                <input
-                  checked={profile.privacy_settings.show_full_city}
-                  onChange={(event) =>
-                    setProfile((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            privacy_settings: { ...prev.privacy_settings, show_full_city: event.target.checked }
-                          }
-                        : prev
-                    )
-                  }
-                  type="checkbox"
-                />
-                Show full city
-              </label>
-              <button onClick={savePrivacy} type="button">
-                Save Privacy
-              </button>
-            </section>
-          ) : null}
-
-          {profile ? (
-            <section className="card stack">
-              <h3>Skills</h3>
-              <p className="muted">{profile.skills.length ? profile.skills.join(", ") : "No skills added yet."}</p>
-              <div className="row">
-                <input
-                  placeholder="Add a skill"
-                  value={newSkill}
-                  onChange={(event) => setNewSkill(event.target.value)}
-                />
-                <button onClick={createSkill} type="button">
-                  Add Skill
-                </button>
+          {/* Skills */}
+          <section className="card stack" style={{ marginBottom: "16px" }}>
+            <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Skills &amp; ways I can help</h2>
+            {profile.skills.length === 0 ? (
+              <p className="muted" style={{ fontSize: "13px", margin: 0 }}>
+                No skills added yet. Skills help people find the right helper.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {profile.skills.map((skill) => (
+                  <span key={skill} className="skill-chip">{skill}</span>
+                ))}
               </div>
-            </section>
-          ) : null}
+            )}
+            <div className="row" style={{ gap: "8px", marginTop: "4px" }}>
+              <input
+                placeholder="e.g. Legal advice, Medical, Coding…"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleAddSkill(); } }}
+                style={{ flex: 1 }}
+              />
+              <button
+                onClick={handleAddSkill}
+                type="button"
+                className="ghost"
+                disabled={saving || !newSkill.trim()}
+              >
+                Add
+              </button>
+            </div>
+          </section>
 
-          {message ? <p className="success">{message}</p> : null}
-          {error ? <p className="error">{error}</p> : null}
+          {/* Privacy */}
+          <section className="card stack" style={{ marginBottom: "16px" }}>
+            <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Privacy</h2>
+            <p className="muted" style={{ fontSize: "13px", margin: 0 }}>
+              Control what other community members can see on your public profile.
+            </p>
+
+            <div className="stack" style={{ gap: "12px" }}>
+              {(
+                [
+                  { key: "show_email",     label: "Show email address",    desc: "Others can see your email on your profile" },
+                  { key: "show_phone",     label: "Show phone number",     desc: "Others can see your phone on your profile" },
+                  { key: "show_full_city", label: "Show full city name",   desc: "Others see your full city; otherwise just the region" },
+                ] as const
+              ).map(({ key, label, desc }) => (
+                <label
+                  key={key}
+                  style={{ display: "flex", alignItems: "flex-start", gap: "12px", cursor: "pointer" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={profile.privacy_settings[key]}
+                    onChange={(e) =>
+                      setProfile((p) =>
+                        p ? { ...p, privacy_settings: { ...p.privacy_settings, [key]: e.target.checked } } : p
+                      )
+                    }
+                    style={{ marginTop: "2px", flexShrink: 0 }}
+                  />
+                  <div>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "#374151" }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>{desc}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <button onClick={savePrivacy} type="button" className="ghost" disabled={saving} style={{ width: "fit-content" }}>
+              {saving ? "Saving…" : "Save privacy settings"}
+            </button>
+          </section>
         </>
-      ) : (
-        <AuthRequired />
       )}
+
+      {success && <p className="success">{success}</p>}
+      {error && <p className="error">{error}</p>}
     </main>
   );
 }

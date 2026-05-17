@@ -59,9 +59,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav className="main-nav">
         <div className="inner">
           <Link href="/" className="logo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpeg" alt="HealAll" width={36} height={36} />
+            <div className="logo-mark" aria-hidden="true" />
             <span className="logo-text">HealAll</span>
+            <span className="brand-dot" aria-hidden="true" />
           </Link>
 
           <div className="links">
@@ -86,14 +86,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="row" style={{ gap: "10px" }}>
             {isAuthed && user ? (
               <>
-                <span className="vbadge">{user.name} · L{user.verification_level}</span>
-                <button className="danger" onClick={handleLogout} type="button">Logout</button>
+                <Link href="/posts/new">
+                  <button type="button" className="btn-sm" style={{ fontSize: "13px" }}>
+                    + Post a Request
+                  </button>
+                </Link>
+                <span className="vpill" style={{ marginLeft: 2 }}>✓ {user.name} · L{user.verification_level}</span>
+                <button className="danger btn-sm" onClick={handleLogout} type="button" style={{ fontSize: "13px" }}>Logout</button>
               </>
             ) : null}
           </div>
         </div>
       </nav>
       {children}
+      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "20px 24px", marginTop: "48px" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "13px", color: "#9ca3af" }}>
+          <span>© 2026 HealAll</span>
+          <Link href="/privacy-policy" style={{ color: "#6b7280" }}>Privacy Policy</Link>
+          <Link href="/terms" style={{ color: "#6b7280" }}>Terms of Service</Link>
+          <Link href="/#community-guidelines" style={{ color: "#6b7280" }}>Community Guidelines</Link>
+          <a href="mailto:hello@healallindia.com" style={{ color: "#6b7280" }}>Contact</a>
+        </div>
+      </footer>
     </>
   );
 }
