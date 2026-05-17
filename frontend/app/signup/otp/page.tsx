@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/client";
 import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 import { ageRanges } from "@/lib/constants";
 import type { SignupRequest } from "@/lib/types/api";
+import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 
 export default function OtpSignupPage() {
   const router = useRouter();
@@ -86,10 +87,12 @@ export default function OtpSignupPage() {
               <input type="email" value={formData.email} onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))} required />
             </label>
           </div>
+          <IndiaLocationPicker
+            value={formData.city}
+            onChange={(combined) => setFormData(prev => ({ ...prev, city: combined }))}
+            required
+          />
           <div className="row">
-            <label style={{ flex: 1 }}>City
-              <input value={formData.city} onChange={e => setFormData(prev => ({ ...prev, city: e.target.value }))} required />
-            </label>
             <label style={{ flex: 1 }}>Age Range
               <select value={formData.age_range} onChange={e => setFormData(prev => ({ ...prev, age_range: e.target.value as SignupRequest["age_range"] }))}>
                 {ageRanges.map(r => <option key={r} value={r}>{r}</option>)}

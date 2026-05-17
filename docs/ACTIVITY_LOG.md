@@ -4,6 +4,23 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Profile polish: privacy alignment + India state/city picker
+**Agent**: claude-opus-4-7
+**Scope**: User reported (1) misaligned privacy checkboxes on `/profile`, (2) free-text city field should be a state + city dropdown with India data, (3) audit other forms.
+**Root cause**: Global `input { width: 100% }` rule in `globals.css` was stretching every input — including checkboxes/radios — to full width, breaking flex alignment on the privacy section.
+**Changes**:
+- `frontend/app/globals.css`: Scoped text-input styles via `input:not([type="checkbox"]):not([type="radio"]):not([type="file"])` so checkboxes/radios keep native sizing. Added `accent-color: var(--brand-green)` + explicit 16px sizing for checked-state polish.
+- `frontend/components/ui/india-location-picker.tsx` (new): Cascading state → city `<select>` pair. Uses `country-state-city` package (India: 36 states/UTs, ~5k cities prebuilt). Fully controlled, no internal effect-based state sync (passes React 19 `set-state-in-effect` rule). Emits `"City, State"` string upward so existing API/DB stay unchanged. Backward compatible with legacy free-text values.
+- `frontend/app/profile/page.tsx`: Replaced 1-col `<input>` city with `<IndiaLocationPicker>`. Restructured grid layout (Name now full-width, picker spans full row).
+- `frontend/app/posts/new/page.tsx`: Same picker replacing free-text city.
+- `frontend/app/signup/page.tsx`: Same picker; restructured layout (phone row alone, picker below).
+- `frontend/app/signup/otp/page.tsx`: Same picker.
+- `frontend/package.json`: Added `country-state-city@^3.2.1`.
+**Tests**: `npx tsc --noEmit` clean, `npx eslint` clean, `npm run build` green.
+**Follow-ups**: Consider lazy-loading the city list per state (currently bundled — adds ~150KB gzipped, acceptable for India-only).
+
+---
+
 ## 2026-05-17 — Auto-recover from expired/invalid auth tokens
 **Agent**: claude-opus-4-7
 **Scope**: Production users seeing 401s on /feed, /cases, /conversations, /me + "Failed to create post" on submit. Root cause: stale `accessToken` persisted in localStorage from prior session; backend (JWT secret rotated or token TTL exceeded) rejects with 401. Frontend had no recovery path — silently retried with bad token forever.
