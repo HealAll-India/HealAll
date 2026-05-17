@@ -55,7 +55,10 @@ export default function FeedPage() {
         const pendingStatuses = new Set(["submitted", "needs_info", "draft"]);
         setPending(r.items.filter((p) => pendingStatuses.has(p.status)));
       })
-      .catch(() => { /* silent */ });
+      .catch(() => {
+        // Drop stale state on failure — don't leave a misleading banner up.
+        setPending([]);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 

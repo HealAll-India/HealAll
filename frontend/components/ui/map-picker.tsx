@@ -41,7 +41,7 @@ export function MapPicker({ latitude, longitude, onChange, height = 280, readOnl
   const frameStyle = { height: `${height}px` };
 
   return (
-    <div className="stack" style={{ gap: "8px" }}>
+    <div className="stack stack--map">
       <div className="map-picker-frame" style={frameStyle}>
         {cssReady ? (
           <MapPickerInner

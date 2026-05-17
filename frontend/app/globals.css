@@ -1438,3 +1438,9 @@ p.success           { color: var(--ok); margin: 0; }
 }
 .post-loc-address { margin: 0; font-size: 14px; }
 .post-loc-meta { font-size: 12px; margin: 0; }
+
+/* Component-scoped stack variants */
+.stack--map { gap: 8px; }
+.verify-item__body-col { flex: 1; }
+.verify-item__title-lg { font-size: 17px; }
+.verify-item__actions { gap: 8px; flex-wrap: wrap; }

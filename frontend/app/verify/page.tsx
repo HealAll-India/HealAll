@@ -125,8 +125,8 @@ export default function CommunityVerifyPage() {
         return (
           <section key={item.post_id} className="card stack verify-item">
             <div className="row verify-item__header">
-              <div style={{ flex: 1 }}>
-                <h2 className="verify-title" style={{ fontSize: "17px" }}>{item.title}</h2>
+              <div className="verify-item__body-col">
+                <h2 className="verify-title verify-item__title-lg">{item.title}</h2>
                 <p className="muted verify-item__meta">
                   {item.author.name} · L{item.author.verification_level} · {item.category.replace(/_/g, " ")} · {item.urgency}
                 </p>
@@ -166,7 +166,7 @@ export default function CommunityVerifyPage() {
               />
             </label>
 
-            <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
+            <div className="row verify-item__actions">
               {(Object.keys(DECISION_LABEL) as VoteDecision[]).map((d) => (
                 <button
                   key={d}

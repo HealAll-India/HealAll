@@ -93,6 +93,11 @@ async def get_community_queue(
                     name=author.name,
                     verification_level=author.verification_level,
                 ),
+                # `updated_at` here means "last touched" — closest proxy for
+                # submission time without adding a dedicated column. If the
+                # author edits a SUBMITTED post via /v1/posts/{id} (NEEDS_INFO
+                # -> SUBMITTED), this re-sorts the queue, which is the
+                # intended behaviour: fresher edits get a fresher look.
                 submitted_at=post.updated_at,
                 votes=_votes_to_summary(summary, threshold),
             )
