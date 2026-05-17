@@ -142,6 +142,4 @@ class PostVerificationVote(Base, TimestampMixin):
     decision: Mapped[str] = mapped_column(String(20), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        UniqueConstraint("post_id", "voter_id", name="uq_post_vote_once_per_user"),
-    )
+    __table_args__ = (UniqueConstraint("post_id", "voter_id", name="uq_post_vote_once_per_user"),)

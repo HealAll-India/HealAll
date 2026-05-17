@@ -41,11 +41,7 @@ async def list_pending_for_user(
 ) -> tuple[list[Post], int]:
     """Posts the user can still vote on: SUBMITTED, not authored by them,
     not already voted on."""
-    voted_subq = (
-        select(PostVerificationVote.post_id)
-        .where(PostVerificationVote.voter_id == voter_id)
-        .subquery()
-    )
+    voted_subq = select(PostVerificationVote.post_id).where(PostVerificationVote.voter_id == voter_id).subquery()
 
     base = (
         select(Post)
@@ -88,13 +84,9 @@ async def cast_vote(
 ) -> tuple[Post, PostVerificationVote, Case | None]:
     """Record a community vote and promote the post if threshold is met."""
     if voter.verification_level < 1:
-        raise ForbiddenException(
-            "Only verified members (L1+) can vote on community verification"
-        )
+        raise ForbiddenException("Only verified members (L1+) can vote on community verification")
 
-    post_result = await db.execute(
-        select(Post).where(Post.id == post_id, Post.deleted_at.is_(None))
-    )
+    post_result = await db.execute(select(Post).where(Post.id == post_id, Post.deleted_at.is_(None)))
     post = post_result.scalar_one_or_none()
     if not post:
         raise NotFoundException("Post not found")
@@ -103,9 +95,7 @@ async def cast_vote(
         raise ForbiddenException("You cannot vote on your own post")
 
     if post.status != PENDING_STATUS:
-        raise InvalidStateException(
-            f"Post is not pending community verification (status={post.status})"
-        )
+        raise InvalidStateException(f"Post is not pending community verification (status={post.status})")
 
     vote = PostVerificationVote(
         post_id=post.id,
