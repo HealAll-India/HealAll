@@ -5,6 +5,9 @@ on:
     - cron: '0 9 * * 1'  # Weekly, Monday at 09:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   python-audit:
     runs-on: ubuntu-latest
