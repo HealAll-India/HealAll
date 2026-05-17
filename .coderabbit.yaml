@@ -61,12 +61,9 @@ reviews:
     - '!**/.turbo/**'
     - '!**/.cache/**'
     - '!**/.DS_Store'
-    - '!**/package-lock.json'
-    - '!**/pnpm-lock.yaml'
-    - '!**/yarn.lock'
-    - '!**/poetry.lock'
-    - '!**/uv.lock'
-    - '!**/*.lock'
+    # Lockfiles are intentionally NOT excluded — the frontend/package.json
+    # path_instruction enforces "Lockfile must update in same PR", which only
+    # fires if lockfile diffs enter review scope.
     - '!**/*.min.js'
     - '!**/*.min.css'
     - '!**/*.map'
@@ -224,7 +221,7 @@ knowledge_base:
       - CLAUDE.md
       - docs/CODE_REVIEW.md
       - docs/ROADMAP.md
-      - docs/HealAll_Architecture_README_v1.md
+      - docs/HealAll_Architecture_README_v*.md
       - backend/CLAUDE.md
       - frontend/CLAUDE.md
       - .github/copilot-instructions.md
