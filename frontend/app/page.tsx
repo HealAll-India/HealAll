@@ -1,5 +1,6 @@
 import Link from "next/link";
 import s from "./page.module.css";
+import { AuthRedirect } from "@/components/auth/auth-redirect";
 
 const CATEGORIES = [
   { emoji: "🆘", label: "Urgent",     color: "#e11d48", bg: "#fff1f2" },
@@ -19,6 +20,7 @@ const MOCK_POSTS = [
 export default function HomePage() {
   return (
     <>
+      <AuthRedirect />
 
       {/* ── Editorial Hero ── */}
       <section className="land">

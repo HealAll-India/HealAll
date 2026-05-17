@@ -3,13 +3,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.exceptions import DuplicateException
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.comment import CommentAuthor, CommentResponse, CreateCommentRequest
@@ -18,12 +19,14 @@ from app.services import comment_service
 router = APIRouter(tags=["comments"])
 
 
+@limiter.limit("60/minute")
 @router.post(
     "/posts/{post_id}/comments",
     response_model=CommentResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_comment(
+    request: Request,
     post_id: UUID,
     payload: CreateCommentRequest,
     current_user: Annotated[User, Depends(get_current_user)],

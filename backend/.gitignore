@@ -46,7 +46,7 @@ venv/
 ENV/
 env/
 .venv/
-.venv_ci/
+.venv*/
 
 # IDEs
 .vscode/

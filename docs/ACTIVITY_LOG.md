@@ -18,6 +18,147 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Design system v2 implementation (Claude Design handoff)
+**Agent**: claude-opus-4-7
+**Scope**: Implement the HealAll design system produced by Claude Design, covering CSS tokens, component patterns, feed card, nav, and a new heart-mark asset.
+**Changes**:
+- `frontend/app/globals.css`: Added category border color tokens (`--urgent-border`, etc.); spacing/type/line-height/weight CSS vars; motion vars (`--ease-out`, `--duration-fast`, `--duration-base`); `--shadow-focus-ring`; `--gradient-brand-soft`; upgraded badges to `inline-flex` with border per category; new `.alert` block component (success/error/info with icon slot); new `.modal` / `.modal-backdrop`; `.feed-card__media--*` per-category tinted gradients; `.bubble-msg` chat bubble classes; `.eyebrow` label class; `.btn-sm` / `.btn-lg` size modifiers; `.card--sidebar` variant; `.chip` hover-color transition; all transitions updated to use `--duration-fast` + `--ease-out`.
+- `frontend/components/feed/feed-card.tsx`: Category-tinted media area (different gradient bg per category); bordered badges for all 6 category types; `♥ Offer Help` button label; title hover color via inline handlers; unified `CATEGORY_META` map.
+- `frontend/components/layout/app-shell.tsx`: Nav logo now uses `heart-mark.png` div (green glow ring shadow) instead of `logo.jpeg`; authenticated nav gets "+ Post a Request" gradient CTA button.
+- `frontend/public/heart-mark.png`: Clean heart-mark raster asset from the design system (padded, safe at any corner radius).
+- `docs/design/HEALALL_DESIGN_BRIEF.md` (new): 20-section master design brief for sharing with Claude Design or external designers.
+**Tests**: `npm run lint` — clean (0 errors); `npx tsc --noEmit` — clean.
+**Follow-ups**: Alert blocks (`.alert.success` / `.alert.error`) still need to be wired into existing page components that use `p.error` / `p.success` text — those still work but are less prominent. Modal component is CSS-only; no React wrapper yet. Heart-mark SVG version needed when available.
+
+---
+
+## 2026-05-04 — Messages UI overhaul
+**Agent**: claude-sonnet-4-6
+**Scope**: Replace placeholder messages pages with a real conversation list and chat-bubble thread UI.
+**Changes**:
+- `frontend/app/messages/page.tsx`: Rewritten — clean conversation list with `ConvCard` component showing the other participant (truncated ID), time-ago timestamp, and empty state. Removed the raw-UUID accept/decline form (no list-pending-requests endpoint exists). Single `useEffect` data-fetch pattern.
+- `frontend/app/messages/[conversationId]/page.tsx`: Rewritten — chat-bubble layout with green bubbles for outgoing, grey for incoming. Header with back-arrow and participant label. Auto-scrolls to latest message. Disabled input when conversation is ended. Restores typed text on send failure.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: Add a "Request DM" button on post pages; add pending consent request list once a backend endpoint exists.
+
+---
+
+## 2026-05-04 — Profile UI overhaul + Copilot auto-review workflow
+**Agent**: claude-sonnet-4-6
+**Scope**: Replace placeholder profile page with a proper UI; add GitHub Actions workflow to auto-request Copilot review on every PR to main.
+**Changes**:
+- `frontend/app/profile/page.tsx`: Rewritten — profile header with avatar (initials fallback), verification level badge, role pills, email/phone verified indicators. Edit form uses 2-col grid for name/city. Skills shown as blue pill chips with Enter-to-add support. Privacy section has description text per setting. Single `saving` flag consolidates loading state across all actions.
+- `.github/workflows/copilot-review.yml` (new): Triggers on PR open/reopen/ready-for-review targeting main. Adds `Copilot` as a reviewer via `gh pr edit --add-reviewer`. Requires `pull-requests: write` permission; uses `GITHUB_TOKEN`. Skips draft PRs.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: Copilot auto-review requires GitHub Copilot code review to be enabled for the repository (Settings → Copilot → Code review). The workflow will fail silently if not enabled.
+
+---
+
+## 2026-05-04 — Cases UI overhaul
+**Agent**: claude-sonnet-4-6
+**Scope**: Replace placeholder cases pages with proper case list and detail UI.
+**Changes**:
+- `frontend/app/cases/page.tsx`: Rewritten — `CaseCard` with colour-coded status badge (open=blue, in_progress=amber, pending_closure=orange, closed=gray, invalid=red), urgency colour, helper count, city/category metadata, total count header, empty state linking to feed.
+- `frontend/app/cases/[caseId]/page.tsx`: Rewritten — full detail page with back-link, header (title, status badge, metadata row, owner name), "Offer Help" action (only shown for active cases), "Reopen" (only shown for closed), notes section (chronological with time-ago stamps), add-note form, closure section with resolution type dropdown and remarks (hidden for closed cases). `withAction` helper consolidates loading/error state across async actions.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: Add "Request DM" button to case detail when consent messaging is surfaced from post pages.
+
+---
+
+## 2026-05-04 — Fix Google OAuth button mobile alignment
+**Agent**: claude-sonnet-4-6
+**Scope**: Google sign-in/sign-up button overflowed container on narrow mobile screens due to hardcoded pixel widths.
+**Changes**:
+- `frontend/app/login/page.tsx`: Replaced `width="340"` with a `ResizeObserver` ref that measures the container and passes the live pixel width to `<GoogleLogin>`. Container gets `overflow: hidden` to prevent bleed.
+- `frontend/app/signup/page.tsx`: Same pattern — replaced `width="376"` with dynamic measurement from a ref.
+**Tests**: `npm run lint` clean, `tsc --noEmit` clean.
+**Follow-ups**: none.
+
+---
+
+## 2026-05-01 — Admin dashboard, rate limiting, deployment guide update
+**Agent**: claude-sonnet-4-6
+**Scope**: Admin stats endpoint + dashboard page, rate limits on all write endpoints, update DEPLOYMENT.md.
+**Changes**:
+- `backend/app/schemas/admin.py` (new): `AdminStatsResponse` schema.
+- `backend/app/services/admin_service.py` (new): `get_platform_stats()` — aggregate counts for users (total/verified/suspended), active posts, open cases, pending verifications, pending reports.
+- `backend/app/api/v1/admin.py` (new): `GET /v1/admin/stats` — requires ADMIN or HEAD_ADMIN.
+- `backend/app/api/v1/router.py`: Register admin router.
+- `backend/app/api/v1/posts.py`: `@limiter.limit` on create_post (30/hr), submit_post (10/hr).
+- `backend/app/api/v1/comments.py`: `@limiter.limit("60/minute")` on create_comment.
+- `backend/app/api/v1/messages.py`: `@limiter.limit` on request_consent (20/hr), send_message (60/min).
+- `backend/app/api/v1/reports.py`: `@limiter.limit("10/hour")` on create_report.
+- `frontend/lib/api/admin.ts` (new): `getAdminStats()` client function.
+- `frontend/lib/types/api.ts`: Added `AdminStatsResponse` interface.
+- `frontend/app/admin/dashboard/page.tsx` (new): Stat cards grid with accent colours, links to verification/moderation queues. Fixes broken nav link.
+- `docs/DEPLOYMENT.md`: Updated migration version (007), added new env vars (Google OAuth, Resend, MSG91, WhatsApp, METRICS_ENABLED), added Google OAuth setup section and metrics section.
+**Tests**: ruff check + format clean; `npm run build` 18/18 pages ✓. CI will verify.
+**Follow-ups**: SSE real-time notifications (Phase 5.1) is the next major feature gap.
+
+## 2026-05-01 — Prometheus + Grafana metrics (Phase 4.3)
+**Agent**: claude-sonnet-4-6
+**Scope**: Expose /metrics from FastAPI and add a local monitoring stack with pre-built dashboard and alert rules.
+**Changes**:
+- `backend/pyproject.toml`: Added `prometheus-fastapi-instrumentator>=7.0.0`.
+- `backend/app/main.py`: Wired `Instrumentator` — exposes `/metrics`, excludes `/health` and `/metrics` from instrumentation, gated by `METRICS_ENABLED`.
+- `backend/app/core/config.py`: Added `METRICS_ENABLED: bool = True` setting.
+- `backend/docker-compose.yml`: Added `prometheus` + `grafana` services under `monitoring` profile; added `prometheus_data` + `grafana_data` volumes.
+- `backend/Makefile`: Added `make monitoring` target.
+- `monitoring/prometheus.yml`: Scrapes `host.docker.internal:8000/metrics` every 15s.
+- `monitoring/alerts.yml`: Three alert rules — `HighErrorRate` (5xx >5%, 2m), `HighLatency` (p95 >2s, 5m), `APIDown` (up==0, 1m).
+- `monitoring/grafana/provisioning/`: Auto-provision Prometheus datasource + dashboard path.
+- `monitoring/grafana/dashboards/healall.json`: Pre-built 6-panel dashboard (request rate, error %, latency percentiles, in-flight, slowest handlers, top handlers by volume).
+**Tests**: ruff check + format clean. No DB-dependent tests (no schema changes). CI will verify on PR.
+**Follow-ups**: Set `GRAFANA_ADMIN_PASSWORD` in local `.env` before running `make monitoring`. On Railway, `/metrics` is publicly accessible — add IP allowlist or basic auth if needed in production.
+
+## 2026-04-28 — Fix GoogleOAuthProvider prerender crash (PR #13)
+**Agent**: claude-sonnet-4-6
+**Scope**: Fix `next build` crash on `/login` when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset.
+**Changes**:
+- `frontend/components/GoogleAuthProvider.tsx`: Removed conditional bare-children fallback. Always renders `<GoogleOAuthProvider clientId={clientId}>` so the context is available during static prerender. All 17 pages now generate cleanly.
+**Tests**: `npm run build` ✓ (was crashing), `npm run lint` ✓, `npm run typecheck` ✓.
+**Follow-ups**: Merge PR #13. Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel + `GOOGLE_CLIENT_ID` in Railway for Google OAuth to work in production.
+
+---
+
+## 2026-04-26 — Privacy Policy and Terms of Service pages
+**Agent**: claude-sonnet-4-5
+**Scope**: Add /privacy-policy and /terms pages required for Google OAuth verification + footer links.
+**Changes**:
+- `frontend/app/privacy-policy/page.tsx`: Privacy Policy — data collected, usage, sharing (Google OAuth, Resend, Neon), rights, cookies, contact
+- `frontend/app/terms/page.tsx`: Terms of Service — eligibility, community rules, content policy, disclaimers, governing law (India)
+- `frontend/components/layout/app-shell.tsx`: added footer with Privacy Policy, Terms, Community Guidelines, Contact links
+**Tests**: no backend changes; TS + ESLint clean
+**Follow-ups**: submit for Google OAuth verification at console.cloud.google.com/apis/credentials/consent; verify healallindia.com in Google Search Console
+
+---
+
+## 2026-04-26 — Google OAuth signup and login
+**Agent**: claude-sonnet-4-5
+**Scope**: Add Google OAuth as primary auth method (invite-code still required). OTP flow preserved at /signup/otp.
+**Changes**:
+- `backend/alembic/versions/20260426_0000_007_add_google_sub_to_users.py`: new migration — adds nullable `google_sub` column (unique, indexed) to `users` table
+- `backend/app/models/user.py`: added `google_sub: Mapped[str | None]` field
+- `backend/app/core/config.py`: added `GOOGLE_CLIENT_ID: str | None` setting
+- `backend/pyproject.toml`: added `google-auth>=2.28.0` and `requests>=2.31.0` deps
+- `backend/app/schemas/auth.py`: added `GoogleSignupRequest` and `GoogleLoginRequest` schemas
+- `backend/app/services/google_auth_service.py`: new service — `verify_google_token`, `create_google_user`, `resolve_google_login`, `link_google_sub`
+- `backend/app/api/v1/google_auth.py`: new endpoints — `POST /v1/auth/google/signup` and `POST /v1/auth/google/login`
+- `backend/app/api/v1/router.py`: registered `google_auth` router
+- `backend/app/services/email_templates.py`: added community guidelines link to welcome email
+- `backend/tests/test_google_auth.py`: 8 tests covering signup, duplicate checks, login, linking, unknown user
+- `frontend/components/GoogleAuthProvider.tsx`: new `GoogleOAuthProvider` wrapper (no-op if `NEXT_PUBLIC_GOOGLE_CLIENT_ID` unset)
+- `frontend/app/layout.tsx`: wrapped with `GoogleAuthProvider`
+- `frontend/app/signup/page.tsx`: refactored to 3-state machine (invite → phone → feed); Google-first
+- `frontend/app/signup/otp/page.tsx`: new — OTP signup preserved at `/signup/otp`
+- `frontend/app/login/page.tsx`: Google button above OTP form with divider
+- `frontend/lib/api/auth.ts`: added `googleSignup` and `googleLogin` functions
+- `frontend/lib/types/api.ts`: added `GoogleSignupRequest`, `GoogleLoginRequest`, `GoogleAuthResponse` types
+**Tests**: 8 new Google OAuth tests pass; existing 108 tests unaffected
+**Follow-ups**: Set `GOOGLE_CLIENT_ID` in Railway and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in Vercel after creating GCP OAuth credentials (see plan Task 0 / Pre-flight)
+
+---
+
 ## 2026-04-25 — Auto-login after OTP verification + CI fixes
 **Agent**: claude-sonnet-4-7
 **Scope**: Fix two signup flow bugs: email not sent on production, no auto-login after OTP verification.

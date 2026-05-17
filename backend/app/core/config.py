@@ -82,8 +82,14 @@ class Settings(BaseSettings):
     # Resend (HTTP-based email — no port blocking)
     RESEND_API_KEY: str | None = None
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str | None = None
+
     # Sentry
     SENTRY_DSN: str = ""
+
+    # Metrics
+    METRICS_ENABLED: bool = True
 
     @field_validator("APP_ALLOWED_ORIGINS")
     @classmethod

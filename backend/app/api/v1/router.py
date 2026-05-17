@@ -3,10 +3,12 @@
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    admin,
     auth,
     cases,
     comments,
     feed,
+    google_auth,
     invites,
     messages,
     moderation,
@@ -20,6 +22,7 @@ from app.api.v1 import (
 router = APIRouter(prefix="/v1")
 
 router.include_router(auth.router)
+router.include_router(google_auth.router)
 router.include_router(invites.router)
 router.include_router(users.router)
 router.include_router(posts.router)
@@ -31,3 +34,4 @@ router.include_router(messages.router)
 router.include_router(reports.router)
 router.include_router(moderation.router)
 router.include_router(uploads.router)
+router.include_router(admin.router)
