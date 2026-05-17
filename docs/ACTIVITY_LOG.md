@@ -4,6 +4,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Add CodeRabbit config + Copilot instructions
+**Agent**: claude-opus-4-7
+**Scope**: Land CodeRabbit auto-review config on default branch + add Copilot Chat/completion project instructions. Fixes "Configuration used: defaults / Auto reviews disabled" message on prior PRs (config must live on the default branch to take effect).
+**Changes**:
+- `.coderabbit.yaml` (new): assertive review profile, custom tone (sardonic), PR summary template, path filters, 17 path-specific instructions (immutable migrations, service-layer contract, RBAC guards, schema PII, frontend Next.js 16 rules, test discipline), `base_branches` includes main + development + feat/fix/chore/docs patterns so non-default bases auto-review, knowledge base reads `CLAUDE.md` + `docs/CODE_REVIEW.md` + `docs/ROADMAP.md`.
+- `.github/copilot-instructions.md` (new): Project context, hard rules (never push main, immutable migrations, no secrets), service-layer contract, security guards, schema discipline, frontend rules, test patterns, infra quirks (Railway SMTP, bcrypt pin), commit/PR style. Read by Copilot Chat + completions.
+**Tests**: Config-only — no code change.
+**Follow-ups**: After merge, verify next PR shows custom CodeRabbit summary (not "defaults"). Copilot bot still requires paid Pro+/Business subscription for PR review feature.
+
+---
+
 ## 2026-05-17 — Address CodeRabbit review feedback on PR #30
 **Agent**: claude-opus-4-7
 **Scope**: Apply 5 CodeRabbit findings on the hsec landing redesign.
