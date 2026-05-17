@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { AuthRequired } from "@/components/ui/auth-required";
+import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 import { ApiError } from "@/lib/api/client";
 import { addSkill, getMyProfile, updateMyProfile, updatePrivacy } from "@/lib/api/users";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
@@ -210,24 +211,22 @@ export default function ProfilePage() {
           <section className="card stack" style={{ marginBottom: "16px" }}>
             <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Edit profile</h2>
             <form className="stack" onSubmit={saveProfile} style={{ gap: "12px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <label>
-                  Name
-                  <input
-                    value={profile.name}
-                    onChange={(e) => setProfile((p) => p ? { ...p, name: e.target.value } : p)}
-                    required
-                  />
-                </label>
-                <label>
-                  City
-                  <input
-                    value={profile.city}
-                    onChange={(e) => setProfile((p) => p ? { ...p, city: e.target.value } : p)}
-                    required
-                  />
-                </label>
-              </div>
+              <label>
+                Name
+                <input
+                  value={profile.name}
+                  onChange={(e) => setProfile((p) => p ? { ...p, name: e.target.value } : p)}
+                  required
+                />
+              </label>
+              <IndiaLocationPicker
+                value={profile.city}
+                onChange={(combined) => setProfile((p) => p ? { ...p, city: combined } : p)}
+                required
+              />
+              <p className="muted" style={{ fontSize: "11px", margin: "-4px 0 0" }}>
+                Saved as &quot;City, State&quot; — visible to community members per your privacy settings.
+              </p>
               <label>
                 Bio
                 <textarea

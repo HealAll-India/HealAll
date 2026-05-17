@@ -9,6 +9,7 @@ import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { CreatePostPayload } from "@/lib/types/api";
 import { AuthRequired } from "@/components/ui/auth-required";
+import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -108,7 +109,11 @@ export default function NewPostPage() {
               </div>
               <div>
                 <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location</h3>
-                <label>City<input value={payload.city} onChange={e => setPayload(p => ({ ...p, city: e.target.value }))} placeholder="Which city?" required /></label>
+                <IndiaLocationPicker
+                  value={payload.city}
+                  onChange={(combined) => setPayload(p => ({ ...p, city: combined }))}
+                  required
+                />
               </div>
               <label style={{ flexDirection: "row", alignItems: "center", gap: "8px", fontSize: "13px" }}>
                 <input type="checkbox" checked={submitNow} onChange={e => setSubmitNow(e.target.checked)} />

@@ -10,6 +10,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 import { ageRanges } from "@/lib/constants";
 import type { AgeRange, UserRole } from "@/lib/types/api";
+import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 
 type Step = "invite" | "phone";
 
@@ -184,24 +185,19 @@ export default function SignupPage() {
             </div>
 
             <form className="grid" onSubmit={handlePhoneSubmit}>
-              <div className="row">
-                <label style={{ flex: 1 }}>
-                  Phone
-                  <input
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="9999999999"
-                    required
-                  />
-                  <span style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px", display: "block" }}>
-                    📱 SMS verification coming soon
-                  </span>
-                </label>
-                <label style={{ flex: 1 }}>
-                  City
-                  <input value={city} onChange={e => setCity(e.target.value)} required />
-                </label>
-              </div>
+              <label>
+                Phone
+                <input
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="9999999999"
+                  required
+                />
+                <span style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px", display: "block" }}>
+                  📱 SMS verification coming soon
+                </span>
+              </label>
+              <IndiaLocationPicker value={city} onChange={setCity} required />
 
               <label>
                 Age Range

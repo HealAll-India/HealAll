@@ -282,7 +282,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-block { width: 100%; justify-content: center; }
 
 /* ── Inputs ── */
-input, textarea, select {
+/* Scope text-like inputs only — checkboxes/radios keep native sizing so they
+   don't get stretched to width:100% inside flex/grid rows. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+textarea,
+select {
   font: inherit;
   width: 100%;
   background: var(--surface);
@@ -294,10 +298,20 @@ input, textarea, select {
   transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
 }
 
-input:focus, textarea:focus, select:focus {
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+textarea:focus,
+select:focus {
   outline: none;
   border-color: var(--brand-green);
   box-shadow: var(--shadow-focus-ring);
+}
+
+/* Make native checkboxes adopt brand color on tick — small detail, big polish */
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--brand-green);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 textarea { min-height: 100px; resize: vertical; }
