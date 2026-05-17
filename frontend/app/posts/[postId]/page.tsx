@@ -144,14 +144,14 @@ export default function PostDetailPage() {
                 </div>
               </section>
 
-              {(post.address || post.pincode || (post.latitude !== null && post.longitude !== null)) && (
+              {(post.address || post.pincode || (post.latitude != null && post.longitude != null)) && (
                 <section className="card stack">
-                  <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>📍 Location</h3>
-                  {post.address && <p style={{ margin: 0, fontSize: "14px" }}>{post.address}</p>}
-                  <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
+                  <h3 className="post-loc-title">📍 Location</h3>
+                  {post.address && <p className="post-loc-address">{post.address}</p>}
+                  <p className="muted post-loc-meta">
                     {post.city}{post.pincode ? ` · ${post.pincode}` : ""}
                   </p>
-                  {post.latitude !== null && post.latitude !== undefined && post.longitude !== null && post.longitude !== undefined && (
+                  {post.latitude != null && post.longitude != null && (
                     <MapPicker
                       latitude={post.latitude}
                       longitude={post.longitude}

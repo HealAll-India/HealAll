@@ -10,6 +10,8 @@ Guards:
 - Voter must have verification_level >= 1.
 - One vote per user per post (DB UNIQUE constraint).
 - Post must be in SUBMITTED status.
+- Post row is SELECT ... FOR UPDATE locked before threshold transition to
+  avoid two concurrent APPROVE votes both performing the side effects.
 """
 
 from __future__ import annotations
@@ -63,7 +65,7 @@ async def list_pending_for_user(
 
 
 async def get_vote_summary(db: AsyncSession, post_id: UUID) -> dict[str, int]:
-    """Tally of votes per decision for a post."""
+    """Tally of votes per decision for a single post."""
     result = await db.execute(
         select(PostVerificationVote.decision, func.count(PostVerificationVote.id))
         .where(PostVerificationVote.post_id == post_id)
@@ -75,6 +77,33 @@ async def get_vote_summary(db: AsyncSession, post_id: UUID) -> dict[str, int]:
     return summary
 
 
+async def get_vote_summaries_for_posts(
+    db: AsyncSession,
+    post_ids: list[UUID],
+) -> dict[UUID, dict[str, int]]:
+    """Batched tally for a list of post IDs — one query, not N.
+
+    Returns a map post_id -> {decision: count}. Posts with no votes get a
+    zero-filled summary so callers can index without missing-key handling.
+    """
+    summaries: dict[UUID, dict[str, int]] = {pid: {d.value: 0 for d in VoteDecision} for pid in post_ids}
+    if not post_ids:
+        return summaries
+
+    result = await db.execute(
+        select(
+            PostVerificationVote.post_id,
+            PostVerificationVote.decision,
+            func.count(PostVerificationVote.id),
+        )
+        .where(PostVerificationVote.post_id.in_(post_ids))
+        .group_by(PostVerificationVote.post_id, PostVerificationVote.decision)
+    )
+    for post_id, decision, count in result.all():
+        summaries[post_id][decision] = count
+    return summaries
+
+
 async def cast_vote(
     db: AsyncSession,
     post_id: UUID,
@@ -82,11 +111,18 @@ async def cast_vote(
     decision: VoteDecision,
     reason: str | None,
 ) -> tuple[Post, PostVerificationVote, Case | None]:
-    """Record a community vote and promote the post if threshold is met."""
+    """Record a community vote and promote the post if threshold is met.
+
+    The Post row is locked with `with_for_update()` inside the active
+    transaction; this serialises concurrent APPROVE votes so the threshold
+    transition (status -> ACTIVE + Case creation) runs at most once.
+    """
     if voter.verification_level < 1:
         raise ForbiddenException("Only verified members (L1+) can vote on community verification")
 
-    post_result = await db.execute(select(Post).where(Post.id == post_id, Post.deleted_at.is_(None)))
+    # Lock the post row for the rest of this transaction — concurrent voters
+    # will queue behind us, so only one of them can cross the threshold.
+    post_result = await db.execute(select(Post).where(Post.id == post_id, Post.deleted_at.is_(None)).with_for_update())
     post = post_result.scalar_one_or_none()
     if not post:
         raise NotFoundException("Post not found")
@@ -114,7 +150,8 @@ async def cast_vote(
 
     created_case: Case | None = None
 
-    # Threshold check on APPROVE votes.
+    # Threshold check on APPROVE votes. The FOR UPDATE lock above + the
+    # status re-check below ensure idempotent promotion.
     if decision == VoteDecision.APPROVE:
         approve_count = await db.execute(
             select(func.count(PostVerificationVote.id)).where(
@@ -123,7 +160,7 @@ async def cast_vote(
             )
         )
         threshold = get_settings().COMMUNITY_VERIFY_THRESHOLD
-        if approve_count.scalar_one() >= threshold:
+        if approve_count.scalar_one() >= threshold and post.status == PENDING_STATUS:
             post.status = PostStatus.ACTIVE.value
             existing_case = await db.execute(select(Case).where(Case.post_id == post.id))
             case_row = existing_case.scalar_one_or_none()

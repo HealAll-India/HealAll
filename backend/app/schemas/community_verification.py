@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.post import VoteDecision
+from app.models.post import PostStatus, VoteDecision
 from app.schemas.post import AuthorInfo
 
 
@@ -58,7 +58,9 @@ class CommunityVoteResult(BaseModel):
     """Result of casting a vote."""
 
     post_id: UUID
-    decision: str
-    new_status: str
+    # Domain enums (not str) so invalid values can't slip through the response
+    # contract and clients can switch on a known set.
+    decision: VoteDecision
+    new_status: PostStatus
     votes: CommunityVoteSummary
     promoted_to_active: bool

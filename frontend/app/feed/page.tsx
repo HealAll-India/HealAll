@@ -70,13 +70,13 @@ export default function FeedPage() {
       />
 
       {pending.length > 0 && (
-        <section className="card" style={{ marginBottom: "12px", borderLeft: "4px solid #d97706" }}>
-          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "#9a3412" }}>
+        <section className="card feed-pending-banner">
+          <p className="feed-pending-banner__title">
             ⏳ You have {pending.length} post{pending.length === 1 ? "" : "s"} pending community verification.
           </p>
-          <p className="muted" style={{ fontSize: "12px", margin: "4px 0 0" }}>
-            Posts appear in the public feed after 3 community approvals.{" "}
-            <Link href="/verify" style={{ color: "#16a34a", fontWeight: 600 }}>Help verify others →</Link>
+          <p className="muted feed-pending-banner__sub">
+            Posts appear in the public feed once enough community members have approved.{" "}
+            <Link href="/verify" className="feed-pending-banner__link">Help verify others →</Link>
           </p>
         </section>
       )}

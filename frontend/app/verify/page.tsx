@@ -34,8 +34,12 @@ export default function CommunityVerifyPage() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [flash, setFlash] = useState<string | null>(null);
 
+  const voterLevel = sessionUser?.verification_level ?? 0;
+
   const loadQueue = useCallback(async () => {
-    if (!token) return;
+    // Backend rejects sub-L1 voters with 403. Don't fire a guaranteed-401/403
+    // request just to surface the same gate the UI already shows.
+    if (!token || voterLevel < 1) return;
     setLoading(true);
     setError(null);
     try {
@@ -47,7 +51,7 @@ export default function CommunityVerifyPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, voterLevel]);
 
   useEffect(() => {
     void loadQueue();
@@ -79,22 +83,20 @@ export default function CommunityVerifyPage() {
   if (!hydrated) return null;
   if (!token) return <AuthRequired />;
 
-  const canVote = (sessionUser?.verification_level ?? 0) >= 1;
+  const canVote = voterLevel >= 1;
 
   return (
     <main className="page">
       <section className="card stack">
-        <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 800 }}>
-          Community Verification
-        </h1>
-        <p className="muted" style={{ margin: 0, fontSize: "13px" }}>
+        <h1 className="verify-title">Community Verification</h1>
+        <p className="muted verify-subtitle">
           Help your neighbours by reviewing new help requests. {threshold} approvals
           from verified members promote a post to the active feed.
         </p>
         {!canVote && (
-          <p className="error" style={{ fontSize: "13px", margin: 0 }}>
+          <p className="error verify-subtitle">
             You need verification level 1+ to vote.{" "}
-            <Link href="/profile" style={{ color: "#16a34a", fontWeight: 600 }}>
+            <Link href="/profile" className="feed-pending-banner__link">
               Verify your profile
             </Link>{" "}
             to participate.
@@ -109,24 +111,23 @@ export default function CommunityVerifyPage() {
         <section className="card"><p className="muted">Loading…</p></section>
       )}
 
-      {!loading && items.length === 0 && (
+      {!loading && !error && items.length === 0 && (
         <section className="card stack">
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted post-loc-meta">
             No posts pending community review right now. Check back soon!
           </p>
         </section>
       )}
 
       {items.map((item) => {
-        const hasMap = item.latitude !== null && item.latitude !== undefined
-          && item.longitude !== null && item.longitude !== undefined;
+        const hasMap = item.latitude != null && item.longitude != null;
         const approveCount = item.votes.approve;
         return (
-          <section key={item.post_id} className="card stack" style={{ marginBottom: "12px" }}>
-            <div className="row" style={{ gap: "8px", alignItems: "flex-start" }}>
+          <section key={item.post_id} className="card stack verify-item">
+            <div className="row verify-item__header">
               <div style={{ flex: 1 }}>
-                <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 700 }}>{item.title}</h2>
-                <p className="muted" style={{ fontSize: "12px", margin: "2px 0 0" }}>
+                <h2 className="verify-title" style={{ fontSize: "17px" }}>{item.title}</h2>
+                <p className="muted verify-item__meta">
                   {item.author.name} · L{item.author.verification_level} · {item.category.replace(/_/g, " ")} · {item.urgency}
                 </p>
               </div>
@@ -135,11 +136,11 @@ export default function CommunityVerifyPage() {
               </span>
             </div>
 
-            <p style={{ margin: 0, fontSize: "13px", lineHeight: 1.6, color: "#374151" }}>
+            <p className="verify-item__body">
               {item.description}
             </p>
 
-            <div style={{ fontSize: "12px", color: "#6b7280" }}>
+            <div className="verify-item__loc">
               📍 {item.address ?? "—"}
               {item.pincode ? ` · ${item.pincode}` : ""}
               {" · "}{item.city}
@@ -155,7 +156,7 @@ export default function CommunityVerifyPage() {
               />
             )}
 
-            <label style={{ fontSize: "12px" }}>
+            <label className="verify-note-label">
               Optional note for the author
               <input
                 value={reasons[item.post_id] ?? ""}

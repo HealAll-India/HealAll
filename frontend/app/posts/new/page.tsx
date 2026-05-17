@@ -113,15 +113,17 @@ export default function NewPostPage() {
                 </div>
               </div>
               <div>
-                <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location <span style={{ color: "#e11d48" }}>*</span></h3>
-                <div className="stack" style={{ gap: "12px" }}>
+                <h3 className="section-label">
+                  Location <span className="required-mark">*</span>
+                </h3>
+                <div className="stack location-stack">
                   <IndiaLocationPicker
                     value={payload.city}
                     onChange={(combined) => setPayload(p => ({ ...p, city: combined }))}
                     required
                   />
-                  <div className="row" style={{ gap: "12px", flexWrap: "wrap" }}>
-                    <label style={{ flex: "2 1 240px", minWidth: 0 }}>
+                  <div className="row location-row">
+                    <label className="location-address">
                       Nearest landmark / address
                       <input
                         value={payload.address}
@@ -132,7 +134,7 @@ export default function NewPostPage() {
                         required
                       />
                     </label>
-                    <label style={{ flex: "1 1 120px", minWidth: 0 }}>
+                    <label className="location-pincode">
                       Pincode
                       <input
                         value={payload.pincode}

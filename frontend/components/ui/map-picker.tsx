@@ -6,11 +6,7 @@ import { useEffect, useState } from "react";
 // Leaflet uses `window` at import time, so we must skip SSR.
 const MapPickerInner = dynamic(() => import("./map-picker-inner"), {
   ssr: false,
-  loading: () => (
-    <div style={{ height: "260px", display: "grid", placeItems: "center", color: "#9ca3af", fontSize: "12px" }}>
-      Loading map…
-    </div>
-  ),
+  loading: () => <div className="map-picker-loading">Loading map…</div>,
 });
 
 interface Props {
@@ -22,27 +18,31 @@ interface Props {
 }
 
 export function MapPicker({ latitude, longitude, onChange, height = 280, readOnly = false }: Props) {
-  // Leaflet's CSS must load on the client side only.
+  // Leaflet's CSS only loads on the client side.
   const [cssReady, setCssReady] = useState(false);
   useEffect(() => {
     let active = true;
-    void import("leaflet/dist/leaflet.css").then(() => active && setCssReady(true));
+    void import("leaflet/dist/leaflet.css")
+      .then(() => {
+        if (active) setCssReady(true);
+      })
+      .catch((err) => {
+        // Fail open — render the map even if the CSS chunk fails so the
+        // user isn't stuck on "Loading map styles…" forever.
+        console.error("Failed to load Leaflet CSS", err);
+        if (active) setCssReady(true);
+      });
     return () => {
       active = false;
     };
   }, []);
 
+  // Only `height` is dynamic — everything else is in .map-picker-frame.
+  const frameStyle = { height: `${height}px` };
+
   return (
     <div className="stack" style={{ gap: "8px" }}>
-      <div
-        style={{
-          height: `${height}px`,
-          width: "100%",
-          borderRadius: "12px",
-          overflow: "hidden",
-          border: "1px solid var(--border-strong)",
-        }}
-      >
+      <div className="map-picker-frame" style={frameStyle}>
         {cssReady ? (
           <MapPickerInner
             latitude={latitude}
@@ -51,21 +51,18 @@ export function MapPicker({ latitude, longitude, onChange, height = 280, readOnl
             readOnly={readOnly}
           />
         ) : (
-          <div style={{ height: "100%", display: "grid", placeItems: "center", color: "#9ca3af", fontSize: "12px" }}>
-            Loading map styles…
-          </div>
+          <div className="map-picker-loading">Loading map styles…</div>
         )}
       </div>
       {!readOnly && (
-        <div className="row" style={{ gap: "8px", fontSize: "12px", color: "#6b7280", alignItems: "center" }}>
+        <div className="row map-picker-meta">
           {latitude !== null && longitude !== null ? (
             <>
               <span>📍 Pinned: {latitude.toFixed(5)}, {longitude.toFixed(5)}</span>
               <button
                 type="button"
-                className="ghost"
+                className="ghost btn-sm"
                 onClick={() => onChange(null, null)}
-                style={{ padding: "4px 10px", fontSize: "11px" }}
               >
                 Clear pin
               </button>

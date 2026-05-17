@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import PostgresDsn, field_validator
+from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -93,7 +93,7 @@ class Settings(BaseSettings):
 
     # Community verification — number of APPROVE votes from verified users
     # required to flip a SUBMITTED post to ACTIVE.
-    COMMUNITY_VERIFY_THRESHOLD: int = 3
+    COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
 
     @field_validator("APP_ALLOWED_ORIGINS")
     @classmethod

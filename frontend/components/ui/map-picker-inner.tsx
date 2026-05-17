@@ -4,12 +4,13 @@ import { useEffect } from "react";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 
-// Vite/Next bundlers strip Leaflet's default marker images; point at the CDN
-// copies so the marker actually shows up.
+// Leaflet's default-marker images are stripped by Next/Webpack bundling.
+// We point at locally-hosted copies so the marker still renders when CSP,
+// adblock, or network policies block third-party CDNs.
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+  iconUrl: "/leaflet/marker-icon.png",
+  shadowUrl: "/leaflet/marker-shadow.png",
 });
 
 interface InnerProps {
@@ -50,7 +51,7 @@ export default function MapPickerInner({ latitude, longitude, onPick, readOnly }
     <MapContainer
       center={center}
       zoom={zoom}
-      style={{ height: "100%", width: "100%" }}
+      className="map-picker-inner-root"
       scrollWheelZoom={!readOnly}
     >
       <TileLayer
