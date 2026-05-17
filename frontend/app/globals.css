@@ -1234,6 +1234,16 @@ p.success           { color: var(--ok); margin: 0; }
 }
 .pdf-page li { margin-bottom: 4px; }
 .pdf-page li:last-child { margin-bottom: 0; }
+.pdf-page:focus-visible { outline: 2px solid var(--brand-green, #16a34a); outline-offset: 2px; }
+
+/* Screen-reader-only utility */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
 
 /* PDF viewer (iframe) */
 .pdf-viewer {

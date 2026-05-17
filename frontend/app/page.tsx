@@ -164,15 +164,28 @@ export default function HomePage() {
                 { n: "02 · Honesty",  title: "Help honestly",           intro: "Offering help is a commitment. Don't ghost. Don't promise what you can't deliver.", bullets: ["Reply to DMs within 24 hours or remove your offer.", "No money requests until trust is built.", "Report any pressure tactics — we act fast."] },
                 { n: "03 · Safety",   title: "Money & meetings",        intro: "HealAll never asks for payment on your behalf. Verify before sending money.", bullets: ["Meet first responders in public, daylight if possible.", "Keep receipts and screenshots of every transfer.", "Flag off-platform payment pressure immediately."] },
                 { n: "04 · Conduct",  title: "Keep it human",           intro: "We're a neighbourhood, not a startup. Speak how you would in a WhatsApp group.", bullets: ["No solicitation, no proselytising, no political campaigns.", "No mass DMs — quality over volume.", "Disagree without being a jerk. Block, don't escalate."] },
-              ].map((p) => (
-                <div key={p.n} className="pdf-page" role="article" aria-label={`Preview: ${p.title}`}>
-                  <div className="pdf-page__bar" />
-                  <div className="pdf-page__num">{p.n}</div>
-                  <h3>{p.title}</h3>
-                  <p>{p.intro}</p>
-                  <ul>{p.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
-                </div>
-              ))}
+              ].map((p) => {
+                const descId = `pdf-page-desc-${p.n.split(" ")[0]}`;
+                return (
+                  <div
+                    key={p.n}
+                    className="pdf-page"
+                    role="group"
+                    tabIndex={0}
+                    aria-label={`Preview: ${p.title}`}
+                    aria-describedby={descId}
+                  >
+                    <span id={descId} className="sr-only">
+                      Preview of guideline {p.n}: {p.title}. Scroll down to the embedded viewer to read the full PDF.
+                    </span>
+                    <div className="pdf-page__bar" />
+                    <div className="pdf-page__num">{p.n}</div>
+                    <h3>{p.title}</h3>
+                    <p>{p.intro}</p>
+                    <ul>{p.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
