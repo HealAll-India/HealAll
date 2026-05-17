@@ -62,8 +62,8 @@ export function IndiaLocationPicker({
   }
 
   return (
-    <div className="row" style={{ gap: "12px", flexWrap: "wrap" }}>
-      <label style={{ flex: "1 1 180px", minWidth: 0 }}>
+    <div className="row location-picker-row">
+      <label className="location-picker-field">
         {labelState}
         <select
           value={stateCode}
@@ -80,7 +80,7 @@ export function IndiaLocationPicker({
         </select>
       </label>
 
-      <label style={{ flex: "1 1 180px", minWidth: 0 }}>
+      <label className="location-picker-field">
         {labelCity}
         <select
           value={cities.some((c) => c.name === city) ? city : ""}
