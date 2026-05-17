@@ -76,6 +76,9 @@ reviews:
     - '!**/*.ico'
     - '!**/*.pdf'
     - '!docs/ACTIVITY_LOG.md'
+    # Keep env files reviewable at any depth so the **/*.env* secret check fires.
+    - '.env*'
+    - '**/*.env*'
     - backend/**
     - frontend/**
     - .github/**
