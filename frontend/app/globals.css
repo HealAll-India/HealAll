@@ -1204,7 +1204,10 @@ p.success           { color: var(--ok); margin: 0; }
 .pdf-scroll__rail {
   display: flex; gap: 14px; overflow-x: auto; padding: 6px 2px 14px;
   scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.pdf-scroll__rail::-webkit-scrollbar { display: none; }
 .pdf-page {
   flex: 0 0 220px; height: 290px; border-radius: 12px;
   background: #fff; border: 1px solid var(--border, #e5e7eb);

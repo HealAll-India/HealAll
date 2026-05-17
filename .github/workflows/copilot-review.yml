@@ -21,7 +21,7 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           PR_NODE_ID: ${{ github.event.pull_request.node_id }}
         run: |
-          set -e
+          set -euo pipefail
           # Look up the Copilot reviewer bot ID for this repo via suggestedActors.
           BOT_ID=$(gh api graphql -f query='
             query($owner: String!, $repo: String!) {

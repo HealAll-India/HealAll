@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { AuthRedirect } from "@/components/auth/auth-redirect";
 
+const COMMUNITY_GUIDELINES_PDF_ID = "16umjQCumoecqR0Y2AoNi8zY-IUKHKvws";
+const GUIDELINES_PDF_VIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/view`;
+const GUIDELINES_PDF_PREVIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/preview`;
+const GUIDELINES_PDF_DOWNLOAD = `https://drive.google.com/uc?export=download&id=${COMMUNITY_GUIDELINES_PDF_ID}`;
+
 const CATEGORIES = [
   { emoji: "🆘", label: "Urgent",     color: "#e11d48", bg: "#fff1f2" },
   { emoji: "🤗", label: "Support",    color: "#f59e0b", bg: "#fef3c7" },
@@ -147,7 +152,7 @@ export default function HomePage() {
               </div>
             </div>
             <a
-              href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
+              href={GUIDELINES_PDF_VIEW}
               target="_blank"
               rel="noopener noreferrer"
               className="hsec__cta"
@@ -195,13 +200,13 @@ export default function HomePage() {
               <span className="pdf-viewer__title">HealAll · Community Guidelines v1.0</span>
               <span className="pdf-viewer__page-indicator">Embedded PDF · scroll to read</span>
               <span className="pdf-viewer__controls">
-                <a className="pdf-viewer__btn" href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view" target="_blank" rel="noopener noreferrer" aria-label="Open in new tab">↗</a>
-                <a className="pdf-viewer__btn" href="https://drive.google.com/uc?export=download&id=16umjQCumoecqR0Y2AoNi8zY-IUKHKvws" target="_blank" rel="noopener noreferrer" aria-label="Download PDF">↓</a>
+                <a className="pdf-viewer__btn" href={GUIDELINES_PDF_VIEW} target="_blank" rel="noopener noreferrer" aria-label="Open in new tab">↗</a>
+                <a className="pdf-viewer__btn" href={GUIDELINES_PDF_DOWNLOAD} target="_blank" rel="noopener noreferrer" aria-label="Download PDF">↓</a>
               </span>
             </div>
             <iframe
               className="pdf-viewer__frame"
-              src="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/preview"
+              src={GUIDELINES_PDF_PREVIEW}
               title="HealAll Community Guidelines"
               loading="lazy"
             />
@@ -210,7 +215,7 @@ export default function HomePage() {
           <div className="hsec__foot">
             <span className="hsec__note">📌 These guidelines apply to all members · HealAll v1.0</span>
             <a
-              href="https://drive.google.com/uc?export=download&id=16umjQCumoecqR0Y2AoNi8zY-IUKHKvws"
+              href={GUIDELINES_PDF_DOWNLOAD}
               target="_blank"
               rel="noopener noreferrer"
               className="hsec__foot-link"
