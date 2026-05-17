@@ -1191,8 +1191,16 @@ p.success           { color: var(--ok); margin: 0; }
   background: #10b981; color: #fff; text-decoration: none; white-space: nowrap;
 }
 .hsec__cta:hover { background: #059669; }
+.hsec__cta:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring, 0 0 0 3px rgba(22,163,74,0.25));
+}
 .hsec__cta--dark { background: #111827; }
 .hsec__cta--dark:hover { background: #1f2937; }
+.hsec__cta--dark:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(31,41,55,0.35);
+}
 .hsec__body {
   margin: 8px 0;
   display: grid;
