@@ -1,6 +1,10 @@
 import Link from "next/link";
-import s from "./page.module.css";
 import { AuthRedirect } from "@/components/auth/auth-redirect";
+
+const COMMUNITY_GUIDELINES_PDF_ID = "16umjQCumoecqR0Y2AoNi8zY-IUKHKvws";
+const GUIDELINES_PDF_VIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/view`;
+const GUIDELINES_PDF_PREVIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/preview`;
+const GUIDELINES_PDF_DOWNLOAD = `https://drive.google.com/uc?export=download&id=${COMMUNITY_GUIDELINES_PDF_ID}`;
 
 const CATEGORIES = [
   { emoji: "🆘", label: "Urgent",     color: "#e11d48", bg: "#fff1f2" },
@@ -133,50 +137,88 @@ export default function HomePage() {
       </section>
 
       {/* ── Community Guidelines ── */}
-      <section id="community-guidelines" className={s.guidelines}>
-        <div className={s.guidelinesCard}>
+      <section id="community-guidelines" className="hsec">
+        <div className="hsec__card">
 
-          {/* Header */}
-          <div className={s.guidelinesHeader}>
-            <div className={s.guidelinesHeaderLeft}>
-              <div className={s.docIcon}>📜</div>
-              <div className={s.guidelinesHeaderText}>
-                <span className={s.importantBadge}>Read before joining</span>
-                <h2 className={s.guidelinesTitle}>Community Guidelines</h2>
-                <p className={s.guidelinesSubtitle}>
-                  The principles that keep HealAll safe, honest, and human.
+          <div className="hsec__head">
+            <div className="hsec__head-left">
+              <div className="hsec__icon">📜</div>
+              <div>
+                <span className="hsec__pill">Read before joining</span>
+                <h2 className="hsec__title">Community Guidelines</h2>
+                <p className="hsec__sub">
+                  Four principles up top — and the full PDF embedded below for anyone who wants every word.
                 </p>
               </div>
             </div>
             <a
-              href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
+              href={GUIDELINES_PDF_VIEW}
               target="_blank"
               rel="noopener noreferrer"
-              className={s.openBtn}
+              className="hsec__cta"
             >
               Open PDF ↗
             </a>
           </div>
 
-          {/* PDF embed */}
-          <div className={s.pdfWrapper}>
+          {/* 4-card horizontal scroll preview */}
+          <div className="pdf-scroll" role="region" aria-label="Guidelines preview cards">
+            <div className="pdf-scroll__rail">
+              {[
+                { n: "01 · Identity", title: "Be a verified neighbour", intro: "Every member is vouched in by another. Show your real name, your real city.", bullets: ["One account per person — no anonymous handles.", "Verified members get the ✓ pill. L2 / L3 unlock more.", "Vouch responsibly — your name backs theirs."] },
+                { n: "02 · Honesty",  title: "Help honestly",           intro: "Offering help is a commitment. Don't ghost. Don't promise what you can't deliver.", bullets: ["Reply to DMs within 24 hours or remove your offer.", "No money requests until trust is built.", "Report any pressure tactics — we act fast."] },
+                { n: "03 · Safety",   title: "Money & meetings",        intro: "HealAll never asks for payment on your behalf. Verify before sending money.", bullets: ["Meet first responders in public, daylight if possible.", "Keep receipts and screenshots of every transfer.", "Flag off-platform payment pressure immediately."] },
+                { n: "04 · Conduct",  title: "Keep it human",           intro: "We're a neighbourhood, not a startup. Speak how you would in a WhatsApp group.", bullets: ["No solicitation, no proselytising, no political campaigns.", "No mass DMs — quality over volume.", "Disagree without being a jerk. Block, don't escalate."] },
+              ].map((p) => {
+                const descId = `pdf-page-desc-${p.n.split(" ")[0]}`;
+                return (
+                  <div
+                    key={p.n}
+                    className="pdf-page"
+                    role="group"
+                    tabIndex={0}
+                    aria-label={`Preview: ${p.title}`}
+                    aria-describedby={descId}
+                  >
+                    <span id={descId} className="sr-only">
+                      Preview of guideline {p.n}: {p.title}. Scroll down to the embedded viewer to read the full PDF.
+                    </span>
+                    <div className="pdf-page__bar" />
+                    <div className="pdf-page__num">{p.n}</div>
+                    <h3>{p.title}</h3>
+                    <p>{p.intro}</p>
+                    <ul>{p.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Full PDF viewer */}
+          <div className="pdf-viewer">
+            <div className="pdf-viewer__bar">
+              <span className="pdf-viewer__title">HealAll · Community Guidelines v1.0</span>
+              <span className="pdf-viewer__page-indicator">Embedded PDF · scroll to read</span>
+              <span className="pdf-viewer__controls">
+                <a className="pdf-viewer__btn" href={GUIDELINES_PDF_VIEW} target="_blank" rel="noopener noreferrer" aria-label="Open in new tab">↗</a>
+                <a className="pdf-viewer__btn" href={GUIDELINES_PDF_DOWNLOAD} target="_blank" rel="noopener noreferrer" aria-label="Download PDF">↓</a>
+              </span>
+            </div>
             <iframe
-              src="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/preview"
-              allow="autoplay"
+              className="pdf-viewer__frame"
+              src={GUIDELINES_PDF_PREVIEW}
               title="HealAll Community Guidelines"
+              loading="lazy"
             />
           </div>
 
-          {/* Footer */}
-          <div className={s.guidelinesFooter}>
-            <span className={s.footerNote}>
-              📌 These guidelines apply to all members
-            </span>
+          <div className="hsec__foot">
+            <span className="hsec__note">📌 These guidelines apply to all members · HealAll v1.0</span>
             <a
-              href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
+              href={GUIDELINES_PDF_DOWNLOAD}
               target="_blank"
               rel="noopener noreferrer"
-              className={s.footerLink}
+              className="hsec__foot-link"
             >
               Download ↓
             </a>
@@ -186,78 +228,71 @@ export default function HomePage() {
       </section>
 
       {/* ── Developer Contribution ── */}
-      <section className={s.contribute}>
-        <div className={s.contributeCard}>
+      <section className="hsec">
+        <div className="hsec__card">
 
-          {/* Header */}
-          <div className={s.contributeHeader}>
-            <div className={s.contributeHeaderLeft}>
-              <div className={s.contributeIcon}>🛠️</div>
-              <div className={s.contributeHeaderText}>
-                <span className={s.contributeLabel}>Open Source</span>
-                <h2 className={s.contributeTitle}>Contribute as a Developer</h2>
+          <div className="hsec__head">
+            <div className="hsec__head-left">
+              <div className="hsec__icon hsec__icon--dark">🛠️</div>
+              <div>
+                <span className="hsec__pill hsec__pill--dark">Open source</span>
+                <h2 className="hsec__title">Contribute as a Developer</h2>
+                <p className="hsec__sub">
+                  HealAll is built in the open by neighbours, for neighbours. Fork it, open an issue, or ship a PR.
+                </p>
               </div>
             </div>
             <a
               href="https://github.com/anupam8nith/HealAll"
               target="_blank"
               rel="noopener noreferrer"
-              className={s.githubBtn}
+              className="hsec__cta hsec__cta--dark"
             >
               View on GitHub ↗
             </a>
           </div>
 
-          {/* Two-panel body */}
-          <div className={s.contributeBody}>
-
-            {/* Left: Tech stack */}
-            <div className={s.techStack}>
-              <p className={s.panelLabel}>🔧 Tech stack</p>
+          <div className="hsec__body">
+            <div className="contrib-col">
+              <p className="contrib-col__label">🔧 Tech stack</p>
               {[
-                { emoji: "⚡", name: "FastAPI + SQLAlchemy", sub: "Python 3.12, async" },
-                { emoji: "⚛️", name: "Next.js 15", sub: "TypeScript, App Router" },
-                { emoji: "🐘", name: "PostgreSQL + Redis", sub: "Neon, Upstash" },
-                { emoji: "🚀", name: "Railway + Vercel", sub: "Backend + Frontend deploy" },
+                { ico: "⚡",  name: "FastAPI + SQLAlchemy", sub: "Python 3.12, async" },
+                { ico: "⚛️", name: "Next.js 16 + React 19", sub: "TypeScript, App Router" },
+                { ico: "🐘", name: "PostgreSQL + Redis",    sub: "Neon, Upstash" },
+                { ico: "🚀", name: "Railway + Vercel",      sub: "Backend + Frontend deploy" },
               ].map((item) => (
-                <div key={item.name} className={s.stackItem}>
-                  <span className={s.stackEmoji}>{item.emoji}</span>
+                <div key={item.name} className="stack-item">
+                  <span className="stack-item__ico">{item.ico}</span>
                   <div>
-                    <div className={s.stackName}>{item.name}</div>
-                    <div className={s.stackSub}>{item.sub}</div>
+                    <div className="stack-item__name">{item.name}</div>
+                    <div className="stack-item__sub">{item.sub}</div>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Right: Contribution areas */}
-            <div className={s.contributionAreas}>
-              <p className={s.panelLabel}>🌱 Contribution areas</p>
-              {(
-                [
-                  { emoji: "🎨", label: "Frontend UI & UX",   color: s.green  },
-                  { emoji: "⚙️", label: "API features",        color: s.blue   },
-                  { emoji: "🧪", label: "Tests & coverage",    color: s.purple },
-                  { emoji: "📝", label: "Docs & translations", color: s.orange },
-                ] as const
-              ).map((area) => (
-                <div key={area.label} className={`${s.areaItem} ${area.color}`}>
-                  <span>{area.emoji}</span>
+            <div className="contrib-col">
+              <p className="contrib-col__label">🌱 Contribution areas</p>
+              {[
+                { ico: "🎨", label: "Frontend UI & UX",   tone: "green"  },
+                { ico: "⚙️", label: "API features",        tone: "blue"   },
+                { ico: "🧪", label: "Tests & coverage",    tone: "purple" },
+                { ico: "📝", label: "Docs & translations", tone: "orange" },
+              ].map((area) => (
+                <div key={area.label} className={`area-item area-item--${area.tone}`}>
+                  <span>{area.ico}</span>
                   <span>{area.label}</span>
                 </div>
               ))}
             </div>
-
           </div>
 
-          {/* Footer */}
-          <div className={s.contributeFooter}>
-            <span className={s.footerHint}>⭐ Fork · open an issue · ship a PR</span>
+          <div className="hsec__foot">
+            <span className="hsec__note">⭐ Fork · open an issue · ship a PR</span>
             <a
               href="https://github.com/anupam8nith/HealAll/blob/main/README.md"
               target="_blank"
               rel="noopener noreferrer"
-              className={s.contributeFooterLink}
+              className="hsec__foot-link"
             >
               Read README.md →
             </a>
