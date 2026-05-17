@@ -4,6 +4,18 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Address CodeRabbit review feedback on PR #30
+**Agent**: claude-opus-4-7
+**Scope**: Apply 5 CodeRabbit findings on the hsec landing redesign.
+**Changes**:
+- `frontend/app/globals.css`: Added scoped `.pdf-page h3/p/ul/li` styles so child elements render correctly inside 220px preview tiles (CodeRabbit blocker — children inherited body defaults).
+- `frontend/app/page.tsx`: ARIA on `.pdf-scroll` (region) and `.pdf-page` (article + aria-label). Fixed Download buttons to use `/uc?export=download&id=…` instead of `/view`. Bumped tech-stack label "Next.js 15" → "Next.js 16".
+- `.github/workflows/copilot-review.yml`: Added explicit `contents: read` per workflow-permissions guideline.
+**Tests**: TS/lint not runnable in worktree; Vercel preview validates.
+**Follow-ups**: none.
+
+---
+
 ## 2026-05-17 — Landing info sections redesign (hsec design system)
 **Agent**: claude-opus-4-7
 **Scope**: Implement Community Guidelines + Developer Contribution sections from Anthropic design bundle (`HealAll Prototype.html`).

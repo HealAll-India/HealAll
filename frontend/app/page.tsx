@@ -157,7 +157,7 @@ export default function HomePage() {
           </div>
 
           {/* 4-card horizontal scroll preview */}
-          <div className="pdf-scroll">
+          <div className="pdf-scroll" role="region" aria-label="Guidelines preview cards">
             <div className="pdf-scroll__rail">
               {[
                 { n: "01 · Identity", title: "Be a verified neighbour", intro: "Every member is vouched in by another. Show your real name, your real city.", bullets: ["One account per person — no anonymous handles.", "Verified members get the ✓ pill. L2 / L3 unlock more.", "Vouch responsibly — your name backs theirs."] },
@@ -165,7 +165,7 @@ export default function HomePage() {
                 { n: "03 · Safety",   title: "Money & meetings",        intro: "HealAll never asks for payment on your behalf. Verify before sending money.", bullets: ["Meet first responders in public, daylight if possible.", "Keep receipts and screenshots of every transfer.", "Flag off-platform payment pressure immediately."] },
                 { n: "04 · Conduct",  title: "Keep it human",           intro: "We're a neighbourhood, not a startup. Speak how you would in a WhatsApp group.", bullets: ["No solicitation, no proselytising, no political campaigns.", "No mass DMs — quality over volume.", "Disagree without being a jerk. Block, don't escalate."] },
               ].map((p) => (
-                <div key={p.n} className="pdf-page">
+                <div key={p.n} className="pdf-page" role="article" aria-label={`Preview: ${p.title}`}>
                   <div className="pdf-page__bar" />
                   <div className="pdf-page__num">{p.n}</div>
                   <h3>{p.title}</h3>
@@ -197,7 +197,7 @@ export default function HomePage() {
           <div className="hsec__foot">
             <span className="hsec__note">📌 These guidelines apply to all members · HealAll v1.0</span>
             <a
-              href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
+              href="https://drive.google.com/uc?export=download&id=16umjQCumoecqR0Y2AoNi8zY-IUKHKvws"
               target="_blank"
               rel="noopener noreferrer"
               className="hsec__foot-link"
@@ -239,7 +239,7 @@ export default function HomePage() {
               <p className="contrib-col__label">🔧 Tech stack</p>
               {[
                 { ico: "⚡",  name: "FastAPI + SQLAlchemy", sub: "Python 3.12, async" },
-                { ico: "⚛️", name: "Next.js 15 + React 19", sub: "TypeScript, App Router" },
+                { ico: "⚛️", name: "Next.js 16 + React 19", sub: "TypeScript, App Router" },
                 { ico: "🐘", name: "PostgreSQL + Redis",    sub: "Neon, Upstash" },
                 { ico: "🚀", name: "Railway + Vercel",      sub: "Backend + Frontend deploy" },
               ].map((item) => (
