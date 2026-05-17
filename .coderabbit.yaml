@@ -1,0 +1,230 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+tone_instructions: >-
+  Sardonic senior engineer. Sharp, witty, brutally helpful. One cheeky PR opener, then verdict
+  first, fix second. Prefixes: 💥 ⚠️ 🤔 ✨ Roast code, not people. Cite file:line, quote exact
+  errors, production-ready samples only.
+
+early_access: true
+
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary_instructions: >-
+    Generate a concise PR summary in 3 sections, max 200 words total:
+
+
+    **What changed** — 2-4 bullets. User-facing impact first, then technical. Lead with verb
+    (Add/Fix/Refactor/Remove). Skip trivial file moves.
+
+
+    **Why** — 1-2 sentences. Link to issue/PR if referenced. Skip if obvious from "What changed".
+
+
+    **Risk & test surface** — bullets only if non-trivial. Call out: migrations, breaking API
+    changes, auth/RBAC touch, security-sensitive files (services/report_service.py,
+    moderation_service.py, case_service.py, posts.py), env-var additions, new dependencies.
+
+
+    Rules:
+
+    - No marketing language ("seamlessly", "robust", "powerful"). Plain technical English.
+
+    - File paths as `backend/app/...` or `frontend/app/...`, not bare names.
+
+    - Group related files. Don't list every file unless <5 changed.
+
+    - Omit sections that don't apply. Never pad.
+
+    - For pure refactors/chore/docs PRs: one-line summary only, skip Why + Risk.
+
+    - Flag if PR touches `alembic/versions/` (migrations are immutable per project rule).
+
+    - Flag if commits to `main` (project requires feature branch + PR).
+  high_level_summary_in_walkthrough: true
+  collapse_walkthrough: false
+  auto_apply_labels: true
+  auto_assign_reviewers: true
+  path_filters:
+    - '!**/node_modules/**'
+    - '!**/.next/**'
+    - '!**/dist/**'
+    - '!**/build/**'
+    - '!**/__pycache__/**'
+    - '!**/*.pyc'
+    - '!**/.venv/**'
+    - '!**/venv/**'
+    - '!**/coverage/**'
+    - '!**/htmlcov/**'
+    - '!**/.pytest_cache/**'
+    - '!**/.ruff_cache/**'
+    - '!**/.mypy_cache/**'
+    - '!**/.turbo/**'
+    - '!**/.cache/**'
+    - '!**/.DS_Store'
+    - '!**/package-lock.json'
+    - '!**/pnpm-lock.yaml'
+    - '!**/yarn.lock'
+    - '!**/poetry.lock'
+    - '!**/uv.lock'
+    - '!**/*.lock'
+    - '!**/*.min.js'
+    - '!**/*.min.css'
+    - '!**/*.map'
+    - '!graphify-out/**'
+    - '!**/*.svg'
+    - '!**/*.png'
+    - '!**/*.jpg'
+    - '!**/*.jpeg'
+    - '!**/*.gif'
+    - '!**/*.ico'
+    - '!**/*.pdf'
+    - '!docs/ACTIVITY_LOG.md'
+    - backend/**
+    - frontend/**
+    - .github/**
+    - docs/**
+    - .coderabbit.yaml
+  path_instructions:
+    - path: backend/alembic/versions/**
+      instructions: >-
+        Migrations are IMMUTABLE. Never edit existing files. Only new migrations allowed. Flag any
+        modification to existing migration files as a blocker. Verify down_revision chains
+        correctly. Check for destructive ops (DROP TABLE/COLUMN, ALTER without backfill) and require
+        a data-migration plan.
+    - path: backend/app/services/**
+      instructions: >-
+        Service layer contract: services use db.add() / db.flush() / db.refresh() only — NEVER
+        db.commit() (routes commit). Services raise from app.core.exceptions, NEVER HTTPException.
+        Flag violations. Verify RBAC checks duplicated from route layer (defence-in-depth).
+    - path: backend/app/services/report_service.py
+      instructions: Verify self-report guard intact (user cannot report own content).
+    - path: backend/app/services/moderation_service.py
+      instructions: >-
+        Verify role-hierarchy guard intact: moderators cannot act on MODERATOR/ADMIN/HEAD_ADMIN
+        roles. Check no privilege escalation paths.
+    - path: backend/app/services/case_service.py
+      instructions: 'Verify closure-state guard: helpers cannot join cases in CLOSURE_REQUESTED state.'
+    - path: backend/app/api/v1/posts.py
+      instructions: >-
+        Verify visibility check on non-public post reads. Verify soft-delete guard uses
+        scalar_one_or_none() (prevents 500 on deleted authors).
+    - path: backend/app/api/v1/**
+      instructions: >-
+        Routes commit transactions, services don't. Verify Depends(...) auth gates. Check Pydantic
+        schema usage matches schemas/X.py. Response models must not leak internal fields (password
+        hashes, internal IDs, soft-deleted flags).
+    - path: backend/app/models/**
+      instructions: >-
+        SQLAlchemy ORM models. Verify: indexes on FK + frequently-queried columns, cascade rules
+        match domain (e.g. delete user → soft-delete posts, NOT hard cascade), nullable matches
+        business logic, no plaintext sensitive fields. Flag missing __repr__ that leaks PII.
+    - path: backend/app/schemas/**
+      instructions: >-
+        Pydantic schemas. Response schemas MUST NOT include password_hash, refresh_token, otp_code,
+        internal IDs, soft-delete flags. Use Field(exclude=True) or separate Read schema. Verify
+        EmailStr/PhoneNumber validators on input schemas.
+    - path: backend/app/worker/**
+      instructions: >-
+        Celery tasks. Verify: idempotent (safe to retry), explicit retry policy with backoff, no DB
+        session leaks (use scoped session). Tasks must accept primitive args (no ORM objects — they
+        don't serialize).
+    - path: backend/app/core/security/**
+      instructions: >-
+        Security-sensitive. Require extra scrutiny: timing-safe comparisons, no plaintext secret
+        logging, bcrypt cost factor, JWT alg pinned (not none), refresh-token rotation.
+    - path: backend/pyproject.toml
+      instructions: >-
+        bcrypt MUST stay pinned >=4.0.1,<4.1 (passlib 1.7.4 breaks on bcrypt ≥4.1). Flag any version
+        bump removing the upper bound.
+    - path: backend/Dockerfile*
+      instructions: >-
+        Multi-stage build required. No secrets in layers (no COPY .env). Pin base image to digest or
+        specific version, not :latest. Run as non-root user.
+    - path: backend/tests/**
+      instructions: >-
+        Tests must hit real DB (healall_test), no mocking the DB. Use direct ORM seeding pattern:
+        create InviteCode + call auth_service.create_otp directly, set admin roles on User model in
+        DB. No POST /v1/cases — seed Case + Post via ORM. Flag any unittest.mock of DB or
+        auth_service.
+    - path: backend/tests/**/*test*.py
+      instructions: >-
+        No @pytest.mark.skip without linked issue. No bare `assert True`. Async tests use
+        pytest-asyncio (project has asyncio_mode = "auto"). Flag any sleep() — use proper waits.
+    - path: frontend/app/**
+      instructions: >-
+        Next.js 16 App Router. Server components by default — flag "use client" if not needed
+        (interactive only). Verify no secrets in client components. Check API client usage from
+        lib/api/*.ts, not raw fetch.
+    - path: frontend/lib/api/**
+      instructions: >-
+        Typed API client. Verify error handling, no leaking access tokens to logs, refresh-token
+        flow intact.
+    - path: frontend/eslint.config.mjs
+      instructions: >-
+        ESLint 9 flat config required (Next.js 16 removed next lint). Flag legacy .eslintrc
+        reintroduction.
+    - path: frontend/next.config.*
+      instructions: >-
+        Verify security headers (CSP, X-Frame-Options, Referrer-Policy). Flag any
+        dangerouslyAllowSVG: true without sanitization. Verify redirects/rewrites don't open
+        open-redirect vulnerabilities.
+    - path: frontend/package.json
+      instructions: >-
+        Flag major version bumps (semver X.0.0) without test plan. Verify no `*` or `latest` version
+        pins. Lockfile must update in same PR.
+    - path: frontend/**/*.tsx
+      instructions: >-
+        CSS Modules + global globals.css. Flag inline styles unless dynamic. No
+        dangerouslySetInnerHTML without sanitization. Image components: use next/image, not raw
+        <img>.
+    - path: '**/*.test.ts*'
+      instructions: >-
+        No skipped tests (.skip, .only, xit, xdescribe). No commented-out assertions. Each test
+        names what it tests in the description, not just "works".
+    - path: .github/workflows/**
+      instructions: >-
+        Every workflow needs explicit permissions: block (CodeQL
+        actions/missing-workflow-permissions). Default to contents: read, escalate only where
+        needed. No --no-verify, no hook skips. Pin third-party actions to commit SHA, not floating
+        tags.
+    - path: '**/*.env*'
+      instructions: >-
+        NEVER commit secrets. Flag any real keys, tokens, passwords, DSNs. .env.example only with
+        placeholder values.
+    - path: docs/**
+      instructions: 'Docs-only PRs: light review. Verify links not broken. Skip code-review heuristics.'
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    ignore_title_keywords:
+      - WIP
+      - DRAFT
+      - '[skip-review]'
+    base_branches:
+      - main
+      - development
+      - 'feat/.*'
+      - 'fix/.*'
+      - 'chore/.*'
+      - 'docs/.*'
+  tools:
+    languagetool:
+      enabled: false
+
+chat:
+  allow_non_org_members: false
+  integrations:
+    jira:
+      usage: disabled
+
+knowledge_base:
+  code_guidelines:
+    filePatterns:
+      - CLAUDE.md
+      - docs/CODE_REVIEW.md
+      - docs/ROADMAP.md
+      - docs/HealAll_Architecture_README_v1.md
+      - backend/CLAUDE.md
+      - frontend/CLAUDE.md
+      - .github/copilot-instructions.md
