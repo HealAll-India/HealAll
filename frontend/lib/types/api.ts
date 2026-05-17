@@ -150,6 +150,10 @@ export interface PostResponse {
   category: string;
   urgency: string;
   city: string;
+  address?: string | null;
+  pincode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   status: string;
   author: AuthorInfo;
   created_at: string;
@@ -163,6 +167,7 @@ export interface PostSummary {
   category: string;
   urgency: string;
   city: string;
+  pincode?: string | null;
   status: string;
   author: AuthorInfo;
   created_at: string;
@@ -188,6 +193,10 @@ export interface CreatePostPayload {
     | "urgent";
   urgency: "low" | "normal" | "high" | "critical";
   city: string;
+  address: string;
+  pincode: string;
+  latitude?: number | null;
+  longitude?: number | null;
   contact_prefs?: Record<string, boolean>;
 }
 

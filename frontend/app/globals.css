@@ -1355,3 +1355,92 @@ p.success           { color: var(--ok); margin: 0; }
   color: var(--text-subtle, #9ca3af);
   margin-top: 2px;
 }
+
+/* Feed banner — pending-posts notice */
+.feed-pending-banner {
+  margin-bottom: 12px;
+  border-left: 4px solid #d97706;
+}
+.feed-pending-banner__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9a3412;
+}
+.feed-pending-banner__sub {
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+.feed-pending-banner__link {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+/* posts/new — location section */
+.section-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.required-mark { color: #e11d48; }
+.location-stack { gap: 12px; }
+.location-row { gap: 12px; flex-wrap: wrap; }
+.location-address { flex: 2 1 240px; min-width: 0; }
+.location-pincode { flex: 1 1 120px; min-width: 0; }
+
+/* /verify community queue */
+.verify-title { margin: 0; font-size: 22px; font-weight: 800; }
+.verify-subtitle { margin: 0; font-size: 13px; }
+.verify-item { margin-bottom: 12px; }
+.verify-item__header { gap: 8px; align-items: flex-start; }
+.verify-item__meta { font-size: 12px; margin: 2px 0 0; }
+.verify-item__body { margin: 0; font-size: 13px; line-height: 1.6; color: #374151; }
+.verify-item__loc { font-size: 12px; color: #6b7280; }
+.verify-note-label { font-size: 12px; }
+
+/* Map picker layout */
+.map-picker-frame {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong, #e5e7eb);
+}
+.map-picker-loading {
+  display: grid;
+  place-items: center;
+  color: #9ca3af;
+  font-size: 12px;
+  width: 100%;
+  height: 100%;
+}
+.map-picker-meta {
+  gap: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  align-items: center;
+}
+.map-picker-inner-root {
+  height: 100%;
+  width: 100%;
+}
+
+/* Post detail location card label */
+.post-loc-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.post-loc-address { margin: 0; font-size: 14px; }
+.post-loc-meta { font-size: 12px; margin: 0; }
+
+/* Component-scoped stack variants */
+.stack--map { gap: 8px; }
+.verify-item__body-col { flex: 1; }
+.verify-item__title-lg { font-size: 17px; }
+.verify-item__actions { gap: 8px; flex-wrap: wrap; }

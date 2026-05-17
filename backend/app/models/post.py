@@ -3,7 +3,7 @@
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -60,6 +60,13 @@ class Post(Base, TimestampMixin, SoftDeleteMixin):
     category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     urgency: Mapped[str] = mapped_column(String(10), nullable=False, default="normal", index=True)
     city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # Nearest landmark / street address — required on new posts (enforced in API
+    # schema), nullable on the column so legacy posts don't fail to migrate.
+    address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    pincode: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    # Optional map pin coordinates
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", index=True)
     contact_prefs: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
@@ -100,3 +107,39 @@ class PostMedia(Base, TimestampMixin):
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
 
     post: Mapped["Post"] = relationship("Post", back_populates="media_items")
+
+
+class VoteDecision(str, Enum):
+    """Community-verification vote decision."""
+
+    APPROVE = "approve"
+    REJECT = "reject"
+    NEEDS_INFO = "needs_info"
+
+
+class PostVerificationVote(Base, TimestampMixin):
+    """A single community member's vote on a SUBMITTED post.
+
+    Three APPROVE votes from distinct verified users flip the post to ACTIVE.
+    A REJECT or NEEDS_INFO vote is informational unless an admin acts on it.
+    """
+
+    __tablename__ = "post_verification_votes"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    post_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("posts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    voter_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    decision: Mapped[str] = mapped_column(String(20), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (UniqueConstraint("post_id", "voter_id", name="uq_post_vote_once_per_user"),)

@@ -21,6 +21,40 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Post location + community verification voting
+**Agent**: claude-opus-4-7
+**Scope**: User reported (1) post created → submitted for verification → feed shows 0 posts (confusing), (2) need community-verification path (not just admins), (3) every post should require nearest-landmark address + optional Google-Maps-style pin, (4) location info mandatory.
+**Design decisions (from user)**:
+- Verification model: **voting** — N approvals from verified L1+ helpers → auto-flip to ACTIVE.
+- Map provider: **OpenStreetMap + Leaflet** (free, no API key).
+- Required fields: `address` + `pincode` (lat/lng optional via map pin).
+- Backward compat: columns nullable on DB; API enforces on new posts only.
+**Changes**:
+- `backend/alembic/versions/008_*.py` (new): add `address/pincode/latitude/longitude` to `posts`; create `post_verification_votes` table with `UNIQUE(post_id, voter_id)` to prevent double-voting.
+- `backend/app/models/post.py`: add new Post fields + `PostVerificationVote` ORM + `VoteDecision` enum.
+- `backend/app/schemas/post.py`: `CreatePostRequest`/`UpdatePostRequest` now require address (3-300 chars) + India pincode (regex `^[1-9][0-9]{5}$`). Optional lat/lng with paired-or-neither validator. `PostResponse` and `PostSummary` carry location fields.
+- `backend/app/services/post_service.py`: store new fields on create.
+- `backend/app/services/community_verification_service.py` (new): list pending (excluding own + already-voted), tally vote summary, cast vote with guards (self-vote, re-vote, voter must be L1+, post must be SUBMITTED). On reaching `COMMUNITY_VERIFY_THRESHOLD` APPROVE votes, flip post to ACTIVE + create Case.
+- `backend/app/schemas/community_verification.py` (new) + `backend/app/api/v1/community_verification.py` (new): `GET /v1/community-verification/queue`, `POST /v1/community-verification/{post_id}/vote`. Registered in `router.py`.
+- `backend/app/core/config.py`: `COMMUNITY_VERIFY_THRESHOLD: int = 3`.
+- `frontend/components/ui/map-picker.tsx` + `map-picker-inner.tsx` (new): Leaflet wrapper with `next/dynamic({ ssr: false })`. Click to pin, click "Clear pin" to unset. Read-only mode for display.
+- `frontend/app/posts/new/page.tsx`: form now requires address + 6-digit pincode + optional map pin. Surfaces real backend error messages (kept from previous PR).
+- `frontend/app/posts/[postId]/page.tsx`: new "Location" card showing address, city, pincode, and read-only map if coordinates set.
+- `frontend/app/verify/page.tsx` (new): community voting UI — pending posts, vote tally, approve/reject/needs_info buttons with optional reason. Gated to L1+ users.
+- `frontend/app/feed/page.tsx`: surface user's own pending posts in a banner so they don't think the submission was lost.
+- `frontend/components/layout/app-shell.tsx`: nav link to `/verify` for all authed users.
+- `frontend/lib/api/community-verification.ts` (new): typed client.
+- `frontend/lib/types/api.ts`: new location fields on `CreatePostPayload`, `PostResponse`, `PostSummary`.
+- `frontend/package.json`: add `leaflet@^1.9.4` + `react-leaflet` + `@types/leaflet`.
+**Tests**: Pydantic schema validators tested via direct Python import (pincode regex, lat/lng pairing). Frontend `tsc --noEmit` clean, `eslint` clean, `npm run build` green. Backend integration tests need Docker DB — will run on CI.
+**Migration safety**: All new columns nullable; legacy posts won't fail. Migration is additive only — no destructive ops.
+**Follow-ups**:
+- Threshold (3) is env-configurable via `COMMUNITY_VERIFY_THRESHOLD` on Railway.
+- Geocoding (typing an address → auto-fill map) deferred — would need Nominatim or similar.
+- Voter abuse — currently UNIQUE(post_id, voter_id) prevents re-voting; consider reputation decay for repeat reckless votes.
+
+---
+
 ## 2026-05-17 — Auto-recover from expired/invalid auth tokens
 **Agent**: claude-opus-4-7
 **Scope**: Production users seeing 401s on /feed, /cases, /conversations, /me + "Failed to create post" on submit. Root cause: stale `accessToken` persisted in localStorage from prior session; backend (JWT secret rotated or token TTL exceeded) rejects with 401. Frontend had no recovery path — silently retried with bad token forever.
