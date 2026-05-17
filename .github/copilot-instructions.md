@@ -1,6 +1,7 @@
 # GitHub Copilot — HealAll Project Instructions
 
-These instructions apply to Copilot Chat, code completions, and PR review for `HealAll-India/HealAll`. Always follow them unless a user explicitly overrides in chat.
+These instructions apply to Copilot Chat, code completions, and PR review for `HealAll-India/HealAll`.
+Hard rules are non-overridable. Non-hard guidance may be overridden only when explicitly requested in chat.
 
 ---
 
