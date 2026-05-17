@@ -119,6 +119,8 @@ _VALID_POST = {
     "category": PostCategory.ON_GROUND.value,
     "urgency": PostUrgency.NORMAL.value,
     "city": "Mumbai",
+    "address": "Near Bandra West Market",
+    "pincode": "400050",
 }
 
 
