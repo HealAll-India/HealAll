@@ -6,7 +6,7 @@
  * section to include a 4-card PDF scroll rail + embedded PDF viewer.
  * The Developer Contribution section gained dark `.hsec` variant classes.
  */
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import HomePage from "../page";
 
