@@ -4,6 +4,19 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Auto-recover from expired/invalid auth tokens
+**Agent**: claude-opus-4-7
+**Scope**: Production users seeing 401s on /feed, /cases, /conversations, /me + "Failed to create post" on submit. Root cause: stale `accessToken` persisted in localStorage from prior session; backend (JWT secret rotated or token TTL exceeded) rejects with 401. Frontend had no recovery path — silently retried with bad token forever.
+**Changes**:
+- `frontend/lib/api/client.ts`: On 401 response, dispatch `auth:expired` CustomEvent on window before throwing ApiError. Lets app layer auto-clear stale token.
+- `frontend/components/layout/app-shell.tsx`: useEffect listener for `auth:expired` — calls `clearSession()` then `router.replace("/login?reason=expired")`. Guard against double-fire when token already cleared.
+- `frontend/app/login/page.tsx`: Read `?reason=expired` from window.location (avoids `useSearchParams` Suspense requirement) and show banner "Your session expired. Please sign in again."
+- `frontend/app/posts/new/page.tsx`: Improved error fallback. Non-ApiError now shows `Network error: <msg>. Check your connection and try again.` instead of generic "Failed to create post".
+**Tests**: `npm run build` clean. TS + ESLint clean. Manually verified the 401 → redirect → banner flow logic. Production fix unlocks any user stuck with a stale token without requiring manual localStorage clear.
+**Follow-ups**: Consider a "refresh token" rotation flow so users don't get bounced to login on every JWT secret rotation. None blocking.
+
+---
+
 ## 2026-05-17 — Add CodeRabbit config + Copilot instructions
 **Agent**: claude-opus-4-7
 **Scope**: Land CodeRabbit auto-review config on default branch + add Copilot Chat/completion project instructions. Fixes "Configuration used: defaults / Auto reviews disabled" message on prior PRs (config must live on the default branch to take effect).

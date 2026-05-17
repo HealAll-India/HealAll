@@ -49,7 +49,15 @@ export default function NewPostPage() {
       }
       router.push(`/posts/${created.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to create post");
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        // Non-API failure (network/CORS/abort). Surface the real reason instead
+        // of a generic "Failed to create post" so users can act on it.
+        setError(`Network error: ${err.message}. Check your connection and try again.`);
+      } else {
+        setError("Failed to create post");
+      }
     } finally {
       setLoading(false);
     }
