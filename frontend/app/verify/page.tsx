@@ -38,8 +38,15 @@ export default function CommunityVerifyPage() {
 
   const loadQueue = useCallback(async () => {
     // Backend rejects sub-L1 voters with 403. Don't fire a guaranteed-401/403
-    // request just to surface the same gate the UI already shows.
-    if (!token || voterLevel < 1) return;
+    // request just to surface the same gate the UI already shows. Also reset
+    // any previously-fetched queue so an in-session auth/level downgrade
+    // can't leave stale cards visible to an ineligible user.
+    if (!token || voterLevel < 1) {
+      setItems([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -111,7 +118,7 @@ export default function CommunityVerifyPage() {
         <section className="card"><p className="muted">Loading…</p></section>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {canVote && !loading && !error && items.length === 0 && (
         <section className="card stack">
           <p className="muted post-loc-meta">
             No posts pending community review right now. Check back soon!

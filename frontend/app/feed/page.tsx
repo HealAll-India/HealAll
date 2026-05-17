@@ -46,6 +46,9 @@ export default function FeedPage() {
   }
 
   useEffect(() => {
+    // Reset cross-account state immediately so an account switch can't
+    // briefly show the previous user's pending count.
+    setPending([]);
     if (!token) return;
     void loadFeed(INITIAL_FILTERS);
     // Surface user's own pending posts so they don't think their submission
