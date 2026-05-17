@@ -6,6 +6,7 @@ on:
     types: [opened, ready_for_review, reopened]
 
 permissions:
+  contents: read
   pull-requests: write
 
 jobs:
@@ -14,9 +15,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Request Copilot code review
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          PR_NODE_ID: ${{ github.event.pull_request.node_id }}
         run: |
-          gh pr edit "${{ github.event.pull_request.html_url }}" \
-            --add-reviewer "Copilot"
+          set -euo pipefail
+          # Look up the Copilot reviewer bot ID for this repo via suggestedActors.
+          BOT_ID=$(gh api graphql -f query='
+            query($owner: String!, $repo: String!) {
+              repository(owner: $owner, name: $repo) {
+                suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
+                  nodes { ... on Bot { login id } ... on User { login id } }
+                }
+              }
+            }' -F owner="$OWNER" -F repo="$REPO" \
+            --jq '.data.repository.suggestedActors.nodes[] | select(.login | test("[Cc]opilot")) | .id' | head -n1)
+
+          if [ -z "$BOT_ID" ]; then
+            echo "::warning::Copilot reviewer bot not available for this repo. Enable Copilot code review in repo/org settings."
+            exit 0
+          fi
+
+          gh api graphql -f query='
+            mutation($pr: ID!, $reviewer: ID!) {
+              requestReviews(input: {pullRequestId: $pr, userIds: [$reviewer], union: true}) {
+                pullRequest { id }
+              }
+            }' -F pr="$PR_NODE_ID" -F reviewer="$BOT_ID"

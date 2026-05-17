@@ -4,6 +4,29 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Address CodeRabbit review feedback on PR #30
+**Agent**: claude-opus-4-7
+**Scope**: Apply 5 CodeRabbit findings on the hsec landing redesign.
+**Changes**:
+- `frontend/app/globals.css`: Added scoped `.pdf-page h3/p/ul/li` styles so child elements render correctly inside 220px preview tiles (CodeRabbit blocker — children inherited body defaults).
+- `frontend/app/page.tsx`: ARIA on `.pdf-scroll` (region) and `.pdf-page` (article + aria-label). Fixed Download buttons to use `/uc?export=download&id=…` instead of `/view`. Bumped tech-stack label "Next.js 15" → "Next.js 16".
+- `.github/workflows/copilot-review.yml`: Added explicit `contents: read` per workflow-permissions guideline.
+**Tests**: TS/lint not runnable in worktree; Vercel preview validates.
+**Follow-ups**: none.
+
+---
+
+## 2026-05-17 — Landing info sections redesign (hsec design system)
+**Agent**: claude-opus-4-7
+**Scope**: Implement Community Guidelines + Developer Contribution sections from Anthropic design bundle (`HealAll Prototype.html`).
+**Changes**:
+- `frontend/app/page.tsx`: Replaced CSS-module-based Guidelines + Contribute sections with global `.hsec` classes. Community Guidelines now uses a 4-card horizontal `.pdf-scroll__rail` + embedded `.pdf-viewer` iframe. Developer Contribution uses dark `.hsec` variant with `.stack-item` + `.area-item` tone variants (green/blue/purple/orange).
+- `frontend/app/globals.css`: Added `.hsec*`, `.pdf-scroll*`, `.pdf-page*`, `.pdf-viewer*`, `.contrib-col*`, `.stack-item*`, `.area-item*` classes (+ mobile breakpoint).
+**Tests**: TS/lint not runnable locally (worktree has no node_modules); changes are scoped to page.tsx + globals.css. Vercel preview will validate.
+**Follow-ups**: Verify Copilot review bot fires on this PR (testing review workflow).
+
+---
+
 ## 2026-05-17 — Fix CodeQL missing-workflow-permissions findings
 **Agent**: claude-sonnet-4-6
 **Scope**: Add explicit `permissions: contents: read` blocks to all 4 workflow files missing them.
