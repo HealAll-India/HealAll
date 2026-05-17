@@ -59,8 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav className="main-nav">
         <div className="inner">
           <Link href="/" className="logo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpeg" alt="HealAll" width={36} height={36} />
+            <div className="logo-mark" aria-hidden="true" />
             <span className="logo-text">HealAll</span>
           </Link>
 
@@ -86,8 +85,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="row" style={{ gap: "10px" }}>
             {isAuthed && user ? (
               <>
+                <Link href="/posts/new">
+                  <button type="button" style={{ fontSize: "13px", padding: "8px 16px" }}>
+                    + Post a Request
+                  </button>
+                </Link>
                 <span className="vbadge">{user.name} · L{user.verification_level}</span>
-                <button className="danger" onClick={handleLogout} type="button">Logout</button>
+                <button className="danger" onClick={handleLogout} type="button" style={{ fontSize: "13px", padding: "8px 14px" }}>Logout</button>
               </>
             ) : null}
           </div>
