@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { AuthRequired } from "@/components/ui/auth-required";
+import { MapPicker } from "@/components/ui/map-picker";
 import { createComment, listComments } from "@/lib/api/comments";
 import { ApiError } from "@/lib/api/client";
 import { createReport } from "@/lib/api/moderation";
@@ -142,6 +143,25 @@ export default function PostDetailPage() {
                   <span className="badge" style={{ background: "#f9fafb", color: "#6b7280" }}>{post.status}</span>
                 </div>
               </section>
+
+              {(post.address || post.pincode || (post.latitude !== null && post.longitude !== null)) && (
+                <section className="card stack">
+                  <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>📍 Location</h3>
+                  {post.address && <p style={{ margin: 0, fontSize: "14px" }}>{post.address}</p>}
+                  <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
+                    {post.city}{post.pincode ? ` · ${post.pincode}` : ""}
+                  </p>
+                  {post.latitude !== null && post.latitude !== undefined && post.longitude !== null && post.longitude !== undefined && (
+                    <MapPicker
+                      latitude={post.latitude}
+                      longitude={post.longitude}
+                      onChange={() => { /* read-only */ }}
+                      readOnly
+                      height={240}
+                    />
+                  )}
+                </section>
+              )}
 
               <section className="card stack">
                 <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Comments</h3>

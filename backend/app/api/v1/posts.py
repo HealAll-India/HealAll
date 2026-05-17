@@ -27,6 +27,30 @@ from app.services import post_service
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
+def _post_to_response(post, author: User) -> PostResponse:
+    """Build a PostResponse from ORM models, including location fields."""
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        description=post.description,
+        category=post.category,
+        urgency=post.urgency,
+        city=post.city,
+        address=post.address,
+        pincode=post.pincode,
+        latitude=post.latitude,
+        longitude=post.longitude,
+        status=post.status,
+        author=AuthorInfo(
+            id=author.id,
+            name=author.name,
+            verification_level=author.verification_level,
+        ),
+        created_at=post.created_at,
+        updated_at=post.updated_at,
+    )
+
+
 @limiter.limit("30/hour")
 @router.post("", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
@@ -43,22 +67,7 @@ async def create_post(
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
 
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        description=post.description,
-        category=post.category,
-        urgency=post.urgency,
-        city=post.city,
-        status=post.status,
-        author=AuthorInfo(
-            id=current_user.id,
-            name=current_user.name,
-            verification_level=current_user.verification_level,
-        ),
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-    )
+    return _post_to_response(post, current_user)
 
 
 @router.get("/{post_id}", response_model=PostResponse)
@@ -82,22 +91,7 @@ async def get_post(
     if not author:
         raise NotFoundException("Post not found") from None
 
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        description=post.description,
-        category=post.category,
-        urgency=post.urgency,
-        city=post.city,
-        status=post.status,
-        author=AuthorInfo(
-            id=author.id,
-            name=author.name,
-            verification_level=author.verification_level,
-        ),
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-    )
+    return _post_to_response(post, author)
 
 
 @router.patch("/{post_id}", response_model=PostResponse)
@@ -115,22 +109,7 @@ async def update_post(
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
 
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        description=post.description,
-        category=post.category,
-        urgency=post.urgency,
-        city=post.city,
-        status=post.status,
-        author=AuthorInfo(
-            id=current_user.id,
-            name=current_user.name,
-            verification_level=current_user.verification_level,
-        ),
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-    )
+    return _post_to_response(post, current_user)
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -164,22 +143,7 @@ async def submit_post(
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
 
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        description=post.description,
-        category=post.category,
-        urgency=post.urgency,
-        city=post.city,
-        status=post.status,
-        author=AuthorInfo(
-            id=current_user.id,
-            name=current_user.name,
-            verification_level=current_user.verification_level,
-        ),
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-    )
+    return _post_to_response(post, current_user)
 
 
 @router.get("", response_model=FeedResponse)
@@ -202,6 +166,7 @@ async def get_my_posts(
                 category=post.category,
                 urgency=post.urgency,
                 city=post.city,
+                pincode=post.pincode,
                 status=post.status,
                 author=AuthorInfo(
                     id=current_user.id,

@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     # Metrics
     METRICS_ENABLED: bool = True
 
+    # Community verification — number of APPROVE votes from verified users
+    # required to flip a SUBMITTED post to ACTIVE.
+    COMMUNITY_VERIFY_THRESHOLD: int = 3
+
     @field_validator("APP_ALLOWED_ORIGINS")
     @classmethod
     def parse_cors_origins(cls, v: str) -> list[str]:

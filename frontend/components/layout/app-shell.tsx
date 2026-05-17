@@ -11,6 +11,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 const BASE_LINKS = [
   { href: "/feed",      label: "Feed" },
   { href: "/posts/new", label: "New Post" },
+  { href: "/verify",    label: "Verify" },
   { href: "/cases",     label: "Cases" },
   { href: "/messages",  label: "Messages" },
   { href: "/profile",   label: "Profile" },

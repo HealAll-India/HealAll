@@ -57,6 +57,7 @@ async def get_feed(
                     category=post.category,
                     urgency=post.urgency,
                     city=post.city,
+                    pincode=post.pincode,
                     status=post.status,
                     author=AuthorInfo(
                         id=author.id,

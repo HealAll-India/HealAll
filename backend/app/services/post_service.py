@@ -24,6 +24,10 @@ async def create_post(
         category=post_data.category.value,
         urgency=post_data.urgency.value,
         city=post_data.city,
+        address=post_data.address,
+        pincode=post_data.pincode,
+        latitude=post_data.latitude,
+        longitude=post_data.longitude,
         contact_prefs=post_data.contact_prefs,
         status=PostStatus.DRAFT.value,
     )

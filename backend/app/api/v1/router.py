@@ -7,6 +7,7 @@ from app.api.v1 import (
     auth,
     cases,
     comments,
+    community_verification,
     feed,
     google_auth,
     invites,
@@ -29,6 +30,7 @@ router.include_router(posts.router)
 router.include_router(comments.router)
 router.include_router(feed.router)
 router.include_router(verification.router)
+router.include_router(community_verification.router)
 router.include_router(cases.router)
 router.include_router(messages.router)
 router.include_router(reports.router)

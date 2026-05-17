@@ -10,6 +10,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import type { CreatePostPayload } from "@/lib/types/api";
 import { AuthRequired } from "@/components/ui/auth-required";
 import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
+import { MapPicker } from "@/components/ui/map-picker";
 
 export default function NewPostPage() {
   const router = useRouter();
@@ -27,6 +28,10 @@ export default function NewPostPage() {
     category: "emotional_support",
     urgency: "normal",
     city: "",
+    address: "",
+    pincode: "",
+    latitude: null,
+    longitude: null,
     contact_prefs: { comments: true, dm_with_consent: true }
   });
 
@@ -108,12 +113,43 @@ export default function NewPostPage() {
                 </div>
               </div>
               <div>
-                <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location</h3>
-                <IndiaLocationPicker
-                  value={payload.city}
-                  onChange={(combined) => setPayload(p => ({ ...p, city: combined }))}
-                  required
-                />
+                <h3 style={{ fontSize: "13px", fontWeight: 700, color: "#6b7280", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Location <span style={{ color: "#e11d48" }}>*</span></h3>
+                <div className="stack" style={{ gap: "12px" }}>
+                  <IndiaLocationPicker
+                    value={payload.city}
+                    onChange={(combined) => setPayload(p => ({ ...p, city: combined }))}
+                    required
+                  />
+                  <div className="row" style={{ gap: "12px", flexWrap: "wrap" }}>
+                    <label style={{ flex: "2 1 240px", minWidth: 0 }}>
+                      Nearest landmark / address
+                      <input
+                        value={payload.address}
+                        onChange={e => setPayload(p => ({ ...p, address: e.target.value }))}
+                        placeholder="e.g. Near AIIMS Hospital Gate 3"
+                        minLength={3}
+                        maxLength={300}
+                        required
+                      />
+                    </label>
+                    <label style={{ flex: "1 1 120px", minWidth: 0 }}>
+                      Pincode
+                      <input
+                        value={payload.pincode}
+                        onChange={e => setPayload(p => ({ ...p, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) }))}
+                        placeholder="110029"
+                        inputMode="numeric"
+                        pattern="^[1-9][0-9]{5}$"
+                        required
+                      />
+                    </label>
+                  </div>
+                  <MapPicker
+                    latitude={payload.latitude ?? null}
+                    longitude={payload.longitude ?? null}
+                    onChange={(lat, lng) => setPayload(p => ({ ...p, latitude: lat, longitude: lng }))}
+                  />
+                </div>
               </div>
               <label style={{ flexDirection: "row", alignItems: "center", gap: "8px", fontSize: "13px" }}>
                 <input type="checkbox" checked={submitNow} onChange={e => setSubmitNow(e.target.checked)} />
