@@ -4,6 +4,19 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Fix CodeQL missing-workflow-permissions findings
+**Agent**: claude-sonnet-4-6
+**Scope**: Add explicit `permissions: contents: read` blocks to all 4 workflow files missing them.
+**Changes**:
+- `.github/workflows/backend-ci.yml`: Added `permissions: contents: read` — resolves CodeQL `actions/missing-workflow-permissions` finding.
+- `.github/workflows/ci.yml`: Added `permissions: contents: read` — same fix.
+- `.github/workflows/frontend-ci.yml`: Added `permissions: contents: read` — same fix.
+- `.github/workflows/security-scan.yml`: Added `permissions: contents: read` — fixes both python-audit and npm-audit job findings (7 total CodeQL alerts resolved).
+**Tests**: No functional change — permissions block only restricts default token scope to read-only.
+**Follow-ups**: none
+
+---
+
 ## 2026-05-17 — HealAll Prototype hi-fi design system implementation
 **Agent**: claude-opus-4-7
 **Scope**: Implement HealAll Prototype.html from Claude Design handoff bundle (uirexFOnRbTxdPoBkhN3QA) into the production Next.js codebase.
