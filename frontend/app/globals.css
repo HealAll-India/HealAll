@@ -1312,3 +1312,10 @@ p.success           { color: var(--ok); margin: 0; }
   .pdf-page { flex: 0 0 180px; height: 240px; }
   .hsec__body { grid-template-columns: 1fr; }
 }
+
+/* Login expired-session banner */
+.login-expired-banner {
+  text-align: center;
+  font-size: 13px;
+  margin-bottom: 16px;
+}

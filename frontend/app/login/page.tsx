@@ -104,7 +104,7 @@ export default function LoginPage() {
         </p>
 
         {expired ? (
-          <p className="error" style={{ textAlign: "center", fontSize: "13px", marginBottom: "16px" }}>
+          <p className="error login-expired-banner" role="alert" aria-live="assertive">
             Your session expired. Please sign in again.
           </p>
         ) : null}
