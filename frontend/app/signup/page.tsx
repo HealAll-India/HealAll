@@ -193,7 +193,7 @@ export default function SignupPage() {
                   placeholder="9999999999"
                   required
                 />
-                <span style={{ fontSize: "10px", color: "#9ca3af", marginTop: "2px", display: "block" }}>
+                <span className="sms-helper-text">
                   📱 SMS verification coming soon
                 </span>
               </label>

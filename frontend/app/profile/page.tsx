@@ -224,7 +224,7 @@ export default function ProfilePage() {
                 onChange={(combined) => setProfile((p) => p ? { ...p, city: combined } : p)}
                 required
               />
-              <p className="muted" style={{ fontSize: "11px", margin: "-4px 0 0" }}>
+              <p className="muted profile-city-hint">
                 Saved as &quot;City, State&quot; — visible to community members per your privacy settings.
               </p>
               <label>

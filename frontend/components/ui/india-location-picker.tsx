@@ -11,9 +11,13 @@ import { State, City } from "country-state-city";
  * Fully controlled: state/city are derived from `value` on every render, so
  * the parent is the single source of truth and there's no effect-based sync.
  *
- * Backward compatible: if the caller passes a free-text value like "Delhi"
- * (no comma), the component tries to parse it; if it can't match a known
- * state, the state dropdown is reset and the user re-picks.
+ * Round-tripping edge case: when only the state is picked (no city yet), we
+ * emit just the state name ("Maharashtra"). On the next render, `splitValue`
+ * has to decide whether a single token is a state or a city. We disambiguate
+ * by checking the known state list — if the token matches an Indian state
+ * name (case-insensitive), it's a state; otherwise it's a legacy free-text
+ * city value. This keeps DB values clean ("Maharashtra" or "Mumbai,
+ * Maharashtra") without leading-comma artefacts.
  */
 interface Props {
   value: string;
@@ -26,10 +30,22 @@ interface Props {
 
 const COUNTRY_CODE = "IN";
 
-function splitValue(value: string): { state: string; city: string } {
+function splitValue(
+  value: string,
+  knownStateNames: ReadonlySet<string>,
+): { state: string; city: string } {
   const parts = value.split(",").map((p) => p.trim());
-  if (parts.length >= 2) return { city: parts[0], state: parts.slice(1).join(", ") };
-  return { city: value.trim(), state: "" };
+  if (parts.length >= 2) {
+    return { city: parts[0], state: parts.slice(1).join(", ") };
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return { city: "", state: "" };
+  // Single-token value — could be either a state or a legacy free-text city.
+  // Treat it as a state only if it matches the known India state list.
+  if (knownStateNames.has(trimmed.toLowerCase())) {
+    return { city: "", state: trimmed };
+  }
+  return { city: trimmed, state: "" };
 }
 
 export function IndiaLocationPicker({
@@ -41,9 +57,13 @@ export function IndiaLocationPicker({
   labelCity = "City",
 }: Props) {
   const states = useMemo(() => State.getStatesOfCountry(COUNTRY_CODE), []);
+  const knownStateNames = useMemo(
+    () => new Set(states.map((s) => s.name.toLowerCase())),
+    [states],
+  );
 
   // Derive selection from the controlled value on every render.
-  const { city, state } = splitValue(value ?? "");
+  const { city, state } = splitValue(value ?? "", knownStateNames);
   const stateCode =
     states.find((s) => s.name.toLowerCase() === state.toLowerCase())?.isoCode ?? "";
 

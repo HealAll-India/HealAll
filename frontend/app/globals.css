@@ -1333,3 +1333,25 @@ p.success           { color: var(--ok); margin: 0; }
   font-size: 13px;
   margin-bottom: 16px;
 }
+
+/* India location picker layout */
+.location-picker-row {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.location-picker-field {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+/* Static hint texts (avoid inline styles per project guideline) */
+.profile-city-hint {
+  font-size: 11px;
+  margin: -4px 0 0;
+}
+.sms-helper-text {
+  display: block;
+  font-size: 10px;
+  color: var(--text-subtle, #9ca3af);
+  margin-top: 2px;
+}
