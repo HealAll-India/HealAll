@@ -52,7 +52,9 @@ export default function FeedPage() {
     // got swallowed when the feed only shows ACTIVE posts.
     void getMyPosts(token)
       .then((r) => {
-        const pendingStatuses = new Set(["submitted", "needs_info", "draft"]);
+        // Drafts are author-private, not yet in community voting — exclude
+        // them from the "pending verification" banner.
+        const pendingStatuses = new Set(["submitted", "needs_info"]);
         setPending(r.items.filter((p) => pendingStatuses.has(p.status)));
       })
       .catch(() => {
