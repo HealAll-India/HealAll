@@ -4,6 +4,20 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — HealAll Prototype hi-fi design system implementation
+**Agent**: claude-opus-4-7
+**Scope**: Implement HealAll Prototype.html from Claude Design handoff bundle (uirexFOnRbTxdPoBkhN3QA) into the production Next.js codebase.
+**Changes**:
+- `frontend/app/globals.css`: Full design system v3 additions — frosted glass nav, pulsing brand-dot, pill-wrapped nav links, .vpill / .cbadge (10 category variants), .urgency-pill with animated dot, avatar system (.av / .av-ring / .av-stack), .fcard feed card with hover lift, .hero-card for critical posts with radial gradient, .meter progress bar with gradient fill, .tile sidebar tiles, .rail filter rail, .impact-strip live ticker, 3-pane chat (.chat__list / .chat__pane / .chat__context), .bubble--mine/--other/--typing with animations, editorial landing (.land, .land__grid, .howcard), profile stats (.prof-hero, .stats-grid, .stat__num gradient text), toast/modal entrance animations.
+- `frontend/components/layout/app-shell.tsx`: Added pulsing .brand-dot to logo; pill-wrapped nav links; vpill for user verification badge; btn-sm on CTA buttons.
+- `frontend/components/feed/feed-card.tsx`: Migrated from .card to .fcard, using .cbadge, .vpill, .av avatar, .urgency-pill for critical posts.
+- `frontend/app/profile/page.tsx`: Replaced plain profile header with .prof-hero grid + 4-col .stats-grid with gradient numbers; .skill-chip for skills.
+- `frontend/app/page.tsx`: Replaced centered hero with editorial two-column .land layout — live feed preview card on right, three .howcard steps below.
+**Tests**: ESLint clean, tsc --noEmit clean (app code).
+**Follow-ups**: Messages page (3-pane chat layout) not yet wired to API — CSS classes are ready but the page still uses old layout.
+
+---
+
 ## 2026-05-17 — Design system v2 implementation (Claude Design handoff)
 **Agent**: claude-opus-4-7
 **Scope**: Implement the HealAll design system produced by Claude Design, covering CSS tokens, component patterns, feed card, nav, and a new heart-mark asset.

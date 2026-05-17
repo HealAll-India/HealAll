@@ -46,69 +46,60 @@ export function FeedCard({ post }: Props) {
     void navigator.clipboard.writeText(window.location.origin + `/posts/${post.id}`);
   }
 
+  const initials = post.author.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const avatarBg = avatarGradient(post.author.name);
+
   return (
-    <article className="card stack" style={{ marginBottom: "16px", gap: "10px" }}>
+    <article className="fcard">
       {/* Header */}
-      <div className="row" style={{ alignItems: "flex-start", gap: "10px" }}>
-        <div style={{
-          width: "40px", height: "40px", borderRadius: "50%", flexShrink: 0,
-          background: avatarGradient(post.author.name),
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#fff", fontWeight: 700, fontSize: "15px",
-        }}>
-          {post.author.name[0].toUpperCase()}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", display: "inline-flex", alignItems: "center" }}>
+      <div className="fcard__top">
+        <span
+          className="av av-md"
+          style={{ background: avatarBg }}
+        >
+          {initials}
+        </span>
+        <div className="fcard__who">
+          <div className="fcard__name">
             {post.author.name}
             {post.author.verification_level >= 1 && (
-              <span className="vbadge">✓ Verified</span>
+              <span className="vpill">✓ Verified</span>
             )}
           </div>
-          <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
-            {post.city} · {relativeTime(post.created_at)}
+          <div className="fcard__meta">
+            <span>📍 {post.city}</span>
+            <span>·</span>
+            <span>{relativeTime(post.created_at)}</span>
           </div>
         </div>
-        <span className={`badge ${meta.badge}`}>
-          {meta.emoji} {meta.label.toUpperCase()}
+        <span className={`cbadge cbadge--${post.category}`}>
+          {meta.emoji} {meta.label}
         </span>
-      </div>
-
-      {/* Category-tinted media area */}
-      <div className={`feed-card__media feed-card__media--${meta.media}`}>
-        {meta.emoji}
       </div>
 
       {/* Title */}
       <Link href={`/posts/${post.id}`}>
-        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text)", cursor: "pointer" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "var(--brand-green)")}
-            onMouseLeave={e => (e.currentTarget.style.color = "var(--text)")}>
-          {post.title}
-        </h3>
+        <h3 className="fcard__title">{post.title}</h3>
       </Link>
 
       {/* Description */}
-      <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.55 }}>
-        {truncate(post.description, 120)}
-      </p>
+      <p className="fcard__desc">{truncate(post.description, 140)}</p>
 
       {/* Actions */}
-      <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
+      <div className="fcard__actions">
         <Link href={`/posts/${post.id}`}>
-          <button type="button" style={{ fontSize: "13px", padding: "8px 18px" }}>
-            ♥ Offer Help
-          </button>
+          <button type="button" className="btn-sm">♥ Offer Help</button>
         </Link>
-        <button className="ghost" type="button" onClick={handleShare} style={{ fontSize: "12px" }}>
-          ↗ Share
-        </button>
-        {(post.urgency === "critical" || post.urgency === "high") && (
-          <span style={{
-            fontSize: "11px", fontWeight: 700, marginLeft: "auto", alignSelf: "center",
-            color: post.urgency === "critical" ? "var(--danger)" : "var(--warning)",
-          }}>
-            {post.urgency === "critical" ? "🔴 Critical" : "🟡 High urgency"}
+        <button className="ghost btn-sm" type="button" onClick={handleShare}>↗ Share</button>
+        {post.urgency === "critical" && (
+          <span className="urgency-pill" style={{ marginLeft: "auto" }}>
+            <span className="urgency-pill__dot" />
+            Critical
+          </span>
+        )}
+        {post.urgency === "high" && (
+          <span style={{ fontSize: "11px", fontWeight: 700, marginLeft: "auto", color: "var(--warning)" }}>
+            🟡 High urgency
           </span>
         )}
       </div>

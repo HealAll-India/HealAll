@@ -61,6 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="logo">
             <div className="logo-mark" aria-hidden="true" />
             <span className="logo-text">HealAll</span>
+            <span className="brand-dot" aria-hidden="true" />
           </Link>
 
           <div className="links">
@@ -86,12 +87,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {isAuthed && user ? (
               <>
                 <Link href="/posts/new">
-                  <button type="button" style={{ fontSize: "13px", padding: "8px 16px" }}>
+                  <button type="button" className="btn-sm" style={{ fontSize: "13px" }}>
                     + Post a Request
                   </button>
                 </Link>
-                <span className="vbadge">{user.name} · L{user.verification_level}</span>
-                <button className="danger" onClick={handleLogout} type="button" style={{ fontSize: "13px", padding: "8px 14px" }}>Logout</button>
+                <span className="vpill" style={{ marginLeft: 2 }}>✓ {user.name} · L{user.verification_level}</span>
+                <button className="danger btn-sm" onClick={handleLogout} type="button" style={{ fontSize: "13px" }}>Logout</button>
               </>
             ) : null}
           </div>
