@@ -7,16 +7,77 @@ on:
 
 permissions:
   pull-requests: write
+  contents: read
 
 jobs:
-  copilot-review:
-    if: ${{ !github.event.pull_request.draft }}
+  request-copilot:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - name: Request Copilot code review
-        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
-          gh pr edit "${{ github.event.pull_request.html_url }}" \
-            --add-reviewer "Copilot"
+          set +e
+
+          # Copilot's reviewer login. GitHub accepts the bot's login slug
+          # ("copilot-pull-request-reviewer") on the requested_reviewers endpoint
+          # when Copilot code review is enabled for the repo/org.
+          echo "Requesting Copilot review on $REPO #$PR"
+          response=$(gh api -X POST \
+            "repos/$REPO/pulls/$PR/requested_reviewers" \
+            -f "reviewers[]=copilot-pull-request-reviewer" \
+            2>&1)
+          status=$?
+
+          if [ $status -eq 0 ]; then
+            echo "✓ Copilot review requested via REST"
+            exit 0
+          fi
+
+          echo "REST request failed (status=$status):"
+          echo "$response"
+          echo ""
+          echo "Falling back to GraphQL using bot node ID lookup…"
+
+          # GraphQL fallback — look up the Copilot bot's global node ID and
+          # call requestReviews directly. This is more permissive than REST
+          # for bot reviewers in some org configurations.
+          PR_NODE_ID=$(gh api graphql -f query='
+            query($owner: String!, $name: String!, $number: Int!) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $number) { id }
+              }
+            }' -F owner="${REPO%/*}" -F name="${REPO#*/}" -F number="$PR" \
+            --jq '.data.repository.pullRequest.id')
+
+          if [ -z "$PR_NODE_ID" ]; then
+            echo "Could not resolve PR node ID — aborting (non-fatal)."
+            exit 0
+          fi
+
+          # Look up Copilot bot ID. The bot is exposed via the User type.
+          COPILOT_ID=$(gh api graphql -f query='
+            query { user(login: "copilot-pull-request-reviewer") { id } }
+          ' --jq '.data.user.id' 2>/dev/null)
+
+          if [ -z "$COPILOT_ID" ]; then
+            echo "Copilot bot not visible to this token — likely Copilot code review is not enabled on this repository."
+            echo "Enable it in Settings → Code & automation → Copilot → Code review → Automatic."
+            exit 0
+          fi
+
+          gh api graphql -f query='
+            mutation($pullRequestId: ID!, $userIds: [ID!]!) {
+              requestReviews(input: {
+                pullRequestId: $pullRequestId,
+                userIds: $userIds,
+                union: true
+              }) {
+                pullRequest { number }
+              }
+            }' -F pullRequestId="$PR_NODE_ID" -F userIds[]="$COPILOT_ID"
+
+          echo "✓ Copilot review requested via GraphQL"
