@@ -78,7 +78,7 @@ export function IndiaLocationPicker({
       return;
     }
     const stateName = states.find((s) => s.isoCode === nextStateCode)?.name ?? "";
-    onChange(nextCity ? `${nextCity}, ${stateName}` : stateName);
+    onChange(nextCity ? `${nextCity}, ${stateName}` : `, ${stateName}`);
   }
 
   return (
