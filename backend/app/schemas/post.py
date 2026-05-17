@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.models.post import PostCategory, PostUrgency
 
-
 PINCODE_PATTERN = r"^[1-9][0-9]{5}$"  # India 6-digit, no leading zero
 
 

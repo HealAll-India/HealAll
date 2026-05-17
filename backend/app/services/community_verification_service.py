@@ -30,7 +30,6 @@ from app.models.case import Case, CaseStatus
 from app.models.post import Post, PostStatus, PostVerificationVote, VoteDecision
 from app.models.user import User
 
-
 PENDING_STATUS = PostStatus.SUBMITTED.value
 
 

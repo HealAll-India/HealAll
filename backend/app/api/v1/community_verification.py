@@ -22,7 +22,6 @@ from app.schemas.community_verification import (
 from app.schemas.post import AuthorInfo
 from app.services import community_verification_service
 
-
 router = APIRouter(prefix="/community-verification", tags=["community-verification"])
 
 
