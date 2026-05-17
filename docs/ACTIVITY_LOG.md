@@ -4,6 +4,20 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 
 ---
 
+## 2026-05-17 — Design system v2 implementation (Claude Design handoff)
+**Agent**: claude-opus-4-7
+**Scope**: Implement the HealAll design system produced by Claude Design, covering CSS tokens, component patterns, feed card, nav, and a new heart-mark asset.
+**Changes**:
+- `frontend/app/globals.css`: Added category border color tokens (`--urgent-border`, etc.); spacing/type/line-height/weight CSS vars; motion vars (`--ease-out`, `--duration-fast`, `--duration-base`); `--shadow-focus-ring`; `--gradient-brand-soft`; upgraded badges to `inline-flex` with border per category; new `.alert` block component (success/error/info with icon slot); new `.modal` / `.modal-backdrop`; `.feed-card__media--*` per-category tinted gradients; `.bubble-msg` chat bubble classes; `.eyebrow` label class; `.btn-sm` / `.btn-lg` size modifiers; `.card--sidebar` variant; `.chip` hover-color transition; all transitions updated to use `--duration-fast` + `--ease-out`.
+- `frontend/components/feed/feed-card.tsx`: Category-tinted media area (different gradient bg per category); bordered badges for all 6 category types; `♥ Offer Help` button label; title hover color via inline handlers; unified `CATEGORY_META` map.
+- `frontend/components/layout/app-shell.tsx`: Nav logo now uses `heart-mark.png` div (green glow ring shadow) instead of `logo.jpeg`; authenticated nav gets "+ Post a Request" gradient CTA button.
+- `frontend/public/heart-mark.png`: Clean heart-mark raster asset from the design system (padded, safe at any corner radius).
+- `docs/design/HEALALL_DESIGN_BRIEF.md` (new): 20-section master design brief for sharing with Claude Design or external designers.
+**Tests**: `npm run lint` — clean (0 errors); `npx tsc --noEmit` — clean.
+**Follow-ups**: Alert blocks (`.alert.success` / `.alert.error`) still need to be wired into existing page components that use `p.error` / `p.success` text — those still work but are less prominent. Modal component is CSS-only; no React wrapper yet. Heart-mark SVG version needed when available.
+
+---
+
 ## 2026-05-04 — Messages UI overhaul
 **Agent**: claude-sonnet-4-6
 **Scope**: Replace placeholder messages pages with a real conversation list and chat-bubble thread UI.
