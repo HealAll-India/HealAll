@@ -3,13 +3,13 @@
 import Link from "next/link";
 import type { PostSummary } from "@/lib/types/api";
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  urgent:            "🆘",
-  emotional_support: "🤗",
-  mentorship:        "🎓",
-  skill_sharing:     "🔧",
-  navigation:        "🧭",
-  on_ground:         "🤝",
+const CATEGORY_META: Record<string, { emoji: string; label: string; badge: string; media: string }> = {
+  urgent:            { emoji: "🆘", label: "Urgent",     badge: "badge-urgent",     media: "urgent"      },
+  emotional_support: { emoji: "🤗", label: "Support",    badge: "badge-support",    media: "support"     },
+  mentorship:        { emoji: "🎓", label: "Mentorship", badge: "badge-mentorship", media: "mentorship"  },
+  skill_sharing:     { emoji: "🔧", label: "Skills",     badge: "badge-skills",     media: "skills"      },
+  navigation:        { emoji: "🧭", label: "Navigate",   badge: "badge-navigation", media: "navigation"  },
+  on_ground:         { emoji: "🤝", label: "On Ground",  badge: "badge-on_ground",  media: "on_ground"   },
 };
 
 const AVATAR_GRADIENTS = [
@@ -40,14 +40,15 @@ interface Props {
 }
 
 export function FeedCard({ post }: Props) {
-  const emoji = CATEGORY_EMOJI[post.category] ?? "📌";
+  const meta = CATEGORY_META[post.category] ?? { emoji: "📌", label: post.category, badge: "", media: "" };
 
   function handleShare() {
     void navigator.clipboard.writeText(window.location.origin + `/posts/${post.id}`);
   }
 
   return (
-    <article className="card stack" style={{ marginBottom: "16px" }}>
+    <article className="card stack" style={{ marginBottom: "16px", gap: "10px" }}>
+      {/* Header */}
       <div className="row" style={{ alignItems: "flex-start", gap: "10px" }}>
         <div style={{
           width: "40px", height: "40px", borderRadius: "50%", flexShrink: 0,
@@ -57,51 +58,56 @@ export function FeedCard({ post }: Props) {
         }}>
           {post.author.name[0].toUpperCase()}
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#111827" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", display: "inline-flex", alignItems: "center" }}>
             {post.author.name}
             {post.author.verification_level >= 1 && (
               <span className="vbadge">✓ Verified</span>
             )}
           </div>
-          <div style={{ fontSize: "11px", color: "#9ca3af" }}>
+          <div style={{ fontSize: "11px", color: "var(--text-subtle)", marginTop: "2px" }}>
             {post.city} · {relativeTime(post.created_at)}
           </div>
         </div>
-        <span className={post.category === "urgent" ? "badge badge-urgent" : "badge"}>
-          {emoji} {post.category.replace(/_/g, " ")}
+        <span className={`badge ${meta.badge}`}>
+          {meta.emoji} {meta.label.toUpperCase()}
         </span>
       </div>
 
-      <div style={{
-        width: "100%", aspectRatio: "16/9", background: "var(--bg-subtle)",
-        borderRadius: "12px", display: "flex", alignItems: "center",
-        justifyContent: "center", fontSize: "48px",
-      }}>
-        {emoji}
+      {/* Category-tinted media area */}
+      <div className={`feed-card__media feed-card__media--${meta.media}`}>
+        {meta.emoji}
       </div>
 
+      {/* Title */}
       <Link href={`/posts/${post.id}`}>
-        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827", cursor: "pointer" }}>
+        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "var(--text)", cursor: "pointer" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--brand-green)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--text)")}>
           {post.title}
         </h3>
       </Link>
-      <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.5 }}>
+
+      {/* Description */}
+      <p style={{ margin: 0, fontSize: "13px", color: "#374151", lineHeight: 1.55 }}>
         {truncate(post.description, 120)}
       </p>
 
-      <div className="row" style={{ gap: "8px" }}>
+      {/* Actions */}
+      <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
         <Link href={`/posts/${post.id}`}>
-          <button className="btn-primary" type="button" style={{ fontSize: "13px", padding: "8px 18px" }}>
-            Offer Help
+          <button type="button" style={{ fontSize: "13px", padding: "8px 18px" }}>
+            ♥ Offer Help
           </button>
         </Link>
         <button className="ghost" type="button" onClick={handleShare} style={{ fontSize: "12px" }}>
           ↗ Share
         </button>
         {(post.urgency === "critical" || post.urgency === "high") && (
-          <span style={{ fontSize: "11px", fontWeight: 700, marginLeft: "auto", alignSelf: "center",
-            color: post.urgency === "critical" ? "#e11d48" : "#d97706" }}>
+          <span style={{
+            fontSize: "11px", fontWeight: 700, marginLeft: "auto", alignSelf: "center",
+            color: post.urgency === "critical" ? "var(--danger)" : "var(--warning)",
+          }}>
             {post.urgency === "critical" ? "🔴 Critical" : "🟡 High urgency"}
           </span>
         )}
