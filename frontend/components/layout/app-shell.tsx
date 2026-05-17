@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -45,6 +46,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     ...(isVerifier ? VERIFIER_LINKS : []),
     ...(isAdmin    ? ADMIN_LINKS    : []),
   ];
+
+  // Auto-recover from expired/invalid tokens: any 401 from the API client
+  // dispatches `auth:expired` — clear session and bounce to /login.
+  useEffect(() => {
+    function onExpired() {
+      if (!useAuthStore.getState().accessToken) return;
+      clearSession();
+      router.replace("/login?reason=expired");
+    }
+    window.addEventListener("auth:expired", onExpired);
+    return () => window.removeEventListener("auth:expired", onExpired);
+  }, [clearSession, router]);
 
   async function handleLogout() {
     if (accessToken) {

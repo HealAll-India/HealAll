@@ -68,6 +68,10 @@ async function request<T>(method: string, path: string, options: RequestOptions 
     : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("auth:expired"));
+    }
+
     if (typeof payload === "object" && payload !== null) {
       const typed = payload as ApiErrorEnvelope;
       const message = typed.error?.message ?? `HTTP ${response.status}`;

@@ -12,8 +12,15 @@ import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
 export default function LoginPage() {
   const router = useRouter();
   const { setSession } = useAuthStore();
+  const [expired, setExpired] = useState(false);
 
   useAuthRedirect();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setExpired(new URLSearchParams(window.location.search).get("reason") === "expired");
+    }
+  }, []);
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const [googleBtnWidth, setGoogleBtnWidth] = useState(340);
@@ -95,6 +102,12 @@ export default function LoginPage() {
         <p className="muted" style={{ textAlign: "center", fontSize: "13px", marginBottom: "24px" }}>
           Sign in to continue
         </p>
+
+        {expired ? (
+          <p className="error" style={{ textAlign: "center", fontSize: "13px", marginBottom: "16px" }}>
+            Your session expired. Please sign in again.
+          </p>
+        ) : null}
 
         {/* ── Google sign-in — primary ── */}
         <div ref={googleBtnRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", marginBottom: "20px", width: "100%", overflow: "hidden" }}>
