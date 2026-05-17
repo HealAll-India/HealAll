@@ -183,7 +183,7 @@ export default function HomePage() {
               <span className="pdf-viewer__page-indicator">Embedded PDF · scroll to read</span>
               <span className="pdf-viewer__controls">
                 <a className="pdf-viewer__btn" href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view" target="_blank" rel="noopener noreferrer" aria-label="Open in new tab">↗</a>
-                <a className="pdf-viewer__btn" href="https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view" target="_blank" rel="noopener noreferrer" aria-label="Download PDF">↓</a>
+                <a className="pdf-viewer__btn" href="https://drive.google.com/uc?export=download&id=16umjQCumoecqR0Y2AoNi8zY-IUKHKvws" target="_blank" rel="noopener noreferrer" aria-label="Download PDF">↓</a>
               </span>
             </div>
             <iframe
