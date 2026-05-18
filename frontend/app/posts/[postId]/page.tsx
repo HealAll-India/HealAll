@@ -21,7 +21,7 @@ export default function PostDetailPage() {
   const token = useAuthStore((state) => state.accessToken);
 
   const [post, setPost] = useState<PostResponse | null>(null);
-  const [comments, setComments] = useState<CommentResponse[]>([]);
+  const [comments, setComments] = useState<CommentResponse[] | null>([]);
   const [commentBody, setCommentBody] = useState("");
   const [reportReason, setReportReason] = useState<ReportReason>("other");
   const [reportDescription, setReportDescription] = useState("");
@@ -68,7 +68,9 @@ export default function PostDetailPage() {
       } else if (commentsExpectedToWork) {
         const err = commentsSettled.reason;
         setError(err instanceof ApiError ? err.message : "Failed to load comments");
-        setComments([]);
+        // null distinguishes "load failed" from "load succeeded with zero
+        // comments" so the render layer doesn't show a fake empty thread.
+        setComments(null);
       } else {
         setComments([]);
       }
@@ -93,7 +95,7 @@ export default function PostDetailPage() {
     setError(null);
     try {
       const created = await createComment(token, postId, commentBody.trim());
-      setComments((prev) => [...prev, created]);
+      setComments((prev) => [...(prev ?? []), created]);
       setCommentBody("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add comment");
@@ -223,13 +225,17 @@ export default function PostDetailPage() {
                     <button type="submit">Post</button>
                   </form>
                   <div className="stack">
-                    {comments.map(comment => (
+                    {(comments ?? []).map(comment => (
                       <article className="card" key={comment.id} style={{ padding: "12px 14px" }}>
                         <p style={{ margin: "0 0 4px", fontSize: "13px" }}>{comment.body}</p>
                         <p className="muted" style={{ fontSize: "11px" }}>{comment.author.name} · L{comment.author.verification_level}</p>
                       </article>
                     ))}
-                    {!loading && comments.length === 0 ? <p className="muted">No comments yet.</p> : null}
+                    {comments === null ? (
+                      <p className="error">Failed to load comments. Try refreshing.</p>
+                    ) : !loading && comments.length === 0 ? (
+                      <p className="muted">No comments yet.</p>
+                    ) : null}
                   </div>
                 </section>
               )}

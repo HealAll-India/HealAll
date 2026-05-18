@@ -61,31 +61,28 @@ export default function CommunityVerifyPage() {
     setLoading(true);
     setError(null);
     try {
-      // Also pull the user's own pending posts so we can explain the
-      // "nothing to review" state when it's caused by the
-      // author_id != voter_id queue filter.
-      const [queueSettled, myPostsSettled] = await Promise.allSettled([
-        getCommunityQueue(token),
-        getMyPosts(token),
-      ]);
-      if (requestId !== queueRequestIdRef.current) return;
+      // Fire the own-pending lookup in parallel but DON'T block queue
+      // rendering on it. If getMyPosts stalls or errors, the queue still
+      // appears immediately; ownPending updates whenever (if) it lands.
+      const myPostsPromise = getMyPosts(token)
+        .then((res) => res.items)
+        .catch(() => null);
 
-      if (myPostsSettled.status === "fulfilled") {
+      const data = await getCommunityQueue(token);
+      if (requestId !== queueRequestIdRef.current) return;
+      setItems(data.items);
+      setTotal(data.total);
+      setThreshold(data.threshold);
+
+      const myPostsItems = await myPostsPromise;
+      if (requestId !== queueRequestIdRef.current) return;
+      if (myPostsItems) {
         const pendingStatuses = new Set(["submitted", "needs_info"]);
         setOwnPending(
-          myPostsSettled.value.items.filter((p) => pendingStatuses.has(p.status)).length,
+          myPostsItems.filter((p) => pendingStatuses.has(p.status)).length,
         );
       } else {
         setOwnPending(0);
-      }
-
-      if (queueSettled.status === "fulfilled") {
-        const data = queueSettled.value;
-        setItems(data.items);
-        setTotal(data.total);
-        setThreshold(data.threshold);
-      } else {
-        throw queueSettled.reason;
       }
     } catch (err) {
       if (requestId !== queueRequestIdRef.current) return;
