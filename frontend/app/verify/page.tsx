@@ -60,6 +60,9 @@ export default function CommunityVerifyPage() {
     }
     setLoading(true);
     setError(null);
+    // Clear stale ownPending up-front so a fast empty queue doesn't show
+    // the previous count while getMyPosts is still in flight.
+    setOwnPending(0);
     try {
       // Fire the own-pending lookup in parallel but DON'T block queue
       // rendering on it. If getMyPosts stalls or errors, the queue still
