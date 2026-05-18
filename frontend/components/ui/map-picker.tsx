@@ -117,11 +117,10 @@ export function MapPicker({
           {enableLocate && (
             <button
               type="button"
-              className="ghost btn-sm"
+              className="ghost btn-sm map-picker-locate-btn"
               onClick={handleLocate}
               disabled={locating}
               aria-label="Show my current location and recenter map"
-              style={{ marginLeft: "auto" }}
             >
               {locating ? "Locating…" : userLocation ? "🎯 Recenter to me" : "🎯 Use my location"}
             </button>
@@ -129,7 +128,7 @@ export function MapPicker({
         </div>
       )}
       {locateError && !readOnly && (
-        <p className="error" style={{ fontSize: "12px", margin: 0 }}>{locateError}</p>
+        <p className="error map-picker-error">{locateError}</p>
       )}
     </div>
   );

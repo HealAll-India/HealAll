@@ -154,7 +154,7 @@ export default function NewPostPage() {
                       <li>Never include door numbers, gate codes, or floor details in the address field.</li>
                       <li>If unsure, leave the pin blank — city + pincode is enough for most help requests.</li>
                     </ul>
-                    <p className="muted" style={{ margin: "6px 0 0", fontSize: "11px" }}>
+                    <p className="muted location-safety__note">
                       Your live device location is shown only to you and is never sent to our servers.
                     </p>
                   </div>

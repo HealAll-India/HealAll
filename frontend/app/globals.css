@@ -1453,6 +1453,11 @@ p.success           { color: var(--ok); margin: 0; }
 .location-safety ul { margin: 4px 0 0; padding-left: 18px; }
 .location-safety li { margin: 2px 0; }
 .location-safety em { font-style: italic; }
+.location-safety__note { margin: 6px 0 0; font-size: 11px; }
+
+/* Map picker locate button + error */
+.map-picker-locate-btn { margin-left: auto; }
+.map-picker-error { font-size: 12px; margin: 0; }
 
 /* Component-scoped stack variants */
 .stack--map { gap: 8px; }
