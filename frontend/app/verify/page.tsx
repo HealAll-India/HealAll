@@ -12,6 +12,7 @@ import {
   castCommunityVote,
   getCommunityQueue,
 } from "@/lib/api/community-verification";
+import { getMyPosts } from "@/lib/api/posts";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
@@ -29,6 +30,7 @@ export default function CommunityVerifyPage() {
   const [items, setItems] = useState<CommunityVoteItem[]>([]);
   const [threshold, setThreshold] = useState<number>(3);
   const [total, setTotal] = useState<number>(0);
+  const [ownPending, setOwnPending] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyPost, setBusyPost] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export default function CommunityVerifyPage() {
     if (!token || voterLevel < 1) {
       setItems([]);
       setTotal(0);
+      setOwnPending(0);
       setError(null);
       setLoading(false);
       return;
@@ -58,11 +61,32 @@ export default function CommunityVerifyPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCommunityQueue(token);
+      // Also pull the user's own pending posts so we can explain the
+      // "nothing to review" state when it's caused by the
+      // author_id != voter_id queue filter.
+      const [queueSettled, myPostsSettled] = await Promise.allSettled([
+        getCommunityQueue(token),
+        getMyPosts(token),
+      ]);
       if (requestId !== queueRequestIdRef.current) return;
-      setItems(data.items);
-      setTotal(data.total);
-      setThreshold(data.threshold);
+
+      if (myPostsSettled.status === "fulfilled") {
+        const pendingStatuses = new Set(["submitted", "needs_info"]);
+        setOwnPending(
+          myPostsSettled.value.items.filter((p) => pendingStatuses.has(p.status)).length,
+        );
+      } else {
+        setOwnPending(0);
+      }
+
+      if (queueSettled.status === "fulfilled") {
+        const data = queueSettled.value;
+        setItems(data.items);
+        setTotal(data.total);
+        setThreshold(data.threshold);
+      } else {
+        throw queueSettled.reason;
+      }
     } catch (err) {
       if (requestId !== queueRequestIdRef.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to load community queue");
@@ -153,11 +177,19 @@ export default function CommunityVerifyPage() {
           <p className="muted post-loc-meta">
             <strong>Nothing to review right now.</strong>
           </p>
-          <p className="muted post-loc-meta">
-            Either there are no submitted posts pending, or you&apos;ve already voted on
-            (or authored) every available post. New requests appear here as members
-            submit them — check back soon, or hit Refresh.
-          </p>
+          {ownPending > 0 ? (
+            <p className="muted post-loc-meta">
+              You have <strong>{ownPending} of your own post{ownPending === 1 ? "" : "s"}</strong>{" "}
+              awaiting peer review — you can&apos;t vote on your own submissions, so they
+              don&apos;t appear here. Other verified members will review them shortly.
+            </p>
+          ) : (
+            <p className="muted post-loc-meta">
+              Either there are no submitted posts pending, or you&apos;ve already voted on
+              (or authored) every available post. New requests appear here as members
+              submit them — check back soon, or hit Refresh.
+            </p>
+          )}
           <div className="row">
             <Link href="/feed" className="btn-ghost btn-sm">← Back to feed</Link>
             <Link href="/posts/new" className="btn-ghost btn-sm">+ Share a request</Link>
