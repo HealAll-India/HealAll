@@ -1,0 +1,290 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  HealAll media storage — two S3 buckets and IAM identities.
+
+  Buckets:
+    * healall-media-<env>            — public READ, signed PUT.  Stores
+                                       profile photos and post attachments.
+    * healall-identity-ephemeral-<env>
+                                     — private, 30-day lifecycle expiry.
+                                       Stores identity-verification documents
+                                       (Aadhaar etc.) until verification runs.
+
+  Identities:
+    * healall-app-user               — long-lived access key the FastAPI
+                                       backend uses to mint presigned PUT URLs
+                                       and read identity uploads.
+    * healall-deploy-role            — IAM role assumed by GitHub Actions via
+                                       OIDC.  Used to update this stack and to
+                                       write CFN-managed S3 lifecycle / CORS.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+    Description: Logical environment slug. Suffixed onto bucket names so dev / prod can coexist.
+
+  AllowedCorsOrigin:
+    Type: String
+    Default: https://healallindia.com
+    Description: Origin allowed to PUT to the media bucket (the deployed frontend).
+
+  GitHubRepository:
+    Type: String
+    Default: HealAll-India/HealAll
+    Description: org/repo allowed to assume the deploy role via OIDC.
+
+  GitHubRefPattern:
+    Type: String
+    Default: repo:HealAll-India/HealAll:ref:refs/heads/main
+    Description: >
+      Full OIDC sub-claim required for the deploy role.  Lock to main so
+      feature branches cannot deploy.
+
+  IdentityRetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
+    Description: Days after which identity documents auto-delete.
+
+Resources:
+  # ---------------------------------------------------------------- buckets --
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "healall-media-${Environment}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - !Ref AllowedCorsOrigin
+              - http://localhost:3000
+            AllowedMethods: [GET, PUT, HEAD]
+            AllowedHeaders: ["*"]
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGet
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${MediaBucket.Arn}/*"
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt MediaBucket.Arn
+              - !Sub "${MediaBucket.Arn}/*"
+            Condition:
+              Bool: { "aws:SecureTransport": "false" }
+
+  IdentityBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "healall-identity-ephemeral-${Environment}"
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireIdentityUploads
+            Status: Enabled
+            ExpirationInDays: !Ref IdentityRetentionDays
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  IdentityBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref IdentityBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt IdentityBucket.Arn
+              - !Sub "${IdentityBucket.Arn}/*"
+            Condition:
+              Bool: { "aws:SecureTransport": "false" }
+
+  # ----------------------------------------------------------- app IAM user --
+  AppUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub "healall-app-${Environment}"
+      Policies:
+        - PolicyName: HealAllS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub "${MediaBucket.Arn}/*"
+                  - !Sub "${IdentityBucket.Arn}/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource:
+                  - !GetAtt MediaBucket.Arn
+                  - !GetAtt IdentityBucket.Arn
+
+  # ------------------------------------------------------ GitHub OIDC role --
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        # GitHub publishes these; rotated rarely.  AWS now ignores thumbprint
+        # for token.actions.githubusercontent.com but the field is still
+        # required by the API.
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "healall-deploy-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !GetAtt GitHubOidcProvider.Arn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+              StringLike:
+                "token.actions.githubusercontent.com:sub": !Ref GitHubRefPattern
+      Policies:
+        - PolicyName: HealAllCfnDeploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # CFN itself
+              - Effect: Allow
+                Action:
+                  - cloudformation:Describe*
+                  - cloudformation:Get*
+                  - cloudformation:List*
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DeleteChangeSet
+                Resource: "*"
+              # Resources the template manages
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource:
+                  - !GetAtt MediaBucket.Arn
+                  - !Sub "${MediaBucket.Arn}/*"
+                  - !GetAtt IdentityBucket.Arn
+                  - !Sub "${IdentityBucket.Arn}/*"
+                  - "arn:aws:s3:::cf-templates-*"
+                  - "arn:aws:s3:::cf-templates-*/*"
+              - Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:GetUser
+                  - iam:GetOpenIDConnectProvider
+                  - iam:GetPolicy
+                  - iam:GetRolePolicy
+                  - iam:GetUserPolicy
+                  - iam:ListRolePolicies
+                  - iam:ListUserPolicies
+                  - iam:PassRole
+                  - iam:PutRolePolicy
+                  - iam:PutUserPolicy
+                  - iam:DeleteRolePolicy
+                  - iam:DeleteUserPolicy
+                  - iam:UpdateAssumeRolePolicy
+                Resource:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/healall-deploy-${Environment}"
+                  - !GetAtt AppUser.Arn
+                  - !GetAtt GitHubOidcProvider.Arn
+
+Outputs:
+  MediaBucketName:
+    Description: Set as S3_BUCKET_MEDIA in the backend.
+    Value: !Ref MediaBucket
+
+  IdentityBucketName:
+    Description: Set as S3_BUCKET_IDENTITY in the backend.
+    Value: !Ref IdentityBucket
+
+  S3EndpointUrl:
+    Description: Set as S3_ENDPOINT_URL in the backend (region-specific).
+    Value: !Sub "https://s3.${AWS::Region}.amazonaws.com"
+
+  Region:
+    Description: Set as AWS_REGION in the backend.
+    Value: !Ref AWS::Region
+
+  AppUserName:
+    Description: >
+      IAM user the backend authenticates as.  Generate an access key for this
+      user in the IAM console and set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+      in Railway.
+    Value: !Ref AppUser
+
+  AppUserArn:
+    Value: !GetAtt AppUser.Arn
+
+  DeployRoleArn:
+    Description: Set as AWS_DEPLOY_ROLE_ARN in GitHub repo Variables.
+    Value: !GetAtt DeployRole.Arn

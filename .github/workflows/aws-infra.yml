@@ -1,0 +1,51 @@
+name: aws-infra
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/aws/cloudformation/**"
+      - ".github/workflows/aws-infra.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # Required for the AWS OIDC token exchange.
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ENVIRONMENT: prod
+  STACK_NAME: healall-media-prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate template
+        run: |
+          aws cloudformation validate-template \
+            --template-body file://infra/aws/cloudformation/healall-media.yml
+
+      - name: Deploy stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name "$STACK_NAME" \
+            --template-file infra/aws/cloudformation/healall-media.yml \
+            --parameter-overrides "Environment=$ENVIRONMENT" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Show stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs[*].[OutputKey,OutputValue]' \
+            --output table
