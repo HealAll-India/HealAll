@@ -184,3 +184,12 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 - `frontend/app/globals.css`: Added `.location-safety` styles (amber border + light-amber background, list styling).
 **Tests**: Local typecheck blocked by missing node_modules in worktree; production builds via Vercel CI. Changes are isolated to UI components — no API or schema changes.
 **Follow-ups**: Consider rate-limiting / debouncing the locate button if users tap repeatedly. Optional: detect iOS user-agent and emit `maps://` deep link for Apple Maps preference.
+
+## 2026-05-18 — Community verification: empty-state clarity
+**Agent**: claude-opus-4-7
+**Scope**: User reported `/verify` showed "no data or posts to verify." Backend correctly returns an empty list when the viewer authored or already voted on every SUBMITTED post — the page just wasn't communicating that. This is a UX fix only; no backend change.
+**Changes**:
+- `frontend/app/verify/page.tsx`: Track `total` from `CommunityQueueResponse`. New "↻ Refresh" button in the header that re-polls `loadQueue` without navigating. Empty-state copy rewritten to explain the two zero-item causes (nothing pending vs viewer handled all) with shortcut links to `/feed` and `/posts/new`. Pending count shown when `total > 0`. L1-gate copy now tells the user the actual unlock path (email OTP + ID verification). `setTotal` decrements after a successful vote so the header count stays in sync.
+- `frontend/app/globals.css`: `.verify-header-row` for the title + Refresh button layout.
+**Tests**: `tsc --noEmit` clean, `npm run lint` clean.
+**Follow-ups**: If we want to truly distinguish "queue is globally empty" vs "you've handled all", the backend would need an extra count of total SUBMITTED posts ignoring per-viewer filters. Not done here — the current copy covers both cases honestly.
