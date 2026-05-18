@@ -1477,8 +1477,9 @@ p.success           { color: var(--ok); margin: 0; }
 /* Community verification — own pending section */
 .verify-own-title { font-size: 16px; margin: 0; }
 .verify-own-item { border-left: 3px solid #d1d5db; opacity: 0.92; }
-.verify-own-link { color: inherit; text-decoration: none; }
-.verify-own-link:hover { text-decoration: underline; }
+.verify-own-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.verify-own-link:hover,
+.verify-own-link:focus-visible { text-decoration-thickness: 2px; }
 
 /* Component-scoped stack variants */
 .stack--map { gap: 8px; }
