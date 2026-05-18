@@ -15,11 +15,24 @@ interface Props {
   onChange: (lat: number | null, lng: number | null) => void;
   height?: number;
   readOnly?: boolean;
+  enableLocate?: boolean;
 }
 
-export function MapPicker({ latitude, longitude, onChange, height = 280, readOnly = false }: Props) {
+export function MapPicker({
+  latitude,
+  longitude,
+  onChange,
+  height = 280,
+  readOnly = false,
+  enableLocate = false,
+}: Props) {
   // Leaflet's CSS only loads on the client side.
   const [cssReady, setCssReady] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+  const [recenterToken, setRecenterToken] = useState(0);
+
   useEffect(() => {
     let active = true;
     void import("leaflet/dist/leaflet.css")
@@ -37,6 +50,35 @@ export function MapPicker({ latitude, longitude, onChange, height = 280, readOnl
     };
   }, []);
 
+  function handleLocate() {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setLocateError("Geolocation not supported by your browser.");
+      return;
+    }
+    setLocating(true);
+    setLocateError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setRecenterToken((t) => t + 1);
+        setLocating(false);
+      },
+      (err) => {
+        const msg =
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission denied. Enable it in your browser settings."
+            : err.code === err.POSITION_UNAVAILABLE
+            ? "Could not determine your location."
+            : err.code === err.TIMEOUT
+            ? "Location request timed out."
+            : "Could not get your location.";
+        setLocateError(msg);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
   // Only `height` is dynamic — everything else is in .map-picker-frame.
   const frameStyle = { height: `${height}px` };
 
@@ -49,6 +91,8 @@ export function MapPicker({ latitude, longitude, onChange, height = 280, readOnl
             longitude={longitude}
             onPick={(lat, lng) => onChange(lat, lng)}
             readOnly={readOnly}
+            userLocation={userLocation}
+            recenterToken={recenterToken}
           />
         ) : (
           <div className="map-picker-loading">Loading map styles…</div>
@@ -70,7 +114,21 @@ export function MapPicker({ latitude, longitude, onChange, height = 280, readOnl
           ) : (
             <span>Tap the map to drop a pin (optional).</span>
           )}
+          {enableLocate && (
+            <button
+              type="button"
+              className="ghost btn-sm map-picker-locate-btn"
+              onClick={handleLocate}
+              disabled={locating}
+              aria-label="Show my current location and recenter map"
+            >
+              {locating ? "Locating…" : userLocation ? "🎯 Recenter to me" : "🎯 Use my location"}
+            </button>
+          )}
         </div>
+      )}
+      {locateError && !readOnly && (
+        <p className="error map-picker-error">{locateError}</p>
       )}
     </div>
   );

@@ -172,3 +172,15 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 **Follow-ups**: none.
 
 ---
+
+## 2026-05-18 — Post location: user-locate + safety + directions
+**Agent**: claude-opus-4-7
+**Scope**: Show user's current location on the posts/new map pin-picker with a recenter button; add a location-privacy safety notice; replace the read-only map on post detail with a "Get Directions" button.
+**Changes**:
+- `frontend/components/ui/map-picker-inner.tsx`: Added optional `userLocation` and `recenterToken` props. Renders a blue `CircleMarker` for the user's live position (industry-standard "you are here" dot). `RecentreToUser` flies the map to the user's location when `recenterToken` changes. Initial center falls back to userLocation when no pin is set.
+- `frontend/components/ui/map-picker.tsx`: New `enableLocate` prop adds a "Use my location / Recenter to me" button. Uses `navigator.geolocation.getCurrentPosition` with `enableHighAccuracy`, 10s timeout, 60s maxAge. Maps PERMISSION_DENIED / POSITION_UNAVAILABLE / TIMEOUT to user-readable errors. Stores user location only in component state — never sent to backend.
+- `frontend/app/posts/new/page.tsx`: Passes `enableLocate` to the map. Added amber `.location-safety` banner above the map with bullet-style guidance (drop pin at a landmark not a home/school/workplace; assume share is irreversible; no door numbers in address; pin is optional). Explicit note that the live device location is shown only to the user and not transmitted.
+- `frontend/app/posts/[postId]/page.tsx`: Removed `MapPicker` import. When a post has lat/lng, render a "🧭 Get Directions" anchor that deep-links to `google.com/maps/dir/?api=1&destination={lat},{lng}` (universal — also works on iOS Google Maps app and falls back to Apple Maps via OS). Opens in new tab, `rel="noopener noreferrer"`.
+- `frontend/app/globals.css`: Added `.location-safety` styles (amber border + light-amber background, list styling).
+**Tests**: Local typecheck blocked by missing node_modules in worktree; production builds via Vercel CI. Changes are isolated to UI components — no API or schema changes.
+**Follow-ups**: Consider rate-limiting / debouncing the locate button if users tap repeatedly. Optional: detect iOS user-agent and emit `maps://` deep link for Apple Maps preference.
