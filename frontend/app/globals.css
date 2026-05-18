@@ -1475,8 +1475,8 @@ p.success           { color: var(--ok); margin: 0; }
 .verify-header-row { align-items: center; justify-content: space-between; gap: 8px; }
 
 /* Community verification — own pending section */
-.verify-own-title { font-size: 16px; margin: 0; }
-.verify-own-item { border-left: 3px solid #d1d5db; opacity: 0.92; }
+.verify-own-title { font-size: var(--fs-h3); margin: 0; }
+.verify-own-item { border-left: 3px solid var(--border-strong); opacity: 0.92; }
 .verify-own-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .verify-own-link:hover,
 .verify-own-link:focus-visible { text-decoration-thickness: 2px; }
