@@ -38,11 +38,30 @@ export default function PostDetailPage() {
     setError(null);
 
     try {
-      const [postResult, commentList] = await Promise.all([getPost(token, postId), listComments(token, postId)]);
-      setPost(postResult);
-      setComments(commentList);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load post");
+      // Use allSettled so a failing comments fetch can't blank the page.
+      // Comments endpoint 404s on non-ACTIVE posts (draft / submitted /
+      // needs_info / rejected) — but the author is still entitled to view
+      // their own post in those states, so we must surface the post even
+      // when the comments call rejects.
+      const [postSettled, commentsSettled] = await Promise.allSettled([
+        getPost(token, postId),
+        listComments(token, postId),
+      ]);
+
+      if (postSettled.status === "fulfilled") {
+        setPost(postSettled.value);
+      } else {
+        const err = postSettled.reason;
+        setError(err instanceof ApiError ? err.message : "Failed to load post");
+      }
+
+      if (commentsSettled.status === "fulfilled") {
+        setComments(commentsSettled.value);
+      } else {
+        // Comments may be unavailable for a post that isn't yet ACTIVE.
+        // That's expected — don't surface it as a page-level error.
+        setComments([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -120,6 +139,26 @@ export default function PostDetailPage() {
           {loading ? <p className="muted">Loading…</p> : null}
           {post ? (
             <>
+              {post.status !== "active" && post.status !== "resolved" && (
+                <section className="card stack post-pending-banner" role="status">
+                  <strong>
+                    {post.status === "submitted" && "🕒 Pending community verification"}
+                    {post.status === "needs_info" && "ℹ️ Needs more information"}
+                    {post.status === "draft" && "📝 Draft — not yet submitted"}
+                    {post.status === "rejected" && "🚫 Rejected by moderators"}
+                  </strong>
+                  <p className="muted post-pending-banner__body">
+                    {post.status === "submitted" &&
+                      "Your post is visible only to you and verifiers right now. Once enough verified members approve it, it will appear in the public feed and comments will open."}
+                    {post.status === "needs_info" &&
+                      "A verifier asked for more details. Edit your post to provide them, then resubmit."}
+                    {post.status === "draft" &&
+                      "This post is saved as a draft. Submit it from the edit screen to begin verification."}
+                    {post.status === "rejected" &&
+                      "This post was rejected. If you believe this was a mistake, contact support."}
+                  </p>
+                </section>
+              )}
               <section className="card stack">
                 <div className="row" style={{ alignItems: "flex-start", gap: "10px" }}>
                   <div style={{ width: "44px", height: "44px", borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#16a34a,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "16px" }}>
@@ -138,7 +177,9 @@ export default function PostDetailPage() {
                 <h2 style={{ margin: "4px 0 0", fontSize: "20px", fontWeight: 800 }}>{post.title}</h2>
                 <p style={{ margin: 0, lineHeight: 1.6 }}>{post.description}</p>
                 <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
-                  <button className="secondary" onClick={handleRequestDmConsent} type="button">💬 Send Message</button>
+                  {(post.status === "active" || post.status === "resolved") && (
+                    <button className="secondary" onClick={handleRequestDmConsent} type="button">💬 Send Message</button>
+                  )}
                   <span className="badge" style={{ background: "#f9fafb", color: "#6b7280" }}>{post.status}</span>
                 </div>
               </section>
@@ -164,22 +205,24 @@ export default function PostDetailPage() {
                 </section>
               )}
 
-              <section className="card stack">
-                <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Comments</h3>
-                <form className="row" onSubmit={handleCreateComment}>
-                  <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" style={{ flex: 1 }} />
-                  <button type="submit">Post</button>
-                </form>
-                <div className="stack">
-                  {comments.map(comment => (
-                    <article className="card" key={comment.id} style={{ padding: "12px 14px" }}>
-                      <p style={{ margin: "0 0 4px", fontSize: "13px" }}>{comment.body}</p>
-                      <p className="muted" style={{ fontSize: "11px" }}>{comment.author.name} · L{comment.author.verification_level}</p>
-                    </article>
-                  ))}
-                  {!loading && comments.length === 0 ? <p className="muted">No comments yet.</p> : null}
-                </div>
-              </section>
+              {(post.status === "active" || post.status === "resolved") && (
+                <section className="card stack">
+                  <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Comments</h3>
+                  <form className="row" onSubmit={handleCreateComment}>
+                    <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" style={{ flex: 1 }} />
+                    <button type="submit">Post</button>
+                  </form>
+                  <div className="stack">
+                    {comments.map(comment => (
+                      <article className="card" key={comment.id} style={{ padding: "12px 14px" }}>
+                        <p style={{ margin: "0 0 4px", fontSize: "13px" }}>{comment.body}</p>
+                        <p className="muted" style={{ fontSize: "11px" }}>{comment.author.name} · L{comment.author.verification_level}</p>
+                      </article>
+                    ))}
+                    {!loading && comments.length === 0 ? <p className="muted">No comments yet.</p> : null}
+                  </div>
+                </section>
+              )}
 
               <section className="card stack">
                 <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6b7280" }}>Report this post</h3>

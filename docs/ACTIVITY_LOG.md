@@ -193,3 +193,12 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 - `frontend/app/globals.css`: `.verify-header-row` for the title + Refresh button layout.
 **Tests**: `tsc --noEmit` clean, `npm run lint` clean.
 **Follow-ups**: If we want to truly distinguish "queue is globally empty" vs "you've handled all", the backend would need an extra count of total SUBMITTED posts ignoring per-viewer filters. Not done here — the current copy covers both cases honestly.
+
+## 2026-05-19 — Post detail showed "no post found" after creation
+**Agent**: claude-opus-4-7
+**Scope**: Fresh post creation redirected to /posts/[id] and the page rendered "no post found." Root cause: `loadData` used `Promise.all` over `getPost` + `listComments`. The comments service rejects non-ACTIVE posts (draft / submitted / needs_info / rejected) with 404, so the joined promise rejected and `setPost` never ran — even though the author is entitled to see their own SUBMITTED post via `getPost`.
+**Changes**:
+- `frontend/app/posts/[postId]/page.tsx`: Replaced `Promise.all` with `Promise.allSettled` so a failed comments fetch can't blank out the page. Comments quietly fall back to `[]` when the endpoint rejects; the post-level error message only fires when `getPost` itself fails. Added a status-aware banner above the post card explaining `submitted` / `needs_info` / `draft` / `rejected` states to the author. Hid the comment form and Send Message button on non-`active`/`resolved` posts (those routes 404 anyway).
+- `frontend/app/globals.css`: `.post-pending-banner` (amber, left border accent).
+**Tests**: `tsc --noEmit` clean, `npm run lint` clean.
+**Follow-ups**: Backend could also expose comments on a SUBMITTED post to its own author for symmetry, but the frontend change alone resolves the user-visible bug. Optional: surface a "Edit" link from the banner on `draft` / `needs_info` posts.

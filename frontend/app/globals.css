@@ -1376,6 +1376,11 @@ p.success           { color: var(--ok); margin: 0; }
   font-weight: 600;
 }
 
+/* Post detail — pending/needs-info/draft/rejected banner */
+.post-pending-banner { border-left: 4px solid #d97706; background: #fffbeb; }
+.post-pending-banner strong { font-size: 14px; color: #92400e; }
+.post-pending-banner__body { font-size: 12.5px; line-height: 1.5; margin: 0; }
+
 /* posts/new — location section */
 .section-label {
   font-size: 13px;
