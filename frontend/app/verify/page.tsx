@@ -13,6 +13,7 @@ import {
   getCommunityQueue,
 } from "@/lib/api/community-verification";
 import { getMyPosts } from "@/lib/api/posts";
+import type { PostSummary } from "@/lib/types/api";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
@@ -31,6 +32,7 @@ export default function CommunityVerifyPage() {
   const [threshold, setThreshold] = useState<number>(3);
   const [total, setTotal] = useState<number>(0);
   const [ownPending, setOwnPending] = useState<number>(0);
+  const [ownPendingPosts, setOwnPendingPosts] = useState<PostSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyPost, setBusyPost] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export default function CommunityVerifyPage() {
       setItems([]);
       setTotal(0);
       setOwnPending(0);
+      setOwnPendingPosts([]);
       setError(null);
       setLoading(false);
       return;
@@ -63,6 +66,7 @@ export default function CommunityVerifyPage() {
     // Clear stale ownPending up-front so a fast empty queue doesn't show
     // the previous count while getMyPosts is still in flight.
     setOwnPending(0);
+    setOwnPendingPosts([]);
     try {
       // Fire the own-pending lookup in parallel but DON'T block queue
       // rendering on it. If getMyPosts stalls or errors, the queue still
@@ -83,11 +87,12 @@ export default function CommunityVerifyPage() {
         if (requestId !== queueRequestIdRef.current) return;
         if (myPostsItems) {
           const pendingStatuses = new Set(["submitted", "needs_info"]);
-          setOwnPending(
-            myPostsItems.filter((p) => pendingStatuses.has(p.status)).length,
-          );
+          const pending = myPostsItems.filter((p) => pendingStatuses.has(p.status));
+          setOwnPending(pending.length);
+          setOwnPendingPosts(pending);
         } else {
           setOwnPending(0);
+          setOwnPendingPosts([]);
         }
       });
     } catch (err) {
@@ -269,6 +274,35 @@ export default function CommunityVerifyPage() {
           </section>
         );
       })}
+
+      {canVote && ownPendingPosts.length > 0 && (
+        <section className="card stack">
+          <h2 className="verify-title verify-own-title">
+            Your posts awaiting peer review
+          </h2>
+          <p className="muted verify-subtitle">
+            You can&apos;t vote on your own posts — these are shown for visibility only.
+            Other verified members will review them shortly.
+          </p>
+          {ownPendingPosts.map((p) => (
+            <article key={p.id} className="card stack verify-item verify-own-item">
+              <div className="row verify-item__header">
+                <div className="verify-item__body-col">
+                  <h3 className="verify-title verify-item__title-lg">
+                    <Link href={`/posts/${p.id}`} className="verify-own-link">{p.title}</Link>
+                  </h3>
+                  <p className="muted verify-item__meta">
+                    {p.category.replace(/_/g, " ")} · {p.urgency} · {p.city}
+                    {p.pincode ? ` · ${p.pincode}` : ""}
+                  </p>
+                </div>
+                <span className="badge">{p.status.replace(/_/g, " ")}</span>
+              </div>
+              <p className="verify-item__body">{p.description}</p>
+            </article>
+          ))}
+        </section>
+      )}
     </main>
   );
 }
