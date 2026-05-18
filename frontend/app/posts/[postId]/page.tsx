@@ -55,11 +55,21 @@ export default function PostDetailPage() {
         setError(err instanceof ApiError ? err.message : "Failed to load post");
       }
 
+      // Comments endpoint 404s on non-ACTIVE posts by design. Swallow
+      // failures only for those statuses; on ACTIVE / RESOLVED posts a
+      // failed comments fetch is a real error (timeout / 500 / auth)
+      // and must surface so it isn't mistaken for "No comments yet."
+      const commentsExpectedToWork =
+        postSettled.status === "fulfilled" &&
+        (postSettled.value.status === "active" || postSettled.value.status === "resolved");
+
       if (commentsSettled.status === "fulfilled") {
         setComments(commentsSettled.value);
+      } else if (commentsExpectedToWork) {
+        const err = commentsSettled.reason;
+        setError(err instanceof ApiError ? err.message : "Failed to load comments");
+        setComments([]);
       } else {
-        // Comments may be unavailable for a post that isn't yet ACTIVE.
-        // That's expected — don't surface it as a page-level error.
         setComments([]);
       }
     } finally {
