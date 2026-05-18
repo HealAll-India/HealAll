@@ -74,16 +74,19 @@ export default function CommunityVerifyPage() {
       setTotal(data.total);
       setThreshold(data.threshold);
 
-      const myPostsItems = await myPostsPromise;
-      if (requestId !== queueRequestIdRef.current) return;
-      if (myPostsItems) {
-        const pendingStatuses = new Set(["submitted", "needs_info"]);
-        setOwnPending(
-          myPostsItems.filter((p) => pendingStatuses.has(p.status)).length,
-        );
-      } else {
-        setOwnPending(0);
-      }
+      // Don't await this — let queue render finish without it. ownPending
+      // updates whenever (if) the auxiliary call settles.
+      void myPostsPromise.then((myPostsItems) => {
+        if (requestId !== queueRequestIdRef.current) return;
+        if (myPostsItems) {
+          const pendingStatuses = new Set(["submitted", "needs_info"]);
+          setOwnPending(
+            myPostsItems.filter((p) => pendingStatuses.has(p.status)).length,
+          );
+        } else {
+          setOwnPending(0);
+        }
+      });
     } catch (err) {
       if (requestId !== queueRequestIdRef.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to load community queue");

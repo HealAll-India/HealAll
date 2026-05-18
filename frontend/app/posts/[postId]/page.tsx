@@ -95,7 +95,13 @@ export default function PostDetailPage() {
     setError(null);
     try {
       const created = await createComment(token, postId, commentBody.trim());
-      setComments((prev) => [...(prev ?? []), created]);
+      if (comments === null) {
+        // Comments were in a load-failed state; a single append would
+        // hide all the existing ones we couldn't fetch. Re-load instead.
+        await loadData();
+      } else {
+        setComments((prev) => (prev === null ? prev : [...prev, created]));
+      }
       setCommentBody("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to add comment");
@@ -219,16 +225,16 @@ export default function PostDetailPage() {
 
               {(post.status === "active" || post.status === "resolved") && (
                 <section className="card stack">
-                  <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Comments</h3>
+                  <h3 className="post-comments-title">Comments</h3>
                   <form className="row" onSubmit={handleCreateComment}>
-                    <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" style={{ flex: 1 }} />
+                    <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" className="post-comments-input" />
                     <button type="submit">Post</button>
                   </form>
                   <div className="stack">
                     {(comments ?? []).map(comment => (
-                      <article className="card" key={comment.id} style={{ padding: "12px 14px" }}>
-                        <p style={{ margin: "0 0 4px", fontSize: "13px" }}>{comment.body}</p>
-                        <p className="muted" style={{ fontSize: "11px" }}>{comment.author.name} · L{comment.author.verification_level}</p>
+                      <article className="card post-comment-card" key={comment.id}>
+                        <p className="post-comment-body">{comment.body}</p>
+                        <p className="muted post-comment-meta">{comment.author.name} · L{comment.author.verification_level}</p>
                       </article>
                     ))}
                     {comments === null ? (
