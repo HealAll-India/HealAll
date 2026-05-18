@@ -202,3 +202,12 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 - `frontend/app/globals.css`: `.post-pending-banner` (amber, left border accent).
 **Tests**: `tsc --noEmit` clean, `npm run lint` clean.
 **Follow-ups**: Backend could also expose comments on a SUBMITTED post to its own author for symmetry, but the frontend change alone resolves the user-visible bug. Optional: surface a "Edit" link from the banner on `draft` / `needs_info` posts.
+
+## 2026-05-19 — /verify: show own pending posts (read-only)
+**Agent**: claude-opus-4-7
+**Scope**: User asked: when the empty-state copy says "you have N pending posts awaiting peer review," let them at least see those posts. Voting stays disabled (backend forbids self-vote).
+**Changes**:
+- `frontend/app/verify/page.tsx`: New `ownPendingPosts: PostSummary[]` state. The same `getMyPosts` call that already produced the count now also feeds a "Your posts awaiting peer review" section rendered below the votable queue. Each entry is a read-only card with the title linking to the post detail, status badge, body, and city/pincode. No vote buttons.
+- `frontend/app/globals.css`: `.verify-own-title`, `.verify-own-item` (softer gray left border + 0.92 opacity to distinguish from votable items), `.verify-own-link`.
+**Tests**: `tsc --noEmit` clean, `npm run lint` clean.
+**Follow-ups**: PR #39 opens for review.
