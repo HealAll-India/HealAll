@@ -146,10 +146,23 @@ export default function NewPostPage() {
                       />
                     </label>
                   </div>
+                  <div className="location-safety" role="note" aria-label="Location privacy notice">
+                    <strong>🔒 Stay safe with location sharing.</strong>
+                    <ul>
+                      <li>Drop the pin at a nearby <em>landmark</em> (hospital, metro station, intersection) — <strong>not</strong> your home, child&apos;s school, or workplace.</li>
+                      <li>This pin is visible to everyone who can see your post. Once shared, assume it cannot be taken back.</li>
+                      <li>Never include door numbers, gate codes, or floor details in the address field.</li>
+                      <li>If unsure, leave the pin blank — city + pincode is enough for most help requests.</li>
+                    </ul>
+                    <p className="muted" style={{ margin: "6px 0 0", fontSize: "11px" }}>
+                      Your live device location is shown only to you and is never sent to our servers.
+                    </p>
+                  </div>
                   <MapPicker
                     latitude={payload.latitude ?? null}
                     longitude={payload.longitude ?? null}
                     onChange={(lat, lng) => setPayload(p => ({ ...p, latitude: lat, longitude: lng }))}
+                    enableLocate
                   />
                 </div>
               </div>

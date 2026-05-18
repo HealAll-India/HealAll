@@ -1439,6 +1439,21 @@ p.success           { color: var(--ok); margin: 0; }
 .post-loc-address { margin: 0; font-size: 14px; }
 .post-loc-meta { font-size: 12px; margin: 0; }
 
+/* Location safety banner on post creation */
+.location-safety {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #78350f;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.location-safety strong { display: block; margin-bottom: 4px; font-size: 13px; }
+.location-safety ul { margin: 4px 0 0; padding-left: 18px; }
+.location-safety li { margin: 2px 0; }
+.location-safety em { font-style: italic; }
+
 /* Component-scoped stack variants */
 .stack--map { gap: 8px; }
 .verify-item__body-col { flex: 1; }
