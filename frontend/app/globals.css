@@ -1459,6 +1459,9 @@ p.success           { color: var(--ok); margin: 0; }
 .map-picker-locate-btn { margin-left: auto; }
 .map-picker-error { font-size: 12px; margin: 0; }
 
+/* Community verification header */
+.verify-header-row { align-items: center; justify-content: space-between; gap: 8px; }
+
 /* Component-scoped stack variants */
 .stack--map { gap: 8px; }
 .verify-item__body-col { flex: 1; }
