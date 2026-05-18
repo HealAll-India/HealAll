@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AuthRequired } from "@/components/ui/auth-required";
 import { MapPicker } from "@/components/ui/map-picker";
@@ -34,6 +34,7 @@ export default function CommunityVerifyPage() {
   const [busyPost, setBusyPost] = useState<string | null>(null);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [flash, setFlash] = useState<string | null>(null);
+  const queueRequestIdRef = useRef(0);
 
   const voterLevel = sessionUser?.verification_level ?? 0;
 
@@ -42,6 +43,11 @@ export default function CommunityVerifyPage() {
     // request just to surface the same gate the UI already shows. Also reset
     // any previously-fetched queue so an in-session auth/level downgrade
     // can't leave stale cards visible to an ineligible user.
+    // Bump request id up-front; any earlier in-flight response will be
+    // ignored when it lands. Guards against an auth/level downgrade racing
+    // with a previously-issued request that would otherwise repopulate the
+    // queue with now-protected data.
+    const requestId = ++queueRequestIdRef.current;
     if (!token || voterLevel < 1) {
       setItems([]);
       setTotal(0);
@@ -53,13 +59,15 @@ export default function CommunityVerifyPage() {
     setError(null);
     try {
       const data = await getCommunityQueue(token);
+      if (requestId !== queueRequestIdRef.current) return;
       setItems(data.items);
       setTotal(data.total);
       setThreshold(data.threshold);
     } catch (err) {
+      if (requestId !== queueRequestIdRef.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to load community queue");
     } finally {
-      setLoading(false);
+      if (requestId === queueRequestIdRef.current) setLoading(false);
     }
   }, [token, voterLevel]);
 
@@ -128,7 +136,7 @@ export default function CommunityVerifyPage() {
             <Link href="/profile" className="feed-pending-banner__link">
               Verify your profile
             </Link>{" "}
-            to participate. Complete your email OTP and (optionally) ID verification to unlock voting.
+            to participate. Complete your email OTP and ID verification to unlock voting.
           </p>
         )}
       </section>
@@ -151,13 +159,13 @@ export default function CommunityVerifyPage() {
             submit them — check back soon, or hit Refresh.
           </p>
           <div className="row">
-            <Link href="/feed" className="ghost btn-sm">← Back to feed</Link>
-            <Link href="/posts/new" className="ghost btn-sm">+ Share a request</Link>
+            <Link href="/feed" className="btn-ghost btn-sm">← Back to feed</Link>
+            <Link href="/posts/new" className="btn-ghost btn-sm">+ Share a request</Link>
           </div>
         </section>
       )}
 
-      {items.map((item) => {
+      {canVote && items.map((item) => {
         const hasMap = item.latitude != null && item.longitude != null;
         const approveCount = item.votes.approve;
         return (
