@@ -1474,6 +1474,13 @@ p.success           { color: var(--ok); margin: 0; }
 /* Community verification header */
 .verify-header-row { align-items: center; justify-content: space-between; gap: 8px; }
 
+/* Community verification — own pending section */
+.verify-own-title { font-size: var(--fs-h3); margin: 0; }
+.verify-own-item { border-left: 3px solid var(--border-strong); opacity: 0.92; }
+.verify-own-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.verify-own-link:hover,
+.verify-own-link:focus-visible { text-decoration-thickness: 2px; }
+
 /* Component-scoped stack variants */
 .stack--map { gap: 8px; }
 .verify-item__body-col { flex: 1; }
