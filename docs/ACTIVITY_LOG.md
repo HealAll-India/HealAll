@@ -211,3 +211,14 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 - `frontend/app/globals.css`: `.verify-own-title`, `.verify-own-item` (softer gray left border + 0.92 opacity to distinguish from votable items), `.verify-own-link`.
 **Tests**: `tsc --noEmit` clean, `npm run lint` clean.
 **Follow-ups**: PR #39 opens for review.
+
+## 2026-05-19 — AWS S3 + IAM via CloudFormation
+**Agent**: claude-opus-4-7
+**Scope**: Production storage for profile photos / post attachments / identity documents. CFN template + bootstrap script + GitHub Actions workflow using OIDC.
+**Changes**:
+- `infra/aws/cloudformation/healall-media.yml`: Stack provisioning two S3 buckets (`healall-media-prod` public-read + signed-write with CORS for healallindia.com; `healall-identity-ephemeral-prod` private with 30-day expiry + SSE-AES256), an IAM user (`healall-app-prod`) with PutObject/GetObject/DeleteObject on both buckets, GitHub OIDC provider, and a deploy IAM role trusted by `repo:HealAll-India/HealAll:ref:refs/heads/main`. Bucket policies enforce TLS + public-read on media only. Versioning + noncurrent-version expiry on media; AbortIncompleteMultipartUpload on both. Region default `ap-south-1`.
+- `infra/aws/cloudformation/deploy.sh`: One-shot bootstrap script for the user to run locally (root creds) — wraps `aws cloudformation deploy` with the correct params + prints outputs table.
+- `infra/aws/cloudformation/README.md`: Step-by-step bootstrap + credential wiring guide (IAM console → access key → Railway env vars; deploy role ARN → GitHub repo Variables).
+- `.github/workflows/aws-infra.yml`: CI workflow assuming `healall-deploy-prod` via OIDC and re-deploying the stack on every push to main touching `infra/aws/cloudformation/`. Manual `workflow_dispatch` supported.
+**Tests**: `aws cloudformation validate-template` clean after fixing self-referencing DeployRole resource (used `!Sub "arn:aws:iam::${AWS::AccountId}:role/..."` instead of `!GetAtt DeployRole.Arn` to break the cycle).
+**Follow-ups**: User must (a) run `./infra/aws/cloudformation/deploy.sh` locally, (b) generate access key for `healall-app-prod` in IAM console and set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in Railway, (c) copy `DeployRoleArn` output into a GitHub repo Variable named `AWS_DEPLOY_ROLE_ARN`. Frontend profile-photo picker still missing — separate PR.
