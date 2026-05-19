@@ -1,6 +1,7 @@
 """Upload service — generates presigned PUT URLs for MinIO/S3."""
 
 import uuid
+from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -59,9 +60,11 @@ def public_object_url(bucket: str, object_key: str) -> str:
     the identity bucket is private, so callers shouldn't use this for it.
     """
     endpoint = settings.S3_ENDPOINT_URL.rstrip("/")
-    # AWS S3 endpoints look like https://s3.<region>.amazonaws.com.
-    # MinIO / LocalStack endpoints look like http://localhost:9000.
-    if "amazonaws.com" in endpoint:
+    # Compare against the parsed hostname so we don't get fooled by an
+    # attacker-controlled value like "http://amazonaws.com.evil.tld/..." that
+    # happens to contain the substring "amazonaws.com".
+    host = (urlparse(endpoint).hostname or "").lower()
+    if host == "amazonaws.com" or host.endswith(".amazonaws.com"):
         # Virtual-hosted style is the AWS recommendation for new buckets.
         return f"https://{bucket}.s3.{settings.S3_REGION}.amazonaws.com/{object_key}"
     return f"{endpoint}/{bucket}/{object_key}"
