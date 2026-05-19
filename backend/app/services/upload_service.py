@@ -1,7 +1,7 @@
 """Upload service — generates presigned PUT URLs for MinIO/S3."""
 
 import uuid
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -64,10 +64,14 @@ def public_object_url(bucket: str, object_key: str) -> str:
     # attacker-controlled value like "http://amazonaws.com.evil.tld/..." that
     # happens to contain the substring "amazonaws.com".
     host = (urlparse(endpoint).hostname or "").lower()
+    # Percent-encode the key so spaces / unicode / odd characters in
+    # filename-derived extensions don't break the resulting URL. safe='/'
+    # preserves path separators.
+    encoded_key = quote(object_key, safe="/")
     if host == "amazonaws.com" or host.endswith(".amazonaws.com"):
         # Virtual-hosted style is the AWS recommendation for new buckets.
-        return f"https://{bucket}.s3.{settings.S3_REGION}.amazonaws.com/{object_key}"
-    return f"{endpoint}/{bucket}/{object_key}"
+        return f"https://{bucket}.s3.{settings.S3_REGION}.amazonaws.com/{encoded_key}"
+    return f"{endpoint}/{bucket}/{encoded_key}"
 
 
 def profile_photo_key(user_id: str, file_name: str) -> str:
