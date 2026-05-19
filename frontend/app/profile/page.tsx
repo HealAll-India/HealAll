@@ -142,9 +142,9 @@ export default function ProfilePage() {
         throw new Error("Storage did not return a public URL for the photo.");
       }
       const updated = await updateMyProfile(token, {
-        name: profile.name,
-        city: profile.city,
-        bio: profile.bio ?? "",
+        // Only the avatar. Sending the rest would silently commit any
+        // unsaved edits to name/city/bio that the user hasn't clicked
+        // "Save changes" on yet.
         avatar_url: publicUrl,
       });
       setProfile(updated);
