@@ -32,10 +32,10 @@ The script doesn't generate access keys for the app IAM user (CloudFormation can
 1. **AWS Console → IAM → Users → `healall-app-prod` → Security credentials → Create access key**
    - Use case: "Application running outside AWS"
    - Save the **Access key ID** + **Secret access key**.
-2. **Railway → Backend service → Variables → add:**
-   - `AWS_ACCESS_KEY_ID` = from step 1
-   - `AWS_SECRET_ACCESS_KEY` = from step 1
-   - `AWS_REGION` = `ap-south-1`
+2. **Railway → Backend service → Variables → add** (names match `backend/app/core/config.py`):
+   - `S3_ACCESS_KEY` = from step 1
+   - `S3_SECRET_KEY` = from step 1
+   - `S3_REGION` = `ap-south-1`
    - `S3_ENDPOINT_URL` = `https://s3.ap-south-1.amazonaws.com`
    - `S3_BUCKET_MEDIA` = `healall-media-prod`
    - `S3_BUCKET_IDENTITY` = `healall-identity-ephemeral-prod`

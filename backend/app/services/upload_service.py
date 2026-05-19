@@ -51,6 +51,22 @@ def generate_presigned_put(
         raise UploadException(f"Failed to generate upload URL: {exc}") from exc
 
 
+def public_object_url(bucket: str, object_key: str) -> str:
+    """Return the public read URL for an object, given the configured endpoint.
+
+    Works for both AWS S3 virtual-hosted style and MinIO path-style endpoints.
+    Only meaningful for buckets that allow s3:GetObject from `Principal: *` —
+    the identity bucket is private, so callers shouldn't use this for it.
+    """
+    endpoint = settings.S3_ENDPOINT_URL.rstrip("/")
+    # AWS S3 endpoints look like https://s3.<region>.amazonaws.com.
+    # MinIO / LocalStack endpoints look like http://localhost:9000.
+    if "amazonaws.com" in endpoint:
+        # Virtual-hosted style is the AWS recommendation for new buckets.
+        return f"https://{bucket}.s3.{settings.S3_REGION}.amazonaws.com/{object_key}"
+    return f"{endpoint}/{bucket}/{object_key}"
+
+
 def profile_photo_key(user_id: str, file_name: str) -> str:
     ext = file_name.rsplit(".", 1)[-1] if "." in file_name else "bin"
     return f"profile-photos/{user_id}/{uuid.uuid4()}.{ext}"

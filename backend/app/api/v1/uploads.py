@@ -33,6 +33,7 @@ async def presign_profile_photo(
         object_key=key,
         bucket=settings.S3_BUCKET_MEDIA,
         expires_in=_EXPIRES_IN,
+        public_url=upload_service.public_object_url(settings.S3_BUCKET_MEDIA, key),
     )
 
 
@@ -51,6 +52,7 @@ async def presign_post_attachment(
         object_key=key,
         bucket=settings.S3_BUCKET_MEDIA,
         expires_in=_EXPIRES_IN,
+        public_url=upload_service.public_object_url(settings.S3_BUCKET_MEDIA, key),
     )
 
 

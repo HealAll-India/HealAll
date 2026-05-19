@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
 import { AuthRequired } from "@/components/ui/auth-required";
 import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 import { ApiError } from "@/lib/api/client";
+import { presignProfilePhoto, putToPresignedUrl } from "@/lib/api/uploads";
 import { addSkill, getMyProfile, updateMyProfile, updatePrivacy } from "@/lib/api/users";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -44,8 +45,13 @@ export default function ProfilePage() {
   const [newSkill, setNewSkill] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+  const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   async function loadProfile() {
     if (!token) return;
@@ -106,6 +112,52 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input so picking the same file twice still fires onChange.
+    e.target.value = "";
+    if (!file || !token || !profile) return;
+    setError(null);
+    setSuccess(null);
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setError("Profile photo must be a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError("Profile photo must be 5 MB or smaller.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const presigned = await presignProfilePhoto(token, {
+        file_name: file.name,
+        content_type: file.type,
+      });
+      await putToPresignedUrl(presigned.upload_url, file);
+      const publicUrl = presigned.public_url;
+      if (!publicUrl) {
+        throw new Error("Storage did not return a public URL for the photo.");
+      }
+      const updated = await updateMyProfile(token, {
+        name: profile.name,
+        city: profile.city,
+        bio: profile.bio ?? "",
+        avatar_url: publicUrl,
+      });
+      setProfile(updated);
+      if (sessionUser) {
+        setSession(token, { ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
+      }
+      setSuccess("Profile photo updated.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to upload photo");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   async function handleAddSkill() {
     if (!token || !newSkill.trim()) return;
     setSaving(true);
@@ -133,21 +185,39 @@ export default function ProfilePage() {
         <>
           <section className="prof-hero" style={{ marginBottom: "22px" }}>
             <div className="prof-hero__cover" />
-            {/* Avatar */}
-            <span
-              className="av av-xl"
-              style={{
-                background: "linear-gradient(135deg, #16a34a, #2563eb)",
-                position: "relative", zIndex: 1,
-              }}
-            >
-              {profile.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.avatar_url} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "9999px" }} />
-              ) : (
-                profile.name[0]?.toUpperCase()
-              )}
-            </span>
+            {/* Avatar with click-to-upload */}
+            <div className="prof-avatar-wrap">
+              <span
+                className="av av-xl prof-avatar"
+                style={{
+                  background: "linear-gradient(135deg, #16a34a, #2563eb)",
+                }}
+              >
+                {profile.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.avatar_url} alt={profile.name} className="prof-avatar__img" />
+                ) : (
+                  profile.name[0]?.toUpperCase()
+                )}
+              </span>
+              <button
+                type="button"
+                className="prof-avatar__edit"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                aria-label={uploadingAvatar ? "Uploading photo" : "Change profile photo"}
+              >
+                {uploadingAvatar ? "…" : "📷"}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className="prof-avatar__input"
+                hidden
+              />
+            </div>
 
             {/* Info */}
             <div className="prof-hero__about">

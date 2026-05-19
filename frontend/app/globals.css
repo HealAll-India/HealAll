@@ -933,6 +933,27 @@ p.success           { color: var(--ok); margin: 0; }
 .prof-hero__meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-muted); margin-top: 12px; }
 .prof-hero__actions { display: flex; gap: 8px; align-self: flex-start; position: relative; }
 
+/* Profile avatar with click-to-upload overlay */
+.prof-avatar-wrap { position: relative; z-index: 1; width: 96px; height: 96px; }
+.prof-avatar { position: relative; z-index: 0; overflow: hidden; }
+.prof-avatar__img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+.prof-avatar__edit {
+  position: absolute; right: -2px; bottom: -2px;
+  width: 32px; height: 32px; padding: 0;
+  border-radius: 9999px;
+  background: #fff;
+  border: none;
+  box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(17,24,39,0.18);
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  z-index: 2;
+}
+.prof-avatar__edit:hover { background: #f9fafb; }
+.prof-avatar__edit:disabled { cursor: progress; opacity: 0.7; }
+.prof-avatar__edit:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.prof-avatar__input { display: none; }
+
 /* Stats grid — gradient numbers */
 .stats-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
