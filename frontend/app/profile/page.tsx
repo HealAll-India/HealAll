@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
 import { AuthRequired } from "@/components/ui/auth-required";
 import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 import { ApiError } from "@/lib/api/client";
+import { presignProfilePhoto, putToPresignedUrl } from "@/lib/api/uploads";
 import { addSkill, getMyProfile, updateMyProfile, updatePrivacy } from "@/lib/api/users";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -44,8 +46,18 @@ export default function ProfilePage() {
   const [newSkill, setNewSkill] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Single busy flag so avatar upload and profile / privacy saves cannot run
+  // concurrently. Otherwise a save that started before an upload could land
+  // after it and PATCH the old avatar_url back.
+  const busy = saving || uploadingAvatar;
+
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+  const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   async function loadProfile() {
     if (!token) return;
@@ -67,7 +79,7 @@ export default function ProfilePage() {
 
   async function saveProfile(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!token || !profile) return;
+    if (!token || !profile || busy) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -91,7 +103,7 @@ export default function ProfilePage() {
   }
 
   async function savePrivacy() {
-    if (!token || !profile) return;
+    if (!token || !profile || busy) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -106,8 +118,54 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input so picking the same file twice still fires onChange.
+    e.target.value = "";
+    if (!file || !token || !profile || busy) return;
+    setError(null);
+    setSuccess(null);
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setError("Profile photo must be a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError("Profile photo must be 5 MB or smaller.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const presigned = await presignProfilePhoto(token, {
+        file_name: file.name,
+        content_type: file.type,
+      });
+      await putToPresignedUrl(presigned.upload_url, file);
+      const publicUrl = presigned.public_url;
+      if (!publicUrl) {
+        throw new Error("Storage did not return a public URL for the photo.");
+      }
+      const updated = await updateMyProfile(token, {
+        // Only the avatar. Sending the rest would silently commit any
+        // unsaved edits to name/city/bio that the user hasn't clicked
+        // "Save changes" on yet.
+        avatar_url: publicUrl,
+      });
+      setProfile(updated);
+      if (sessionUser) {
+        setSession(token, { ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
+      }
+      setSuccess("Profile photo updated.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to upload photo");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   async function handleAddSkill() {
-    if (!token || !newSkill.trim()) return;
+    if (!token || !newSkill.trim() || busy) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -133,21 +191,41 @@ export default function ProfilePage() {
         <>
           <section className="prof-hero" style={{ marginBottom: "22px" }}>
             <div className="prof-hero__cover" />
-            {/* Avatar */}
-            <span
-              className="av av-xl"
-              style={{
-                background: "linear-gradient(135deg, #16a34a, #2563eb)",
-                position: "relative", zIndex: 1,
-              }}
-            >
-              {profile.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.avatar_url} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "9999px" }} />
-              ) : (
-                profile.name[0]?.toUpperCase()
-              )}
-            </span>
+            {/* Avatar with click-to-upload */}
+            <div className="prof-avatar-wrap">
+              <span className="av av-xl prof-avatar prof-avatar--fallback">
+                {profile.avatar_url ? (
+                  <Image
+                    src={profile.avatar_url}
+                    alt={profile.name}
+                    width={96}
+                    height={96}
+                    className="prof-avatar__img"
+                    unoptimized
+                  />
+                ) : (
+                  profile.name[0]?.toUpperCase()
+                )}
+              </span>
+              <button
+                type="button"
+                className="prof-avatar__edit"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={busy}
+                aria-label={uploadingAvatar ? "Uploading photo" : "Change profile photo"}
+              >
+                {uploadingAvatar ? "…" : "📷"}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                className="prof-avatar__input"
+                disabled={busy}
+                hidden
+              />
+            </div>
 
             {/* Info */}
             <div className="prof-hero__about">
@@ -237,7 +315,7 @@ export default function ProfilePage() {
                   style={{ resize: "vertical" }}
                 />
               </label>
-              <button type="submit" disabled={saving} style={{ width: "fit-content" }}>
+              <button type="submit" disabled={busy} style={{ width: "fit-content" }}>
                 {saving ? "Saving…" : "Save changes"}
               </button>
             </form>
@@ -269,7 +347,7 @@ export default function ProfilePage() {
                 onClick={handleAddSkill}
                 type="button"
                 className="ghost"
-                disabled={saving || !newSkill.trim()}
+                disabled={busy || !newSkill.trim()}
               >
                 Add
               </button>
@@ -313,7 +391,7 @@ export default function ProfilePage() {
               ))}
             </div>
 
-            <button onClick={savePrivacy} type="button" className="ghost" disabled={saving} style={{ width: "fit-content" }}>
+            <button onClick={savePrivacy} type="button" className="ghost" disabled={busy} style={{ width: "fit-content" }}>
               {saving ? "Saving…" : "Save privacy settings"}
             </button>
           </section>

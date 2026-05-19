@@ -17,3 +17,4 @@ class PresignedUploadResponse(BaseModel):
     object_key: str
     bucket: str
     expires_in: int
+    public_url: str | None = None

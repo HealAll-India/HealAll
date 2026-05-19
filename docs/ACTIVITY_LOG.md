@@ -222,3 +222,17 @@ Newest entries at the top. Each agent adds one entry at the end of a task. See `
 - `.github/workflows/aws-infra.yml`: CI workflow assuming `healall-deploy-prod` via OIDC and re-deploying the stack on every push to main touching `infra/aws/cloudformation/`. Manual `workflow_dispatch` supported.
 **Tests**: `aws cloudformation validate-template` clean after fixing self-referencing DeployRole resource (used `!Sub "arn:aws:iam::${AWS::AccountId}:role/..."` instead of `!GetAtt DeployRole.Arn` to break the cycle).
 **Follow-ups**: User must (a) run `./infra/aws/cloudformation/deploy.sh` locally, (b) generate access key for `healall-app-prod` in IAM console and set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in Railway, (c) copy `DeployRoleArn` output into a GitHub repo Variable named `AWS_DEPLOY_ROLE_ARN`. Frontend profile-photo picker still missing — separate PR.
+
+## 2026-05-19 — Profile photo upload (end-to-end)
+**Agent**: claude-opus-4-7
+**Scope**: Wire the frontend file picker on `/profile` and the public-URL plumbing on the backend so users can actually upload a profile photo through the existing presigned-PUT endpoint.
+**Changes**:
+- `backend/app/schemas/upload.py`: Added optional `public_url` field on `PresignedUploadResponse`. Optional so other callers (identity uploads) aren't affected.
+- `backend/app/services/upload_service.py`: New `public_object_url(bucket, object_key)` helper. Builds virtual-hosted-style URL for AWS endpoints (`https://<bucket>.s3.<region>.amazonaws.com/<key>`) and path-style for MinIO/localhost. Only meaningful for buckets that allow public GET — caller responsibility.
+- `backend/app/api/v1/uploads.py`: Profile-photo and post-attachment endpoints now return `public_url` in the response. Identity-document endpoint deliberately doesn't (bucket is private).
+- `frontend/lib/api/uploads.ts`: New API client with `presignProfilePhoto`, `presignPostAttachment`, and `putToPresignedUrl` (PUT with the same Content-Type that was signed — S3 rejects mismatches).
+- `frontend/app/profile/page.tsx`: File picker overlay on the avatar (📷 camera button). Client-side validation: type whitelist (JPG / PNG / WebP) + 5 MB cap. Flow: presign → PUT to S3 → PATCH `/v1/users/me` with the returned public URL. `setSession` is updated so the new avatar appears immediately in app-shell. Input value reset after change so reselecting the same file fires `onChange`.
+- `frontend/app/globals.css`: `.prof-avatar-wrap`, `.prof-avatar`, `.prof-avatar__img`, `.prof-avatar__edit` (32x32 circular button anchored bottom-right with shadow + focus-visible outline).
+- `infra/aws/cloudformation/README.md`: Corrected Railway env var names — the backend reads `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_REGION`, not the AWS_* defaults. Previous instructions would have left the backend without credentials.
+**Tests**: `tsc --noEmit` clean, `npm run lint` clean, `npx next build` succeeds (19 routes). No new backend tests — change is additive (optional schema field + pure helper) and existing test suite has no upload coverage to break.
+**Follow-ups**: PR #41 opens for review. After merge, end-to-end works once the user (a) deploys CFN from PR #40, (b) generates the `healall-app-prod` access key, (c) sets the S3_* Railway env vars listed in the infra README.

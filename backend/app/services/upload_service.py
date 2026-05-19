@@ -1,6 +1,7 @@
 """Upload service — generates presigned PUT URLs for MinIO/S3."""
 
 import uuid
+from urllib.parse import quote, urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -49,6 +50,32 @@ def generate_presigned_put(
         return url
     except ClientError as exc:
         raise UploadException(f"Failed to generate upload URL: {exc}") from exc
+
+
+def public_object_url(bucket: str, object_key: str) -> str:
+    """Return the public read URL for an object, given the configured endpoint.
+
+    Works for both AWS S3 virtual-hosted style and MinIO path-style endpoints.
+    Only meaningful for buckets that allow s3:GetObject from `Principal: *` —
+    the identity bucket is private, so callers shouldn't use this for it.
+    """
+    endpoint = settings.S3_ENDPOINT_URL.rstrip("/")
+    # Compare against the parsed hostname so we don't get fooled by an
+    # attacker-controlled value like "http://amazonaws.com.evil.tld/..." that
+    # happens to contain the substring "amazonaws.com".
+    host = (urlparse(endpoint).hostname or "").lower()
+    # Percent-encode the key so spaces / unicode / odd characters in
+    # filename-derived extensions don't break the resulting URL. safe='/'
+    # preserves path separators.
+    encoded_key = quote(object_key, safe="/")
+    if host == "amazonaws.com" or host.endswith(".amazonaws.com"):
+        if not settings.S3_REGION:
+            # Without a region we'd emit https://bucket.s3..amazonaws.com/...
+            # and silently persist a broken avatar_url. Fail loudly instead.
+            raise UploadException("S3_REGION must be configured for AWS endpoints")
+        # Virtual-hosted style is the AWS recommendation for new buckets.
+        return f"https://{bucket}.s3.{settings.S3_REGION}.amazonaws.com/{encoded_key}"
+    return f"{endpoint}/{bucket}/{encoded_key}"
 
 
 def profile_photo_key(user_id: str, file_name: str) -> str:
