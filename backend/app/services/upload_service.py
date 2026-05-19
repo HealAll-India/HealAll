@@ -69,6 +69,10 @@ def public_object_url(bucket: str, object_key: str) -> str:
     # preserves path separators.
     encoded_key = quote(object_key, safe="/")
     if host == "amazonaws.com" or host.endswith(".amazonaws.com"):
+        if not settings.S3_REGION:
+            # Without a region we'd emit https://bucket.s3..amazonaws.com/...
+            # and silently persist a broken avatar_url. Fail loudly instead.
+            raise UploadException("S3_REGION must be configured for AWS endpoints")
         # Virtual-hosted style is the AWS recommendation for new buckets.
         return f"https://{bucket}.s3.{settings.S3_REGION}.amazonaws.com/{encoded_key}"
     return f"{endpoint}/{bucket}/{encoded_key}"
