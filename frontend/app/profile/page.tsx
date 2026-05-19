@@ -51,6 +51,11 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Single busy flag so avatar upload and profile / privacy saves cannot run
+  // concurrently. Otherwise a save that started before an upload could land
+  // after it and PATCH the old avatar_url back.
+  const busy = saving || uploadingAvatar;
+
   const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
   const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -74,7 +79,7 @@ export default function ProfilePage() {
 
   async function saveProfile(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!token || !profile) return;
+    if (!token || !profile || busy) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -98,7 +103,7 @@ export default function ProfilePage() {
   }
 
   async function savePrivacy() {
-    if (!token || !profile) return;
+    if (!token || !profile || busy) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -117,7 +122,7 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     // Reset the input so picking the same file twice still fires onChange.
     e.target.value = "";
-    if (!file || !token || !profile) return;
+    if (!file || !token || !profile || busy) return;
     setError(null);
     setSuccess(null);
 
@@ -160,7 +165,7 @@ export default function ProfilePage() {
   }
 
   async function handleAddSkill() {
-    if (!token || !newSkill.trim()) return;
+    if (!token || !newSkill.trim() || busy) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -206,7 +211,7 @@ export default function ProfilePage() {
                 type="button"
                 className="prof-avatar__edit"
                 onClick={() => avatarInputRef.current?.click()}
-                disabled={uploadingAvatar}
+                disabled={busy}
                 aria-label={uploadingAvatar ? "Uploading photo" : "Change profile photo"}
               >
                 {uploadingAvatar ? "…" : "📷"}
@@ -217,6 +222,7 @@ export default function ProfilePage() {
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleAvatarChange}
                 className="prof-avatar__input"
+                disabled={busy}
                 hidden
               />
             </div>
@@ -309,7 +315,7 @@ export default function ProfilePage() {
                   style={{ resize: "vertical" }}
                 />
               </label>
-              <button type="submit" disabled={saving} style={{ width: "fit-content" }}>
+              <button type="submit" disabled={busy} style={{ width: "fit-content" }}>
                 {saving ? "Saving…" : "Save changes"}
               </button>
             </form>
@@ -341,7 +347,7 @@ export default function ProfilePage() {
                 onClick={handleAddSkill}
                 type="button"
                 className="ghost"
-                disabled={saving || !newSkill.trim()}
+                disabled={busy || !newSkill.trim()}
               >
                 Add
               </button>
@@ -385,7 +391,7 @@ export default function ProfilePage() {
               ))}
             </div>
 
-            <button onClick={savePrivacy} type="button" className="ghost" disabled={saving} style={{ width: "fit-content" }}>
+            <button onClick={savePrivacy} type="button" className="ghost" disabled={busy} style={{ width: "fit-content" }}>
               {saving ? "Saving…" : "Save privacy settings"}
             </button>
           </section>
