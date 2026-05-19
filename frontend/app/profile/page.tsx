@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
 import { AuthRequired } from "@/components/ui/auth-required";
@@ -187,15 +188,16 @@ export default function ProfilePage() {
             <div className="prof-hero__cover" />
             {/* Avatar with click-to-upload */}
             <div className="prof-avatar-wrap">
-              <span
-                className="av av-xl prof-avatar"
-                style={{
-                  background: "linear-gradient(135deg, #16a34a, #2563eb)",
-                }}
-              >
+              <span className="av av-xl prof-avatar prof-avatar--fallback">
                 {profile.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatar_url} alt={profile.name} className="prof-avatar__img" />
+                  <Image
+                    src={profile.avatar_url}
+                    alt={profile.name}
+                    width={96}
+                    height={96}
+                    className="prof-avatar__img"
+                    unoptimized
+                  />
                 ) : (
                   profile.name[0]?.toUpperCase()
                 )}

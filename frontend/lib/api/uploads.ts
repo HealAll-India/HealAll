@@ -46,9 +46,11 @@ export async function putToPresignedUrl(
     body: file,
   });
   if (!res.ok) {
+    // Read the body for diagnostics but don't surface it to users — storage
+    // responses can carry internal request IDs / bucket policy hints that
+    // shouldn't leak into UI banners.
     const text = await res.text().catch(() => "");
-    throw new Error(
-      `Upload to storage failed (${res.status}): ${text.slice(0, 200)}`,
-    );
+    console.debug("Storage PUT failed", { status: res.status, body: text.slice(0, 200) });
+    throw new Error(`Upload to storage failed (${res.status}). Please try again.`);
   }
 }

@@ -936,6 +936,7 @@ p.success           { color: var(--ok); margin: 0; }
 /* Profile avatar with click-to-upload overlay */
 .prof-avatar-wrap { position: relative; z-index: 1; width: 96px; height: 96px; }
 .prof-avatar { position: relative; z-index: 0; overflow: hidden; }
+.prof-avatar--fallback { background: linear-gradient(135deg, #16a34a, #2563eb); }
 .prof-avatar__img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
 .prof-avatar__edit {
   position: absolute; right: -2px; bottom: -2px;
