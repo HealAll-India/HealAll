@@ -24,7 +24,9 @@ _HTTP_TIMEOUT_SECONDS = 10.0
 
 
 def _build_subject(description: str) -> str:
-    snippet = description.strip().splitlines()[0][:60]
+    stripped = description.strip()
+    lines = stripped.splitlines()
+    snippet = (lines[0] if lines else stripped)[:60]
     return f"[HealAll Issue Report] {snippet}"
 
 
@@ -112,10 +114,13 @@ async def _create_github_issue(
         logger.exception("issue_report: GitHub branch network error")
         return None
     if resp.status_code >= 300:
+        # Do not log resp.text — the GitHub API echoes parts of the submitted
+        # payload (which may include the user's contact_email and description),
+        # so writing it to logs would leak PII for a public input path.
         logger.warning(
-            "issue_report: GitHub branch failed status=%s body=%s",
+            "issue_report: GitHub branch failed status=%s request_id=%s",
             resp.status_code,
-            resp.text[:500],
+            resp.headers.get("x-github-request-id"),
         )
         return None
     try:

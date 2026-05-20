@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, status
-from pydantic import BaseModel, EmailStr, Field, HttpUrl
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
 
 from app.core.limiter import limiter
 from app.services.issue_report_service import submit_issue_report
@@ -15,8 +15,17 @@ class IssueReportIn(BaseModel):
     description: str = Field(min_length=10, max_length=2000)
     contact_email: EmailStr | None = None
     page_url: HttpUrl | None = None
-    # Honeypot: real users never fill this. Must be empty.
-    website: str = Field(default="", max_length=0)
+    # Honeypot: real users never fill this. The handler silently drops any
+    # request where this is non-empty — do NOT cap max_length at the schema
+    # level, otherwise pydantic rejects bots with 422 before they hit the trap.
+    website: str = Field(default="", max_length=255)
+
+    @field_validator("description")
+    @classmethod
+    def _description_not_blank(cls, v: str) -> str:
+        if len(v.strip()) < 10:
+            raise ValueError("Description must be at least 10 non-whitespace characters")
+        return v
 
 
 class IssueReportOut(BaseModel):

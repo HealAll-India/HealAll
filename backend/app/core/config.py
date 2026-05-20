@@ -93,7 +93,8 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str | None = None
 
     # Issue-report fan-out (landing-page feedback form)
-    GITHUB_TOKEN: str | None = None       # fine-grained PAT, Issues: read-and-write
+    # GITHUB_TOKEN is a fine-grained PAT with Issues: read-and-write
+    GITHUB_TOKEN: str | None = None
     GITHUB_REPO: str = "HealAll-India/HealAll"
     ISSUE_REPORT_EMAIL_TO: str | None = None
 

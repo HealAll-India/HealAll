@@ -12,16 +12,34 @@ export function ReportIssueFab() {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [issueUrl, setIssueUrl] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  function toggleOpen() {
+    setOpen((prev) => {
+      const next = !prev;
+      // Reset on every open/close transition so a stale success/error from
+      // a previous submission never lingers when the panel reopens.
+      setStatus("idle");
+      setIssueUrl(null);
+      return next;
+    });
+  }
+
+  function closePanel() {
+    setOpen(false);
+    setStatus("idle");
+    setIssueUrl(null);
+  }
 
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closePanel();
     }
     function onClick(e: MouseEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        closePanel();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -40,12 +58,21 @@ export function ReportIssueFab() {
     }
     setStatus("loading");
     try {
-      await submitIssueReport({
+      const res = await submitIssueReport({
         description: description.trim(),
         contact_email: email.trim() || undefined,
         page_url: typeof window !== "undefined" ? window.location.href : undefined,
         website
       });
+      // If the backend reports a fully-failed fan-out (no email AND no GitHub
+      // issue created) treat that as an error so the user can retry. A partial
+      // success — at least one sink landed — is still a success from the
+      // user's perspective; the report reached us.
+      if (!res.ok || (res.partial && !res.issue_url)) {
+        setStatus("error");
+        return;
+      }
+      setIssueUrl(res.issue_url);
       setStatus("success");
       setDescription("");
       setEmail("");
@@ -62,24 +89,34 @@ export function ReportIssueFab() {
             <div className="stack">
               <p className="fab-panel__title">Thanks — your report is logged.</p>
               <p className="fab-panel__note">
-                We&apos;ll take a look soon. Want to follow along? Browse open reports on{" "}
-                <a
-                  href="https://github.com/HealAll-India/HealAll/issues?q=label%3Auser-report"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  GitHub
-                </a>
-                .
+                We&apos;ll take a look soon.{" "}
+                {issueUrl ? (
+                  <>
+                    Track it on{" "}
+                    <a href={issueUrl} target="_blank" rel="noopener noreferrer">
+                      GitHub
+                    </a>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Browse open reports on{" "}
+                    <a
+                      href="https://github.com/HealAll-India/HealAll/issues?q=label%3Auser-report"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      GitHub
+                    </a>
+                    .
+                  </>
+                )}
               </p>
               <div className="row">
                 <button
                   type="button"
                   className="btn-ghost btn-sm"
-                  onClick={() => {
-                    setStatus("idle");
-                    setOpen(false);
-                  }}
+                  onClick={closePanel}
                 >
                   Close
                 </button>
@@ -120,7 +157,7 @@ export function ReportIssueFab() {
                 <button
                   type="button"
                   className="btn-ghost btn-sm"
-                  onClick={() => setOpen(false)}
+                  onClick={closePanel}
                 >
                   Cancel
                 </button>
@@ -140,7 +177,7 @@ export function ReportIssueFab() {
         className="fab-button"
         aria-label={open ? "Close report form" : "Report an issue"}
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
       >
         <span aria-hidden="true">💬</span>
         <span className="fab-button__label">Report issue</span>
