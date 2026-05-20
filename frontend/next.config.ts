@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   async headers() {
+    const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
+
     return [
       {
         // Allow the Google Sign-In popup to postMessage back to the opener.
@@ -27,7 +29,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline';",
               "img-src 'self' https://*.googleusercontent.com data:;",
               "frame-src https://accounts.google.com;",
-              "connect-src 'self' https://api.healallindia.com;",
+              `connect-src 'self' ${apiOrigin};`,
             ].join(' '),
           },
         ],
