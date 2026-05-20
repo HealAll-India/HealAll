@@ -9,6 +9,12 @@ const MapPickerInner = dynamic(() => import("./map-picker-inner"), {
   loading: () => <div className="map-picker-loading">Loading map…</div>,
 });
 
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const DEV_OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const configuredTileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim();
+const mapTileUrl = configuredTileUrl || (process.env.NODE_ENV !== "production" ? DEV_OSM_TILE_URL : "");
+const mapTileAttribution = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION?.trim() || OSM_ATTRIBUTION;
+
 interface Props {
   latitude: number | null;
   longitude: number | null;
@@ -85,11 +91,19 @@ export function MapPicker({
   return (
     <div className="stack stack--map">
       <div className="map-picker-frame" style={frameStyle}>
-        {cssReady ? (
+        {!mapTileUrl ? (
+          <div className="map-picker-loading">
+            {process.env.NODE_ENV === 'development'
+              ? 'Map tiles are not configured. Set NEXT_PUBLIC_MAP_TILE_URL.'
+              : 'Map unavailable'}
+          </div>
+        ) : cssReady ? (
           <MapPickerInner
             latitude={latitude}
             longitude={longitude}
             onPick={(lat, lng) => onChange(lat, lng)}
+            tileAttribution={mapTileAttribution}
+            tileUrl={mapTileUrl}
             readOnly={readOnly}
             userLocation={userLocation}
             recenterToken={recenterToken}

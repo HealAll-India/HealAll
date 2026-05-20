@@ -1,10 +1,40 @@
 import type { NextConfig } from "next";
 
+const configuredMapTileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim();
+const isProductionBuild = process.env.NODE_ENV === "production";
+
+function getMapTileImageSource(tileUrl: string | undefined): string | null {
+  if (!tileUrl) return null;
+
+  try {
+    const url = new URL(tileUrl);
+    if (url.protocol !== "https:") {
+      throw new Error("NEXT_PUBLIC_MAP_TILE_URL must use https.");
+    }
+    return url.origin;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        `NEXT_PUBLIC_MAP_TILE_URL is invalid. Received: "${tileUrl}". Please check your environment variable.`
+      );
+    }
+    throw error;
+  }
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   async headers() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
+    const mapTileImageSource = getMapTileImageSource(configuredMapTileUrl);
+    const mapImageSources = [
+      "'self'",
+      "https://*.googleusercontent.com",
+      ...(mapTileImageSource ? [mapTileImageSource] : []),
+      ...(!isProductionBuild && !mapTileImageSource ? ["https://tile.openstreetmap.org"] : []),
+      "data:",
+    ];
 
     return [
       {
@@ -26,8 +56,13 @@ const nextConfig: NextConfig = {
               "object-src 'none';",
               "frame-ancestors 'none';",
               "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
-              "style-src 'self' 'unsafe-inline';",
-              "img-src 'self' https://*.googleusercontent.com data:;",
+              "style-src 'self' 'unsafe-inline' https://accounts.google.com;",
+              "style-src-elem 'self' 'unsafe-inline' https://accounts.google.com;",
+              // Public OSM tiles are donation-funded/rate-limited. Keep them
+              // local-dev only, preserve visible attribution, and set
+              // NEXT_PUBLIC_MAP_TILE_URL for production (MapTiler, Mapbox, or
+              // a self-hosted/CDN tile endpoint).
+              `img-src ${mapImageSources.join(" ")};`,
               "frame-src https://accounts.google.com;",
               `connect-src 'self' ${apiOrigin};`,
             ].join(' '),

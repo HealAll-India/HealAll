@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import get_settings
+from app.core.exceptions import DuplicateException
 from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.user import User
@@ -37,6 +38,7 @@ async def signup(
     request: Request,
     signup_data: SignupRequest,
     background_tasks: BackgroundTasks,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SignupResponse:
     """
@@ -44,6 +46,33 @@ async def signup(
 
     Requires a valid invite code. Sends OTP to email for verification.
     """
+    existing_user = await auth_service.get_user_by_email(db, signup_data.email)
+    if existing_user:
+        email_otp, _ = await auth_service.create_otp(db, existing_user.email, purpose="login")
+        await db.commit()
+
+        background_tasks.add_task(notification_service.send_otp_email, existing_user.email, email_otp, "login")
+        response.status_code = status.HTTP_200_OK
+
+        pending = []
+        if not existing_user.email_verified:
+            pending.append("email")
+        if not existing_user.phone_verified:
+            pending.append("phone")
+
+        return SignupResponse(
+            id=existing_user.id,
+            name=existing_user.name,
+            verification_level=existing_user.verification_level,
+            pending_verification=pending,
+            message="Account already exists. OTP sent to your email to sign in.",
+        )
+
+    if await auth_service.check_phone_exists(db, signup_data.phone):
+        # Keep this as a hard duplicate: SMS login is not active yet, and a
+        # phone collision may be another person's account.
+        raise DuplicateException("Phone number already registered")
+
     await invite_service.validate_and_use_invite(db, signup_data.invite_code)
     user = await auth_service.create_user(db, signup_data)
 

@@ -64,6 +64,12 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_user_by_phone(db: AsyncSession, phone: str) -> User | None:
+    """Find an active user by phone."""
+    result = await db.execute(select(User).where(User.phone == phone, User.deleted_at.is_(None)))
+    return result.scalar_one_or_none()
+
+
 async def link_google_sub(db: AsyncSession, user: User, google_sub: str) -> User:
     """Attach a Google sub to an existing user on first Google login."""
     user.google_sub = google_sub
@@ -71,6 +77,27 @@ async def link_google_sub(db: AsyncSession, user: User, google_sub: str) -> User
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def resolve_existing_google_user(db: AsyncSession, google_payload: dict) -> User | None:
+    """Find or link an existing user for a Google signup attempt.
+
+    Existing users who accidentally use the signup screen should be treated as
+    login attempts. New users still go through invite validation.
+    """
+    google_sub: str = google_payload["sub"]
+    email: str = google_payload["email"]
+
+    user = await get_user_by_google_sub(db, google_sub)
+    if user:
+        return user
+
+    user = await get_user_by_email(db, email)
+    if user:
+        await link_google_sub(db, user, google_sub)
+        return user
+
+    return None
 
 
 async def create_google_user(

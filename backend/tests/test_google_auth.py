@@ -110,12 +110,31 @@ class TestGoogleSignup:
         # User is at level 1 — means both phone and email verified
         assert resp.json()["user"]["verification_level"] >= 1
 
-    async def test_duplicate_email_returns_409(self, client: AsyncClient, invite: str, second_invite: str) -> None:
-        """Second signup attempt with same Google account returns 409."""
+    async def test_existing_google_signup_logs_in(self, client: AsyncClient, invite: str) -> None:
+        """Second signup attempt with same Google account logs in."""
         await client.post("/v1/auth/google/signup", json=SIGNUP_BODY)
-        body2 = {**SIGNUP_BODY, "invite_code": "HEAL-GOGL02", "phone": "+919000000001"}
+        body2 = {**SIGNUP_BODY, "invite_code": "HEAL-NOPE1", "phone": "+919000000001"}
         resp = await client.post("/v1/auth/google/signup", json=body2)
-        assert resp.status_code == 409
+        assert resp.status_code == 200
+        assert resp.json()["access_token"]
+        assert resp.json()["user"]["email"] == GOOGLE_PAYLOAD["email"]
+
+    async def test_google_signup_existing_otp_user_logs_in(
+        self,
+        client: AsyncClient,
+        otp_user: User,
+        db_session: AsyncSession,
+    ) -> None:
+        """Google signup logs in and links an existing OTP-registered user by email."""
+        body = {**SIGNUP_BODY, "invite_code": "HEAL-NOPE1", "phone": "+919000000001"}
+        resp = await client.post("/v1/auth/google/signup", json=body)
+
+        assert resp.status_code == 200
+        assert resp.json()["access_token"]
+        assert resp.json()["user"]["id"] == str(otp_user.id)
+
+        await db_session.refresh(otp_user)
+        assert otp_user.google_sub == GOOGLE_PAYLOAD["sub"]
 
     async def test_duplicate_phone_returns_409(self, client: AsyncClient, invite: str, second_invite: str) -> None:
         """Second signup with same phone returns 409."""

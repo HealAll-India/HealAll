@@ -42,6 +42,12 @@ async def check_email_exists(db: AsyncSession, email: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    """Find an active user by email."""
+    result = await db.execute(select(User).where(User.email == email, User.deleted_at.is_(None)))
+    return result.scalar_one_or_none()
+
+
 async def create_user(db: AsyncSession, signup_data: SignupRequest) -> User:
     """Create a new user."""
     # Check for duplicates
