@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     APP_DEBUG: bool = True
     APP_SECRET_KEY: str
     APP_ALLOWED_ORIGINS: str = "http://localhost:3000"
+    # Optional regex matched against the Origin header. Useful for Vercel
+    # preview deploys (frontend-git-*-*.vercel.app) which have a dynamic
+    # hostname per branch. Empty string = no regex match (only the explicit
+    # APP_ALLOWED_ORIGINS list is honored).
+    APP_ALLOWED_ORIGIN_REGEX: str = ""
 
     # Database
     DATABASE_URL: PostgresDsn
