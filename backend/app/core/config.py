@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     
     APP_ALLOWED_ORIGIN_REGEX: str = ""
 
-    `@field_validator`("APP_ALLOWED_ORIGIN_REGEX")
-    `@classmethod`
+    @field_validator("APP_ALLOWED_ORIGIN_REGEX")
+    @classmethod
     def validate_origin_regex(cls, v: str) -> str:
         if not v:
             return v
