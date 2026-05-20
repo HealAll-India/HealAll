@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
               "frame-ancestors 'none';",
               "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
               "style-src 'self' 'unsafe-inline';",
-              "img-src 'self' https://*.googleusercontent.com data:;",
+              "img-src 'self' https://*.googleusercontent.com https://*.tile.openstreetmap.org data:;",
               "frame-src https://accounts.google.com;",
               `connect-src 'self' ${apiOrigin};`,
             ].join(' '),
