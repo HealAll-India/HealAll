@@ -16,7 +16,14 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none'; default-src 'self'" },
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
+              "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; " +
+              "frame-src https://accounts.google.com; " +
+              "connect-src 'self' https://api.healallindia.com",
+          },
         ],
       },
     ];
