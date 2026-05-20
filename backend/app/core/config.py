@@ -29,11 +29,6 @@ class Settings(BaseSettings):
     # preview deploys (frontend-git-*-*.vercel.app) which have a dynamic
     # hostname per branch. Empty string = no regex match (only the explicit
     # APP_ALLOWED_ORIGINS list is honored).
-# ... other imports ...
-
-class Settings(BaseSettings):
-    # ... other fields ...
-    
     APP_ALLOWED_ORIGIN_REGEX: str = ""
 
     # Database

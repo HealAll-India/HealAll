@@ -25,12 +25,13 @@ After creation, Neon shows you a connection string. You need **two** versions:
 
 Click the connection string dropdown and select **"Parameters only"** or build it yourself:
 
-```
+```text
 postgresql+asyncpg://<USER>:<PASSWORD>@<HOST>/<DATABASE>?sslmode=require
 ```
 
 Example:
-```
+
+```text
 postgresql+asyncpg://healall_owner:abc123xyz@ep-cool-breeze-123456.ap-southeast-1.aws.neon.tech/healall_db?sslmode=require
 ```
 
@@ -41,7 +42,7 @@ postgresql+asyncpg://healall_owner:abc123xyz@ep-cool-breeze-123456.ap-southeast-
 
 When running migrations, you may need a synchronous URL variant. Neon supports pooled connections — use the connection string as-is, but swap the driver:
 
-```
+```text
 postgresql+asyncpg://...   →  used by the app at runtime
 postgresql://...            →  used by alembic (if needed)
 ```
@@ -77,12 +78,13 @@ After creation, scroll to the **"Connect"** section:
 1. Select **`redis://`** format (not `rediss://` unless TLS is required — Upstash supports both)
 2. Copy the full URL:
 
-```
+```text
 redis://default:<PASSWORD>@<HOST>:<PORT>
 ```
 
 Example:
-```
+
+```text
 redis://default:AXk3AAIncDEz...@usw1-relative-cat-12345.upstash.io:6379
 ```
 

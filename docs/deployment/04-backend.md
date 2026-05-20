@@ -155,8 +155,8 @@ If your app requires background tasks (Celery), you'll need a separate Render se
 | **Start Command** | `celery -A app.worker.celery_app worker --loglevel=info --concurrency=2` |
 | **Instance Type** | **Free** |
 
-4. Add the **same environment variables** as the web service
-5. Click **Create**
+1. Add the **same environment variables** as the web service
+2. Click **Create**
 
 > [!WARNING]
 > Render's free tier allows **one free web service** and **one free background worker**. If you've already used your free slots, the Celery worker will require a paid plan ($7/month). For testing, you can skip the worker if background tasks aren't critical.
