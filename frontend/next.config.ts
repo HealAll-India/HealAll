@@ -18,11 +18,17 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           {
             key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " +
-              "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; " +
-              "frame-src https://accounts.google.com; " +
-              "connect-src 'self' https://api.healallindia.com",
+            value: [
+              "default-src 'self';",
+              "base-uri 'self';",
+              "object-src 'none';",
+              "frame-ancestors 'none';",
+              "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
+              "style-src 'self' 'unsafe-inline';",
+              "img-src 'self' https://*.googleusercontent.com data:;",
+              "frame-src https://accounts.google.com;",
+              "connect-src 'self' https://api.healallindia.com;",
+            ].join(' '),
           },
         ],
       },
