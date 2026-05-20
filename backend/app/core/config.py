@@ -26,7 +26,24 @@ class Settings(BaseSettings):
     # preview deploys (frontend-git-*-*.vercel.app) which have a dynamic
     # hostname per branch. Empty string = no regex match (only the explicit
     # APP_ALLOWED_ORIGINS list is honored).
+import re
+# ... other imports ...
+
+class Settings(BaseSettings):
+    # ... other fields ...
+    
     APP_ALLOWED_ORIGIN_REGEX: str = ""
+
+    `@field_validator`("APP_ALLOWED_ORIGIN_REGEX")
+    `@classmethod`
+    def validate_origin_regex(cls, v: str) -> str:
+        if not v:
+            return v
+        try:
+            re.compile(v)
+        except re.error as exc:
+            raise ValueError(f"Invalid APP_ALLOWED_ORIGIN_REGEX: {exc}") from exc
+        return v
 
     # Database
     DATABASE_URL: PostgresDsn
