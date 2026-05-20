@@ -50,7 +50,7 @@ After creation, you'll see:
 
 Your R2 S3-compatible endpoint is:
 
-```
+```text
 https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
 

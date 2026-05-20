@@ -53,12 +53,14 @@ Replace the URL with your actual Render backend URL from Step 4.
 ### Your Live URL
 
 After deployment, Vercel assigns a URL:
-```
+
+```text
 https://healall.vercel.app
 ```
 
 Or a random one like:
-```
+
+```text
 https://healall-abc123.vercel.app
 ```
 
@@ -72,16 +74,17 @@ Now that you have your Vercel URL, go back to Render and update the backend's CO
 2. Go to **Environment** → find `APP_ALLOWED_ORIGINS`
 3. Update it to your Vercel URL:
 
-```
+```text
 APP_ALLOWED_ORIGINS=https://healall.vercel.app
 ```
 
 For multiple origins (e.g., including localhost for local dev):
-```
+
+```text
 APP_ALLOWED_ORIGINS=https://healall.vercel.app,http://localhost:3000
 ```
 
-4. Click **Save Changes** — Render will auto-redeploy
+1. Click **Save Changes** — Render will auto-redeploy
 
 ---
 
@@ -95,14 +98,17 @@ APP_ALLOWED_ORIGINS=https://healall.vercel.app,http://localhost:3000
 ### Common Issues
 
 #### API calls fail with CORS errors
+
 - Double-check `APP_ALLOWED_ORIGINS` on Render matches your Vercel URL exactly (including `https://`)
 - Ensure no trailing slash in the origin
 
 #### API calls fail with `net::ERR_CONNECTION_REFUSED`
+
 - Your Render backend may be sleeping. Wait 30–50 seconds and retry
 - Verify `NEXT_PUBLIC_API_BASE_URL` doesn't have a trailing slash
 
 #### Build fails on Vercel
+
 - Ensure `Root Directory` is set to `frontend`
 - Check that `package.json` is present in the `frontend/` folder
 - Look at the Vercel build logs for specific TypeScript or ESLint errors

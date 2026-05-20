@@ -23,7 +23,9 @@ class Settings(BaseSettings):
     APP_DEBUG: bool = True
     APP_SECRET_KEY: str
 
-    APP_ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # Comma-separated string kept as str so pydantic-settings does not try to
+    # JSON-decode values like "http://localhost:3000" from environment vars.
+    APP_ALLOWED_ORIGINS: str = "http://localhost:3000"
 
     # Optional regex matched against the Origin header. Useful for Vercel
     # preview deploys (frontend-git-*-*.vercel.app) which have a dynamic
@@ -102,14 +104,10 @@ class Settings(BaseSettings):
     # Community verification
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
 
-    @field_validator("APP_ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        """Parse comma-separated CORS origins."""
-        if isinstance(v, list):
-            return [origin.strip() for origin in v if origin.strip()]
-
-        return [origin.strip() for origin in v.split(",") if origin.strip()]
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Parse comma-separated APP_ALLOWED_ORIGINS into a list."""
+        return [o.strip() for o in self.APP_ALLOWED_ORIGINS.split(",") if o.strip()]
 
     @field_validator("APP_ALLOWED_ORIGIN_REGEX")
     @classmethod
@@ -117,12 +115,10 @@ class Settings(BaseSettings):
         """Validate regex pattern for allowed origins."""
         if not v:
             return v
-
         try:
             re.compile(v)
         except re.error as exc:
             raise ValueError(f"Invalid APP_ALLOWED_ORIGIN_REGEX: {exc}") from exc
-
         return v
 
 

@@ -72,9 +72,11 @@ SENTRY_DSN=
 
 > [!TIP]
 > Generate secure secrets locally:
+>
 > ```bash
 > openssl rand -hex 32
 > ```
+>
 > Run this twice — once for `APP_SECRET_KEY` and once for `JWT_SECRET_KEY`.
 
 ---
@@ -91,7 +93,8 @@ SENTRY_DSN=
 ### Verify the Deployment
 
 Once deployed, Render gives you a URL like:
-```
+
+```text
 https://healall-api.onrender.com
 ```
 
@@ -102,6 +105,7 @@ curl https://healall-api.onrender.com/health
 ```
 
 Expected response:
+
 ```json
 {"status": "healthy", "version": "0.1.0"}
 ```
@@ -167,7 +171,7 @@ If your app requires background tasks (Celery), you'll need a separate Render se
 
 After you deploy the frontend (Step 5), come back and update:
 
-```
+```text
 APP_ALLOWED_ORIGINS=https://your-actual-vercel-url.vercel.app
 ```
 

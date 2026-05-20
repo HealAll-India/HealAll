@@ -32,7 +32,8 @@ git push -u origin main
 ### Verify `.gitignore` coverage
 
 Your backend `.gitignore` should contain at least:
-```
+
+```gitignore
 .env
 .venv/
 __pycache__/
@@ -40,7 +41,8 @@ __pycache__/
 ```
 
 Your frontend `.gitignore` should contain:
-```
+
+```gitignore
 .env.local
 node_modules/
 .next/
