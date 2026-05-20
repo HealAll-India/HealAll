@@ -64,15 +64,16 @@ export function ReportIssueFab() {
         page_url: typeof window !== "undefined" ? window.location.href : undefined,
         website
       });
-      // If the backend reports a fully-failed fan-out (no email AND no GitHub
-      // issue created) treat that as an error so the user can retry. A partial
-      // success — at least one sink landed — is still a success from the
-      // user's perspective; the report reached us.
-      if (!res.ok || (res.partial && !res.issue_url)) {
+      // Only a definitive backend failure (res.ok === false) should be shown
+      // to the user as an error. A partial fan-out — at least one sink landed —
+      // is still a success from the user's perspective: the report reached us.
+      // issue_url may be null (e.g. email succeeded but GitHub failed); in
+      // that case we just skip the "Track it on GitHub" affordance.
+      if (!res.ok) {
         setStatus("error");
         return;
       }
-      setIssueUrl(res.issue_url);
+      setIssueUrl(res.issue_url ?? null);
       setStatus("success");
       setDescription("");
       setEmail("");
