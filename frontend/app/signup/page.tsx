@@ -155,7 +155,7 @@ export default function SignupPage() {
                     width={googleBtnWidth}
                   />
                 ) : (
-                  <div className="signup-spacer" />
+                  <div className="google-btn-placeholder" />
                 )}
                 <span style={{ fontSize: "11px", color: "#9ca3af" }}>
                   Google provides your name and email

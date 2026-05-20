@@ -123,7 +123,7 @@ export default function LoginPage() {
               width={googleBtnWidth}
             />
           ) : (
-            <div className="placeholder-spacer" />
+            <div className="google-btn-placeholder" />
           )}
         </div>
 
