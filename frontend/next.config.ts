@@ -1,10 +1,32 @@
 import type { NextConfig } from "next";
 
+const configuredMapTileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim();
+const isProductionBuild = process.env.NODE_ENV === "production";
+
+function getMapTileImageSource(tileUrl: string | undefined): string | null {
+  if (!tileUrl) return null;
+
+  const url = new URL(tileUrl);
+  if (url.protocol !== "https:") {
+    throw new Error("NEXT_PUBLIC_MAP_TILE_URL must use https.");
+  }
+
+  return url.origin;
+}
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   async headers() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
+    const mapTileImageSource = getMapTileImageSource(configuredMapTileUrl);
+    const mapImageSources = [
+      "'self'",
+      "https://*.googleusercontent.com",
+      ...(mapTileImageSource ? [mapTileImageSource] : []),
+      ...(!isProductionBuild && !mapTileImageSource ? ["https://tile.openstreetmap.org"] : []),
+      "data:",
+    ];
 
     return [
       {
@@ -28,7 +50,11 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
               "style-src 'self' 'unsafe-inline' https://accounts.google.com;",
               "style-src-elem 'self' 'unsafe-inline' https://accounts.google.com;",
-              "img-src 'self' https://*.googleusercontent.com https://*.tile.openstreetmap.org data:;",
+              // Public OSM tiles are donation-funded/rate-limited. Keep them
+              // local-dev only, preserve visible attribution, and set
+              // NEXT_PUBLIC_MAP_TILE_URL for production (MapTiler, Mapbox, or
+              // a self-hosted/CDN tile endpoint).
+              `img-src ${mapImageSources.join(" ")};`,
               "frame-src https://accounts.google.com;",
               `connect-src 'self' ${apiOrigin};`,
             ].join(' '),

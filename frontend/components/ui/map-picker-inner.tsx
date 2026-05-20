@@ -17,6 +17,8 @@ interface InnerProps {
   latitude: number | null;
   longitude: number | null;
   onPick: (lat: number, lng: number) => void;
+  tileAttribution: string;
+  tileUrl: string;
   readOnly?: boolean;
   userLocation?: { lat: number; lng: number } | null;
   recenterToken?: number;
@@ -64,6 +66,8 @@ export default function MapPickerInner({
   latitude,
   longitude,
   onPick,
+  tileAttribution,
+  tileUrl,
   readOnly,
   userLocation,
   recenterToken,
@@ -84,8 +88,8 @@ export default function MapPickerInner({
       scrollWheelZoom={!readOnly}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution={tileAttribution}
+        url={tileUrl}
       />
       <ClickHandler onPick={onPick} readOnly={readOnly} />
       <Recentre lat={latitude} lng={longitude} />
