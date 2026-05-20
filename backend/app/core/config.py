@@ -1,5 +1,6 @@
 """Application configuration using Pydantic Settings."""
 
+import re
 from functools import lru_cache
 from typing import Literal
 
@@ -21,7 +22,10 @@ class Settings(BaseSettings):
     APP_ENV: Literal["development", "staging", "production"] = "development"
     APP_DEBUG: bool = True
     APP_SECRET_KEY: str
-    APP_ALLOWED_ORIGINS: str = "http://localhost:3000"
+    APP_ALLOWED_ORIGINS: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
+
     # Optional regex matched against the Origin header. Useful for Vercel
     # preview deploys (frontend-git-*-*.vercel.app) which have a dynamic
     # hostname per branch. Empty string = no regex match (only the explicit
@@ -117,14 +121,31 @@ class Settings(BaseSettings):
     # required to flip a SUBMITTED post to ACTIVE.
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
 
-    @field_validator("APP_ALLOWED_ORIGINS")
+    @field_validator("APP_ALLOWED_ORIGINS", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: str) -> list[str]:
+    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
         """Parse comma-separated CORS origins."""
-        return [origin.strip() for origin in v.split(",")]
+        if isinstance(v, list):
+            return [origin.strip() for origin in v if origin.strip()]
+
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
+
+    @field_validator("APP_ALLOWED_ORIGIN_REGEX")
+    @classmethod
+    def validate_origin_regex(cls, v: str) -> str:
+        """Validate regex pattern for allowed origins."""
+        if not v:
+            return v
+
+        try:
+            re.compile(v)
+        except re.error as exc:
+            raise ValueError(f"Invalid APP_ALLOWED_ORIGIN_REGEX: {exc}") from exc
+
+        return v
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()  # type: ignore[call-arg]
+    """Return cached application settings."""
+    return Settings()
