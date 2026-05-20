@@ -1,7 +1,6 @@
 """Integration tests for the complete auth flow."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -195,8 +194,7 @@ async def test_signup_with_existing_email_sends_login_otp(
         "roles": ["helper"],
     }
 
-    with patch("app.services.auth_service.generate_otp", return_value="123456"):
-        response = await client.post("/v1/auth/signup", json=signup_data)
+    response = await client.post("/v1/auth/signup", json=signup_data)
 
     assert response.status_code == 200
     data = response.json()
@@ -206,9 +204,17 @@ async def test_signup_with_existing_email_sends_login_otp(
     await db_session.refresh(invite_code)
     assert invite_code.use_count == 0
 
+    from app.services.auth_service import create_otp
+
+    login_otp_plain, _ = await create_otp(
+        db_session,
+        existing_user.email,
+        "login",
+    )
+
     response = await client.post(
         "/v1/auth/verify-otp",
-        json={"phone_or_email": existing_user.email, "otp_code": "123456"},
+        json={"phone_or_email": existing_user.email, "otp_code": login_otp_plain},
     )
 
     assert response.status_code == 200

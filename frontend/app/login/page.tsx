@@ -32,7 +32,6 @@ export default function LoginPage() {
       const width = Math.floor(el.getBoundingClientRect().width);
       if (width > 0) {
         setGoogleBtnWidth(width);
-        observer.disconnect();
       }
     });
     observer.observe(el);
@@ -124,7 +123,7 @@ export default function LoginPage() {
               width={googleBtnWidth}
             />
           ) : (
-            <div style={{ height: "40px", width: "100%" }} />
+            <div className="placeholder-spacer" />
           )}
         </div>
 

@@ -1508,3 +1508,15 @@ p.success           { color: var(--ok); margin: 0; }
 .verify-item__body-col { flex: 1; }
 .verify-item__title-lg { font-size: 17px; }
 .verify-item__actions { gap: 8px; flex-wrap: wrap; }
+
+/* Placeholder spacer for Google Login button */
+.placeholder-spacer {
+  height: 40px;
+  width: 100%;
+}
+
+/* Signup spacer for Google Login button */
+.signup-spacer {
+  height: 40px;
+  width: 100%;
+}

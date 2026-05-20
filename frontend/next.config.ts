@@ -6,12 +6,20 @@ const isProductionBuild = process.env.NODE_ENV === "production";
 function getMapTileImageSource(tileUrl: string | undefined): string | null {
   if (!tileUrl) return null;
 
-  const url = new URL(tileUrl);
-  if (url.protocol !== "https:") {
-    throw new Error("NEXT_PUBLIC_MAP_TILE_URL must use https.");
+  try {
+    const url = new URL(tileUrl);
+    if (url.protocol !== "https:") {
+      throw new Error("NEXT_PUBLIC_MAP_TILE_URL must use https.");
+    }
+    return url.origin;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        `NEXT_PUBLIC_MAP_TILE_URL is invalid. Received: "${tileUrl}". Please check your environment variable.`
+      );
+    }
+    throw error;
   }
-
-  return url.origin;
 }
 
 const nextConfig: NextConfig = {

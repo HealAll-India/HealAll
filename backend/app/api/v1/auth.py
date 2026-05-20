@@ -54,11 +54,17 @@ async def signup(
         background_tasks.add_task(notification_service.send_otp_email, existing_user.email, email_otp, "login")
         response.status_code = status.HTTP_200_OK
 
+        pending = []
+        if not existing_user.email_verified:
+            pending.append("email")
+        if not existing_user.phone_verified:
+            pending.append("phone")
+
         return SignupResponse(
             id=existing_user.id,
             name=existing_user.name,
             verification_level=existing_user.verification_level,
-            pending_verification=["email"],
+            pending_verification=pending,
             message="Account already exists. OTP sent to your email to sign in.",
         )
 

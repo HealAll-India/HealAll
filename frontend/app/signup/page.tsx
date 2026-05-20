@@ -36,7 +36,6 @@ export default function SignupPage() {
       const width = Math.floor(el.getBoundingClientRect().width);
       if (width > 0) {
         setGoogleBtnWidth(width);
-        observer.disconnect();
       }
     });
     observer.observe(el);
@@ -156,7 +155,7 @@ export default function SignupPage() {
                     width={googleBtnWidth}
                   />
                 ) : (
-                  <div style={{ height: "40px", width: "100%" }} />
+                  <div className="signup-spacer" />
                 )}
                 <span style={{ fontSize: "11px", color: "#9ca3af" }}>
                   Google provides your name and email
