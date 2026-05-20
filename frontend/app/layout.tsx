@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import GoogleAuthProvider from "@/components/GoogleAuthProvider";
@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon-32.png",
   },
+  metadataBase: new URL("https://healallindia.com"),
   openGraph: {
     title: "HealAll — Helping in Any Way Possible",
     description: "India's invite-only mutual-aid community.",
@@ -28,6 +29,13 @@ export const metadata: Metadata = {
     locale: "en_IN",
     type: "website",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#16a34a",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

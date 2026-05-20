@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthRedirect } from "@/components/auth/auth-redirect";
+import { ReportIssueFab } from "@/components/feedback/report-issue-fab";
 
 const COMMUNITY_GUIDELINES_PDF_ID = "16umjQCumoecqR0Y2AoNi8zY-IUKHKvws";
 const GUIDELINES_PDF_VIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/view`;
@@ -300,6 +301,8 @@ export default function HomePage() {
 
         </div>
       </section>
+
+      <ReportIssueFab />
     </>
   );
 }
