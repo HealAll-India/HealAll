@@ -43,3 +43,12 @@ backend/graphify-out/
 # Local plans / drafts (keep out of repo unless explicitly added)
 /plans/
 plans/
+
+# Agent-local working docs (per-clone state, never committed)
+HANDOFF.md
+docs/ACTIVITY_LOG.md
+COMPLETION_SUMMARY.md
+IMPLEMENTATION_STATUS.md
+.codex/
+mythoughts/
+AGENTS.md
