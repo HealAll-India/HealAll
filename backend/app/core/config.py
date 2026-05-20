@@ -1,5 +1,6 @@
 """Application configuration using Pydantic Settings."""
 
+import re
 from functools import lru_cache
 from typing import Literal
 
@@ -21,7 +22,16 @@ class Settings(BaseSettings):
     APP_ENV: Literal["development", "staging", "production"] = "development"
     APP_DEBUG: bool = True
     APP_SECRET_KEY: str
+
+    # Comma-separated string kept as str so pydantic-settings does not try to
+    # JSON-decode values like "http://localhost:3000" from environment vars.
     APP_ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    # Optional regex matched against the Origin header. Useful for Vercel
+    # preview deploys (frontend-git-*-*.vercel.app) which have a dynamic
+    # hostname per branch. Empty string = no regex match (only the explicit
+    # APP_ALLOWED_ORIGINS list is honored).
+    APP_ALLOWED_ORIGIN_REGEX: str = ""
 
     # Database
     DATABASE_URL: PostgresDsn
@@ -43,12 +53,12 @@ class Settings(BaseSettings):
     S3_BUCKET_IDENTITY: str = "healall-identity-ephemeral"
     S3_REGION: str = "us-east-1"
 
-    # SMS (legacy stub config — kept for backward compat)
+    # SMS
     SMS_PROVIDER: str = "stub"
     SMS_API_KEY: str = ""
     SMS_SENDER_ID: str = "HEALAL"
 
-    # Email (legacy stub config — kept for backward compat)
+    # Email
     EMAIL_PROVIDER: str = "stub"
     EMAIL_SMTP_HOST: str = ""
     EMAIL_SMTP_PORT: int = 587
@@ -56,12 +66,12 @@ class Settings(BaseSettings):
     EMAIL_SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = "noreply@healall.in"
 
-    # MSG91 (real SMS provider)
+    # MSG91
     MSG91_API_KEY: str | None = None
     MSG91_SENDER_ID: str | None = "HEALLL"
     MSG91_TEMPLATE_ID_OTP: str | None = None
 
-    # SMTP (real email provider)
+    # SMTP
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USER: str | None = None
@@ -69,17 +79,17 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str | None = "noreply@healall.in"
     SMTP_FROM_NAME: str | None = "HealAll"
 
-    # WhatsApp (Meta Cloud API — replaces SMS)
+    # WhatsApp
     WHATSAPP_TOKEN: str | None = None
     WHATSAPP_PHONE_NUMBER_ID: str | None = None
-    WHATSAPP_OTP_TEMPLATE_NAME: str | None = None  # e.g. "healall_otp"; if set, uses template format
+    WHATSAPP_OTP_TEMPLATE_NAME: str | None = None
 
     # Aadhaar
     AADHAAR_PROVIDER: str = "stub"
     AADHAAR_API_KEY: str = ""
     AADHAAR_API_URL: str = ""
 
-    # Resend (HTTP-based email — no port blocking)
+    # Resend
     RESEND_API_KEY: str | None = None
 
     # Google OAuth
@@ -91,18 +101,28 @@ class Settings(BaseSettings):
     # Metrics
     METRICS_ENABLED: bool = True
 
-    # Community verification — number of APPROVE votes from verified users
-    # required to flip a SUBMITTED post to ACTIVE.
+    # Community verification
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
 
-    @field_validator("APP_ALLOWED_ORIGINS")
+    @property
+    def allowed_origins(self) -> list[str]:
+        """Parse comma-separated APP_ALLOWED_ORIGINS into a list."""
+        return [o.strip() for o in self.APP_ALLOWED_ORIGINS.split(",") if o.strip()]
+
+    @field_validator("APP_ALLOWED_ORIGIN_REGEX")
     @classmethod
-    def parse_cors_origins(cls, v: str) -> list[str]:
-        """Parse comma-separated CORS origins."""
-        return [origin.strip() for origin in v.split(",")]
+    def validate_origin_regex(cls, v: str) -> str:
+        """Validate regex pattern for allowed origins."""
+        if not v:
+            return v
+        try:
+            re.compile(v)
+        except re.error as exc:
+            raise ValueError(f"Invalid APP_ALLOWED_ORIGIN_REGEX: {exc}") from exc
+        return v
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()  # type: ignore[call-arg]
+    """Return cached application settings."""
+    return Settings()

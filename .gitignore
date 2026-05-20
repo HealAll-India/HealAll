@@ -46,7 +46,7 @@ plans/
 
 # Agent-local working docs (per-clone state, never committed)
 HANDOFF.md
-docs/ACTIVITY_LOG.md
+docs/
 COMPLETION_SUMMARY.md
 IMPLEMENTATION_STATUS.md
 .codex/
