@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, stat
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.exceptions import DuplicateException
 from app.core.limiter import limiter
 from app.db.session import get_db
 from app.schemas.auth import GoogleLoginRequest, GoogleSignupRequest, TokenResponse, UserInfo
@@ -27,25 +28,31 @@ async def google_signup(
     """
     Register a new user via Google OAuth (invite-only).
 
-    Verifies Google ID token server-side, validates invite code, creates user,
-    and returns JWT immediately. Email is auto-verified by Google. No OTP needed.
+    Verifies Google ID token server-side. Existing users are logged in; new
+    users must have a valid invite code and are created fully verified.
     """
-    # Validate invite code first (cheap check before network call)
-    await invite_service.validate_and_use_invite(db, signup_data.invite_code)
-
     # Verify Google ID token (fetches Google's public keys; runs in executor)
     google_payload = await google_auth_service.verify_google_token(signup_data.id_token)
 
-    # Create user (raises DuplicateException if email/phone/sub already exists)
-    user = await google_auth_service.create_google_user(db, signup_data, google_payload)
+    # Existing users sometimes land on signup. Treat that as Google login and
+    # do not consume an invite code.
+    user = await google_auth_service.resolve_existing_google_user(db, google_payload)
+    created_user = False
+    if user is None:
+        if await google_auth_service.get_user_by_phone(db, signup_data.phone):
+            raise DuplicateException("Phone number already registered")
+        await invite_service.validate_and_use_invite(db, signup_data.invite_code)
+        user = await google_auth_service.create_google_user(db, signup_data, google_payload)
+        created_user = True
 
-    # Issue JWT tokens
     access_token, refresh_token = await auth_service.create_tokens(db, user)
 
     await db.commit()
 
-    # Send welcome email in background
-    background_tasks.add_task(notification_service.send_welcome_email, user.email, user.name)
+    if created_user:
+        background_tasks.add_task(notification_service.send_welcome_email, user.email, user.name)
+    else:
+        response.status_code = status.HTTP_200_OK
 
     # Set refresh token in httpOnly cookie
     response.set_cookie(

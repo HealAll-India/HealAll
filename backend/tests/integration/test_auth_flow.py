@@ -1,6 +1,7 @@
 """Integration tests for the complete auth flow."""
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -161,3 +162,56 @@ async def test_signup_with_duplicate_phone(client: AsyncClient, invite_code: Inv
     data = response.json()
     assert data["error"]["code"] == "DUPLICATE"
     assert "phone" in data["error"]["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_signup_with_existing_email_sends_login_otp(
+    client: AsyncClient,
+    invite_code: InviteCode,
+    db_session: AsyncSession,
+):
+    """Existing email on signup gets an OTP login path instead of a duplicate dead end."""
+    existing_user = User(
+        name="Existing User",
+        phone="+919999999997",
+        email="existing@example.com",
+        city="Delhi",
+        age_range="25-34",
+        roles=["helper"],
+        email_verified=True,
+        phone_verified=True,
+        verification_level=VerificationLevel.PHONE_EMAIL_VERIFIED,
+    )
+    db_session.add(existing_user)
+    await db_session.commit()
+
+    signup_data = {
+        "name": "New User",
+        "phone": "+919999999996",
+        "email": existing_user.email,
+        "city": "Mumbai",
+        "age_range": "18-24",
+        "invite_code": "NOT-NEEDED",
+        "roles": ["helper"],
+    }
+
+    with patch("app.services.auth_service.generate_otp", return_value="123456"):
+        response = await client.post("/v1/auth/signup", json=signup_data)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == str(existing_user.id)
+    assert "sign in" in data["message"].lower()
+
+    await db_session.refresh(invite_code)
+    assert invite_code.use_count == 0
+
+    response = await client.post(
+        "/v1/auth/verify-otp",
+        json={"phone_or_email": existing_user.email, "otp_code": "123456"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["access_token"]
+    assert data["user"]["id"] == str(existing_user.id)

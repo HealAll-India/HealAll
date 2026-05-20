@@ -27,14 +27,17 @@ export default function SignupPage() {
   useAuthRedirect();
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
-  const [googleBtnWidth, setGoogleBtnWidth] = useState(376);
+  const [googleBtnWidth, setGoogleBtnWidth] = useState<number | null>(null);
 
   useEffect(() => {
     const el = googleBtnRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width;
-      if (w) setGoogleBtnWidth(Math.floor(w));
+    const observer = new ResizeObserver(() => {
+      const width = Math.floor(el.getBoundingClientRect().width);
+      if (width > 0) {
+        setGoogleBtnWidth(width);
+        observer.disconnect();
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -143,14 +146,18 @@ export default function SignupPage() {
 
               {/* Google sign-up button */}
               <div ref={googleBtnRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", width: "100%", overflow: "hidden" }}>
-                <GoogleLogin
-                  onSuccess={cr => cr.credential && handleGoogleSuccess(cr.credential)}
-                  onError={() => setError("Google sign-in failed. Please try again.")}
-                  text="continue_with"
-                  shape="rectangular"
-                  theme="outline"
-                  width={googleBtnWidth}
-                />
+                {googleBtnWidth ? (
+                  <GoogleLogin
+                    onSuccess={cr => cr.credential && handleGoogleSuccess(cr.credential)}
+                    onError={() => setError("Google sign-in failed. Please try again.")}
+                    text="continue_with"
+                    shape="rectangular"
+                    theme="outline"
+                    width={googleBtnWidth}
+                  />
+                ) : (
+                  <div style={{ height: "40px", width: "100%" }} />
+                )}
                 <span style={{ fontSize: "11px", color: "#9ca3af" }}>
                   Google provides your name and email
                 </span>
