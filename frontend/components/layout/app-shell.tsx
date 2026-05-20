@@ -119,6 +119,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/privacy-policy" style={{ color: "#6b7280" }}>Privacy Policy</Link>
           <Link href="/terms" style={{ color: "#6b7280" }}>Terms of Service</Link>
           <Link href="/#community-guidelines" style={{ color: "#6b7280" }}>Community Guidelines</Link>
+          <Link href="/contributors" style={{ color: "#6b7280" }}>Contributors</Link>
+          <Link href="/changelog" style={{ color: "#6b7280" }}>Changelog</Link>
           <a href="mailto:hello@healallindia.com" style={{ color: "#6b7280" }}>Contact</a>
         </div>
       </footer>
