@@ -15,6 +15,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 concurrency:
   group: backend-ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,15 +25,20 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/requirements*.txt
 
       - name: Install ruff
-        run: pip install ruff
+        run: python -m pip install ruff --prefer-binary
         working-directory: backend
 
       - name: Ruff check
@@ -41,31 +49,111 @@ jobs:
         run: ruff format --check app/ tests/
         working-directory: backend
 
-  test:
+  migration:
     runs-on: ubuntu-latest
-    needs: lint
+    timeout-minutes: 10
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:15-alpine
         env:
           POSTGRES_USER: healall
           POSTGRES_PASSWORD: changeme
           POSTGRES_DB: healall_test
-        ports: ['5432:5432']
+        ports:
+          - 5432:5432
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
+          --health-cmd "pg_isready -U healall -d healall_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      APP_ENV: development
+      APP_DEBUG: "false"
+      APP_SECRET_KEY: ci-test-app-secret-key-not-for-production
+      DATABASE_URL: postgresql+asyncpg://healall:changeme@localhost:5432/healall
+      JWT_SECRET_KEY: ci-test-jwt-secret-key-not-for-production
+      SENTRY_DSN: ""
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]" --prefer-binary
+        working-directory: backend
+
+      - name: Create migrations database
+        run: |
+          PGPASSWORD=changeme psql \
+            -h localhost -U healall -d healall_test \
+            -c "CREATE DATABASE healall;"
+
+      - name: Run migrations
+        run: alembic upgrade head
+        working-directory: backend
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: auth-users
+            paths: >-
+              tests/test_google_auth.py
+              tests/integration/test_auth_flow.py
+              tests/integration/test_users.py
+          - shard: posts-feed
+            paths: >-
+              tests/integration/test_posts.py
+              tests/integration/test_feed.py
+              tests/integration/test_comments.py
+          - shard: cases-messages
+            paths: >-
+              tests/test_health.py
+              tests/integration/test_cases.py
+              tests/integration/test_messages.py
+          - shard: moderation-verification
+            paths: >-
+              tests/integration/test_moderation.py
+              tests/integration/test_reports.py
+              tests/integration/test_verification.py
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: healall
+          POSTGRES_PASSWORD: changeme
+          POSTGRES_DB: healall_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U healall -d healall_test"
+          --health-interval 5s
+          --health-timeout 3s
           --health-retries 5
 
       redis:
-        image: redis:7
-        ports: ['6379:6379']
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
+          --health-interval 5s
+          --health-timeout 3s
           --health-retries 5
 
     env:
@@ -122,31 +210,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/pyproject.toml
+            backend/requirements*.txt
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
-        working-directory: backend
-
-      - name: Create migrations database
-        # The postgres service creates healall_test; migrations target the
-        # main 'healall' database. Create it before running alembic.
         run: |
-          PGPASSWORD=changeme psql \
-            -h localhost -U healall -d healall_test \
-            -c "CREATE DATABASE healall;"
-
-      - name: Run migrations
-        run: alembic upgrade head
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e ".[dev]" --prefer-binary
         working-directory: backend
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short --cov=app --cov-report=xml
+      - name: Run tests (${{ matrix.shard }})
+        run: pytest ${{ matrix.paths }} --tb=short --cov=app --cov-report=xml:coverage-${{ matrix.shard }}.xml
         working-directory: backend
 
       - name: Upload coverage
         uses: codecov/codecov-action@v5
         with:
-          files: backend/coverage.xml
-          flags: backend
+          files: backend/coverage-${{ matrix.shard }}.xml
+          flags: backend,backend-${{ matrix.shard }}
+          name: backend-${{ matrix.shard }}
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
