@@ -22,6 +22,34 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Decode the `exp` claim from a JWT without verifying its signature.
+ * Used as a cheap client-side gate so we don't fire requests that the
+ * backend will reject with 401 anyway.
+ *
+ * Returns null when the token is missing, malformed, or has no `exp`.
+ * The caller treats null as "no expiry info" and lets the request fly.
+ */
+function getJwtExpiryMs(token: string | undefined): number | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    // base64url → base64
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "===".slice((b64.length + 3) % 4);
+    const json =
+      typeof atob === "function"
+        ? atob(padded)
+        : Buffer.from(padded, "base64").toString("utf-8");
+    const payload = JSON.parse(json) as { exp?: number };
+    if (typeof payload.exp !== "number") return null;
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
 function buildUrl(path: string, query?: RequestOptions["query"]) {
   const url = new URL(`${API_BASE_URL}${path}`);
   if (!query) {
@@ -48,6 +76,17 @@ async function request<T>(method: string, path: string, options: RequestOptions 
   }
 
   if (options.token) {
+    // Short-circuit obviously-expired tokens client-side so the user doesn't
+    // see a wave of 401s in devtools (and we don't burn a request) when the
+    // 15-minute access token has aged out. dispatch `auth:expired` so the
+    // app-shell listener can clear the session and bounce to /login.
+    const expiryMs = getJwtExpiryMs(options.token);
+    if (expiryMs !== null && expiryMs <= Date.now()) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:expired"));
+      }
+      throw new ApiError("Session expired", 401, "token_expired");
+    }
     headers.Authorization = `Bearer ${options.token}`;
   }
 

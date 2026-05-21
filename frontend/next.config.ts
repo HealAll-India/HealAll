@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const configuredMapTileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim();
-const isProductionBuild = process.env.NODE_ENV === "production";
 
 function getMapTileImageSource(tileUrl: string | undefined): string | null {
   if (!tileUrl) return null;
@@ -28,11 +27,16 @@ const nextConfig: NextConfig = {
   async headers() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
     const mapTileImageSource = getMapTileImageSource(configuredMapTileUrl);
+    // tile.openstreetmap.org is the default tile source (see map-picker.tsx).
+    // Always allow it; when a paid provider is configured via
+    // NEXT_PUBLIC_MAP_TILE_URL its origin is appended below.
     const mapImageSources = [
       "'self'",
       "https://*.googleusercontent.com",
-      ...(mapTileImageSource ? [mapTileImageSource] : []),
-      ...(!isProductionBuild && !mapTileImageSource ? ["https://tile.openstreetmap.org"] : []),
+      "https://tile.openstreetmap.org",
+      ...(mapTileImageSource && mapTileImageSource !== "https://tile.openstreetmap.org"
+        ? [mapTileImageSource]
+        : []),
       "data:",
     ];
 
