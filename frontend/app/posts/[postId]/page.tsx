@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { AuthRequired } from "@/components/ui/auth-required";
+import { MapPicker } from "@/components/ui/map-picker";
 import { createComment, listComments } from "@/lib/api/comments";
 import { ApiError } from "@/lib/api/client";
 import { createReport } from "@/lib/api/moderation";
@@ -210,15 +211,24 @@ export default function PostDetailPage() {
                     {post.city}{post.pincode ? ` · ${post.pincode}` : ""}
                   </p>
                   {post.latitude != null && post.longitude != null && (
-                    <a
-                      className="secondary"
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ width: "fit-content", textDecoration: "none" }}
-                    >
-                      🧭 Get Directions
-                    </a>
+                    <>
+                      <MapPicker
+                        latitude={post.latitude}
+                        longitude={post.longitude}
+                        onChange={() => { /* read-only */ }}
+                        readOnly
+                        height={220}
+                      />
+                      <a
+                        className="secondary"
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ width: "fit-content", textDecoration: "none" }}
+                      >
+                        🧭 Get Directions
+                      </a>
+                    </>
                   )}
                 </section>
               )}
