@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AuthRedirect } from "@/components/auth/auth-redirect";
 import { ReportIssueFab } from "@/components/feedback/report-issue-fab";
+import { LiveStats } from "@/components/landing/live-stats";
+import { LiveFeedPreview } from "@/components/landing/live-feed-preview";
 
 const COMMUNITY_GUIDELINES_PDF_ID = "16umjQCumoecqR0Y2AoNi8zY-IUKHKvws";
 const GUIDELINES_PDF_VIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/view`;
@@ -14,12 +16,6 @@ const CATEGORIES = [
   { emoji: "🔧", label: "Skills",     color: "#16a34a", bg: "#f0fdf4" },
   { emoji: "🧭", label: "Navigate",   color: "#7c3aed", bg: "#faf5ff" },
   { emoji: "🤝", label: "On Ground",  color: "#d97706", bg: "#fffbeb" },
-];
-
-const MOCK_POSTS = [
-  { initials: "RK", name: "Riya K.", city: "Delhi", title: "Need O+ blood by 6 PM today", category: "🆘 Urgent", helpers: 8 },
-  { initials: "AS", name: "Arjun S.", city: "Mumbai", title: "Seeking insulin — out of stock near me", category: "💊 Medicine", helpers: 5 },
-  { initials: "PM", name: "Priya M.", city: "Bangalore", title: "Family needs emergency shelter", category: "🏠 Shelter", helpers: 12 },
 ];
 
 export default function HomePage() {
@@ -52,20 +48,7 @@ export default function HomePage() {
             </div>
             <div className="land__lock">🔒 Invite-only · need a code? Ask an existing member.</div>
 
-            <div className="land__nums">
-              <div className="land__num-card">
-                <div className="land__num-val">47</div>
-                <div className="land__num-label">Helped today</div>
-              </div>
-              <div className="land__num-card">
-                <div className="land__num-val">184</div>
-                <div className="land__num-label">Helpers online</div>
-              </div>
-              <div className="land__num-card">
-                <div className="land__num-val">19</div>
-                <div className="land__num-label">Indian cities</div>
-              </div>
-            </div>
+            <LiveStats />
 
             <div className="land__pillrow">
               {CATEGORIES.map(c => (
@@ -93,19 +76,7 @@ export default function HomePage() {
                   184 online
                 </span>
               </div>
-              <div className="miniposts">
-                {MOCK_POSTS.map((p) => (
-                  <div key={p.title} className="minipost">
-                    <span className="av av-sm" style={{ background: "linear-gradient(135deg,#16a34a,#2563eb)" }}>{p.initials}</span>
-                    <div>
-                      <div className="minipost__who">{p.name} · {p.city}</div>
-                      <div className="minipost__title">{p.title}</div>
-                      <div className="minipost__meta">{p.category} · {p.helpers} helping</div>
-                    </div>
-                    <span className="minipost__cta">♥ Help</span>
-                  </div>
-                ))}
-              </div>
+              <LiveFeedPreview limit={3} />
               <div style={{
                 padding: "10px 12px",
                 background: "var(--gradient-brand-soft)",

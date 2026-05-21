@@ -15,6 +15,7 @@ from app.api.v1 import (
     messages,
     moderation,
     posts,
+    public,
     reports,
     uploads,
     users,
@@ -39,3 +40,4 @@ router.include_router(moderation.router)
 router.include_router(uploads.router)
 router.include_router(admin.router)
 router.include_router(issue_reports.router)
+router.include_router(public.router)
