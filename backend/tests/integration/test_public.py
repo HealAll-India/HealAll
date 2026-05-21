@@ -195,7 +195,9 @@ async def test_public_posts_no_pii_leak(client: AsyncClient, db_session: AsyncSe
 
     # Bind to the exact post we seeded so the assertion can never validate
     # the wrong record if test ordering or sort order shifts.
-    item = next(i for i in resp.json()["items"] if i["id"] == str(post.id))
+    items_payload = resp.json()["items"]
+    item = next((i for i in items_payload if i["id"] == str(post.id)), None)
+    assert item is not None, f"Post {post.id} not found in public feed response: {items_payload}"
     for forbidden in ("address", "pincode", "latitude", "longitude", "contact_prefs"):
         assert forbidden not in item
     for forbidden in ("email", "phone", "contact_prefs"):
@@ -258,10 +260,12 @@ async def test_public_comments_on_active_returns_list(client: AsyncClient, db_se
     assert len(items) == 1
     assert items[0]["body"] == "A real public comment"
     assert items[0]["author"]["name"] == author.name
-    # No email / phone leakage on the comment author either.
+    # No email / phone leakage on the comment author either. Asserting the
+    # exact seeded values (not substring patterns) matches the feed test
+    # and pinpoints failures to the actual record under inspection.
     raw = resp.text
-    assert "@example.com" not in raw
-    assert "+9199" not in raw
+    assert author.email not in raw
+    assert author.phone not in raw
 
 
 # ---------------------------------------------------------------------------
@@ -290,5 +294,7 @@ async def test_public_posts_helper_count(client: AsyncClient, db_session: AsyncS
 
     resp = await client.get("/v1/public/posts")
     assert resp.status_code == 200
-    item = next(i for i in resp.json()["items"] if i["id"] == str(post.id))
+    items_payload = resp.json()["items"]
+    item = next((i for i in items_payload if i["id"] == str(post.id)), None)
+    assert item is not None, f"Post {post.id} not found in public feed response: {items_payload}"
     assert item["helper_count"] == 2
