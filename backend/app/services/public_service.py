@@ -9,7 +9,7 @@ helpers degrade gracefully on Redis failure — see ``core/cache.py``.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -120,7 +120,7 @@ async def _compute_stats(db: AsyncSession) -> dict[str, object]:
         "verified_members": int(verified or 0),
         "active_cases": int(active or 0),
         "cities": int(cities or 0),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -159,9 +159,7 @@ async def _compute_public_feed(
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
 
     rows = await db.execute(
-        base.order_by(Post.urgency.desc(), Post.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
+        base.order_by(Post.urgency.desc(), Post.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
     )
     posts = list(rows.scalars().all())
 
@@ -173,10 +171,7 @@ async def _compute_public_feed(
 
     helper_map = await _helper_counts(db, [p.id for p in posts])
 
-    items = [
-        _post_to_summary(p, authors.get(p.author_id), helper_map.get(p.id, 0))
-        for p in posts
-    ]
+    items = [_post_to_summary(p, authors.get(p.author_id), helper_map.get(p.id, 0)) for p in posts]
     return {
         "items": items,
         "page": page,
