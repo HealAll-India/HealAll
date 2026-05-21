@@ -1176,7 +1176,125 @@ p.success           { color: var(--ok); margin: 0; }
 @media (max-width: 768px) {
   main { padding: 1rem; }
   .feed-layout { grid-template-columns: 1fr; }
-  .main-nav .links { display: none; }
+  .main-nav .links,
+  .nav-actions__post,
+  .nav-actions__pill,
+  .nav-actions__logout { display: none; }
+}
+@media (min-width: 769px) {
+  .nav-burger { display: none !important; }
+}
+
+.nav-burger {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-burger:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+.nav-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  z-index: 90;
+}
+.nav-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 88vw);
+  background: #fff;
+  z-index: 91;
+  box-shadow: -12px 0 32px rgba(17, 24, 39, 0.18);
+  padding: 64px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  animation: navDrawerIn 180ms ease-out;
+}
+@keyframes navDrawerIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.nav-drawer__user { padding-bottom: 8px; border-bottom: 1px solid var(--border-strong); }
+.nav-drawer__links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-drawer__links a {
+  display: block;
+  padding: 12px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 15px;
+}
+.nav-drawer__links a:hover,
+.nav-drawer__links a:focus-visible { background: var(--gradient-brand-soft); }
+.nav-drawer__links a.active { background: var(--gradient-brand-soft); color: var(--brand-green, #16a34a); }
+.nav-drawer__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-strong);
+}
+.nav-drawer__cta {
+  display: block;
+  text-align: center;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 14px;
+}
+.nav-drawer__footer {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-strong);
+}
+.nav-drawer__footer a { color: #6b7280; text-decoration: none; }
+.nav-drawer__footer a:hover { color: var(--text); }
+
+.nav-actions { gap: 10px; align-items: center; }
+.nav-actions__post-btn { font-size: 13px; }
+.nav-actions__pill { margin-left: 2px; }
+.nav-actions__logout { font-size: 13px; }
+
+/* Generic mobile polish */
+@media (max-width: 640px) {
+  .main-nav .inner { padding: 10px 14px; }
+  .main-nav .logo-text { font-size: 16px; }
+  main { padding: 12px; }
+  .card { padding: 14px; border-radius: 12px; }
+  h1, .h1 { font-size: clamp(22px, 7vw, 30px); }
+  h2 { font-size: clamp(18px, 5vw, 24px); }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row { gap: 8px; }
+  /* Form inputs need to be at least 16px to prevent iOS Safari zoom on focus. */
+  input, textarea, select { font-size: 16px; }
+  /* Keep the FAB clear of the OS gesture bar on iOS. */
+  .fab-root { bottom: max(12px, env(safe-area-inset-bottom)); }
 }
 @media (max-width: 1080px) {
   .feed-grid, .pd-grid { grid-template-columns: 1fr; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -34,6 +34,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const { accessToken, user, clearSession } = useAuthStore();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const closeDrawer = () => setMobileNavOpen(false);
 
   const isAuthed = hydrated && Boolean(accessToken);
   const roles      = user?.roles ?? [];
@@ -59,6 +61,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("auth:expired", onExpired);
     return () => window.removeEventListener("auth:expired", onExpired);
   }, [clearSession, router]);
+
+  // Lock body scroll while the drawer is open so the underlying page can't
+  // be flick-scrolled behind the overlay.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileNavOpen]);
 
   async function handleLogout() {
     if (accessToken) {
@@ -97,21 +115,80 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          <div className="row" style={{ gap: "10px" }}>
+          <div className="row nav-actions">
             {isAuthed && user ? (
               <>
-                <Link href="/posts/new">
-                  <button type="button" className="btn-sm" style={{ fontSize: "13px" }}>
+                <Link href="/posts/new" className="nav-actions__post">
+                  <button type="button" className="btn-sm nav-actions__post-btn">
                     + Post a Request
                   </button>
                 </Link>
-                <span className="vpill" style={{ marginLeft: 2 }}>✓ {user.name} · L{user.verification_level}</span>
-                <button className="danger btn-sm" onClick={handleLogout} type="button" style={{ fontSize: "13px" }}>Logout</button>
+                <span className="vpill nav-actions__pill">✓ {user.name} · L{user.verification_level}</span>
+                <button className="danger btn-sm nav-actions__logout" onClick={handleLogout} type="button">Logout</button>
               </>
             ) : null}
+            <button
+              type="button"
+              className="nav-burger"
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-drawer"
+              onClick={() => setMobileNavOpen(v => !v)}
+            >
+              <span aria-hidden="true">{mobileNavOpen ? "✕" : "☰"}</span>
+            </button>
           </div>
         </div>
       </nav>
+
+      {mobileNavOpen && (
+        <>
+          <div
+            className="nav-drawer-backdrop"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+          <aside id="mobile-drawer" className="nav-drawer" role="dialog" aria-label="Site navigation">
+            {isAuthed && user ? (
+              <div className="nav-drawer__user">
+                <span className="vpill">✓ {user.name} · L{user.verification_level}</span>
+              </div>
+            ) : null}
+            <div className="nav-drawer__links">
+              {isAuthed ? (
+                visibleLinks.map(link => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={pathname.startsWith(link.href) ? "active" : ""}
+                    onClick={closeDrawer}
+                  >
+                    {link.label}
+                  </Link>
+                ))
+              ) : (
+                <>
+                  <Link href="/signup" onClick={closeDrawer}>Sign up</Link>
+                  <Link href="/login" onClick={closeDrawer}>Login</Link>
+                </>
+              )}
+            </div>
+            {isAuthed && (
+              <div className="nav-drawer__actions">
+                <Link href="/posts/new" className="nav-drawer__cta" onClick={closeDrawer}>+ Post a Request</Link>
+                <button type="button" className="danger btn-sm" onClick={() => { closeDrawer(); handleLogout(); }}>Logout</button>
+              </div>
+            )}
+            <div className="nav-drawer__footer">
+              <Link href="/privacy-policy" onClick={closeDrawer}>Privacy</Link>
+              <Link href="/terms" onClick={closeDrawer}>Terms</Link>
+              <Link href="/contributors" onClick={closeDrawer}>Contributors</Link>
+              <Link href="/changelog" onClick={closeDrawer}>Changelog</Link>
+            </div>
+          </aside>
+        </>
+      )}
+
       {children}
       <footer style={{ borderTop: "1px solid #e5e7eb", padding: "20px 24px", marginTop: "48px" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "13px", color: "#9ca3af" }}>
