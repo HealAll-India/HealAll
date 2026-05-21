@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const configuredMapTileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim();
-const isProductionBuild = process.env.NODE_ENV === "production";
 
 function getMapTileImageSource(tileUrl: string | undefined): string | null {
   if (!tileUrl) return null;
@@ -28,11 +27,16 @@ const nextConfig: NextConfig = {
   async headers() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
     const mapTileImageSource = getMapTileImageSource(configuredMapTileUrl);
+    // tile.openstreetmap.org is the default tile source (see map-picker.tsx).
+    // Always allow it; when a paid provider is configured via
+    // NEXT_PUBLIC_MAP_TILE_URL its origin is appended below.
     const mapImageSources = [
       "'self'",
       "https://*.googleusercontent.com",
-      ...(mapTileImageSource ? [mapTileImageSource] : []),
-      ...(!isProductionBuild && !mapTileImageSource ? ["https://tile.openstreetmap.org"] : []),
+      "https://tile.openstreetmap.org",
+      ...(mapTileImageSource && mapTileImageSource !== "https://tile.openstreetmap.org"
+        ? [mapTileImageSource]
+        : []),
       "data:",
     ];
 
@@ -58,10 +62,9 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
               "style-src 'self' 'unsafe-inline' https://accounts.google.com;",
               "style-src-elem 'self' 'unsafe-inline' https://accounts.google.com;",
-              // Public OSM tiles are donation-funded/rate-limited. Keep them
-              // local-dev only, preserve visible attribution, and set
-              // NEXT_PUBLIC_MAP_TILE_URL for production (MapTiler, Mapbox, or
-              // a self-hosted/CDN tile endpoint).
+              // OSM tiles are allowed by default; see map-picker.tsx for the
+              // tile-policy rationale. Override with NEXT_PUBLIC_MAP_TILE_URL
+              // when traffic outgrows OSM's public endpoint.
               `img-src ${mapImageSources.join(" ")};`,
               "frame-src https://accounts.google.com;",
               `connect-src 'self' ${apiOrigin};`,

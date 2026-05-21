@@ -10,9 +10,15 @@ const MapPickerInner = dynamic(() => import("./map-picker-inner"), {
 });
 
 const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const DEV_OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// Default to the public OSM tile server so the map works out-of-the-box
+// in every environment, including production. At scale, switch to a
+// commercial provider (MapTiler, Mapbox, Stadia, self-hosted) by setting
+// NEXT_PUBLIC_MAP_TILE_URL / NEXT_PUBLIC_MAP_TILE_ATTRIBUTION. OSM's tile
+// policy (https://operations.osmfoundation.org/policies/tiles/) allows
+// low-traffic use; any spike should move us off the public endpoint.
+const DEFAULT_OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const configuredTileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL?.trim();
-const mapTileUrl = configuredTileUrl || (process.env.NODE_ENV !== "production" ? DEV_OSM_TILE_URL : "");
+const mapTileUrl = configuredTileUrl || DEFAULT_OSM_TILE_URL;
 const mapTileAttribution = process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION?.trim() || OSM_ATTRIBUTION;
 
 interface Props {
@@ -91,13 +97,7 @@ export function MapPicker({
   return (
     <div className="stack stack--map">
       <div className="map-picker-frame" style={frameStyle}>
-        {!mapTileUrl ? (
-          <div className="map-picker-loading">
-            {process.env.NODE_ENV === 'development'
-              ? 'Map tiles are not configured. Set NEXT_PUBLIC_MAP_TILE_URL.'
-              : 'Map unavailable'}
-          </div>
-        ) : cssReady ? (
+        {cssReady ? (
           <MapPickerInner
             latitude={latitude}
             longitude={longitude}
