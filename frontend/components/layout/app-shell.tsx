@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -34,6 +34,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const { accessToken, user, clearSession } = useAuthStore();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const closeDrawer = () => setMobileNavOpen(false);
+  const burgerRef = useRef<HTMLButtonElement | null>(null);
+  const drawerRef = useRef<HTMLElement | null>(null);
 
   const isAuthed = hydrated && Boolean(accessToken);
   const roles      = user?.roles ?? [];
@@ -59,6 +63,57 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("auth:expired", onExpired);
     return () => window.removeEventListener("auth:expired", onExpired);
   }, [clearSession, router]);
+
+  // Lock body scroll, trap focus inside the drawer, and restore focus to the
+  // burger on close. Without this, keyboard users could tab back behind the
+  // open overlay.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const drawer = drawerRef.current;
+    // Move focus to the first focusable element inside the drawer (falls
+    // back to the drawer container itself if there is nothing focusable).
+    if (drawer) {
+      const first = drawer.querySelector<HTMLElement>(focusableSelector);
+      (first ?? drawer).focus();
+    }
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileNavOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !drawer) return;
+      const focusables = Array.from(
+        drawer.querySelectorAll<HTMLElement>(focusableSelector)
+      ).filter((el) => el.getAttribute("aria-hidden") !== "true");
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !drawer.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+
+    const burger = burgerRef.current;
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+      // Restore focus to the toggle so keyboard users land back where they
+      // opened the menu, not on document.body.
+      burger?.focus();
+    };
+  }, [mobileNavOpen]);
 
   async function handleLogout() {
     if (accessToken) {
@@ -97,31 +152,97 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
-          <div className="row" style={{ gap: "10px" }}>
+          <div className="row nav-actions">
             {isAuthed && user ? (
               <>
-                <Link href="/posts/new">
-                  <button type="button" className="btn-sm" style={{ fontSize: "13px" }}>
-                    + Post a Request
-                  </button>
+                <Link href="/posts/new" className="nav-actions__post btn-primary btn-sm nav-actions__post-btn">
+                  + Post a Request
                 </Link>
-                <span className="vpill" style={{ marginLeft: 2 }}>✓ {user.name} · L{user.verification_level}</span>
-                <button className="danger btn-sm" onClick={handleLogout} type="button" style={{ fontSize: "13px" }}>Logout</button>
+                <span className="vpill nav-actions__pill">✓ {user.name} · L{user.verification_level}</span>
+                <button className="danger btn-sm nav-actions__logout" onClick={handleLogout} type="button">Logout</button>
               </>
             ) : null}
+            <button
+              ref={burgerRef}
+              type="button"
+              className="nav-burger"
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-drawer"
+              onClick={() => setMobileNavOpen(v => !v)}
+            >
+              <span aria-hidden="true">{mobileNavOpen ? "✕" : "☰"}</span>
+            </button>
           </div>
         </div>
       </nav>
+
+      {mobileNavOpen && (
+        <>
+          <div
+            className="nav-drawer-backdrop"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            ref={drawerRef}
+            id="mobile-drawer"
+            className="nav-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            tabIndex={-1}
+          >
+            {isAuthed && user ? (
+              <div className="nav-drawer__user">
+                <span className="vpill">✓ {user.name} · L{user.verification_level}</span>
+              </div>
+            ) : null}
+            <div className="nav-drawer__links">
+              {isAuthed ? (
+                visibleLinks.map(link => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={pathname.startsWith(link.href) ? "active" : ""}
+                    onClick={closeDrawer}
+                  >
+                    {link.label}
+                  </Link>
+                ))
+              ) : (
+                <>
+                  <Link href="/signup" onClick={closeDrawer}>Sign up</Link>
+                  <Link href="/login" onClick={closeDrawer}>Login</Link>
+                </>
+              )}
+            </div>
+            {isAuthed && (
+              <div className="nav-drawer__actions">
+                <Link href="/posts/new" className="nav-drawer__cta" onClick={closeDrawer}>+ Post a Request</Link>
+                <button type="button" className="danger btn-sm" onClick={() => { closeDrawer(); handleLogout(); }}>Logout</button>
+              </div>
+            )}
+            <div className="nav-drawer__footer">
+              <Link href="/privacy-policy" onClick={closeDrawer}>Privacy</Link>
+              <Link href="/terms" onClick={closeDrawer}>Terms</Link>
+              <Link href="/contributors" onClick={closeDrawer}>Contributors</Link>
+              <Link href="/changelog" onClick={closeDrawer}>Changelog</Link>
+            </div>
+          </aside>
+        </>
+      )}
+
       {children}
-      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "20px 24px", marginTop: "48px" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "13px", color: "#9ca3af" }}>
+      <footer className="app-footer">
+        <div className="app-footer__inner">
           <span>© 2026 HealAll</span>
-          <Link href="/privacy-policy" style={{ color: "#6b7280" }}>Privacy Policy</Link>
-          <Link href="/terms" style={{ color: "#6b7280" }}>Terms of Service</Link>
-          <Link href="/#community-guidelines" style={{ color: "#6b7280" }}>Community Guidelines</Link>
-          <Link href="/contributors" style={{ color: "#6b7280" }}>Contributors</Link>
-          <Link href="/changelog" style={{ color: "#6b7280" }}>Changelog</Link>
-          <a href="mailto:hello@healallindia.com" style={{ color: "#6b7280" }}>Contact</a>
+          <Link href="/privacy-policy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/#community-guidelines">Community Guidelines</Link>
+          <Link href="/contributors">Contributors</Link>
+          <Link href="/changelog">Changelog</Link>
+          <a href="mailto:hello@healallindia.com">Contact</a>
         </div>
       </footer>
     </>
