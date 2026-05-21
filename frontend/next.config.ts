@@ -26,6 +26,17 @@ const nextConfig: NextConfig = {
 
   async headers() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
+    // Vercel's preview-deploy toolbar (live feedback widget) only loads on
+    // preview environments. Allow it explicitly so the script + iframe + WS
+    // connection it ships aren't blocked there. In production these origins
+    // are simply unused.
+    const isVercelPreview = process.env.VERCEL_ENV === "preview";
+    const vercelLiveScript = isVercelPreview ? ["https://vercel.live"] : [];
+    const vercelLiveFrame = isVercelPreview ? ["https://vercel.live"] : [];
+    const vercelLiveConnect = isVercelPreview
+      ? ["https://vercel.live", "wss://ws-us3.pusher.com"]
+      : [];
+
     const mapTileImageSource = getMapTileImageSource(configuredMapTileUrl);
     // tile.openstreetmap.org is the default tile source (see map-picker.tsx).
     // Always allow it; when a paid provider is configured via
@@ -59,15 +70,18 @@ const nextConfig: NextConfig = {
               "base-uri 'self';",
               "object-src 'none';",
               "frame-ancestors 'none';",
-              "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
+              `script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com ${vercelLiveScript.join(" ")};`,
+              `script-src-elem 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com ${vercelLiveScript.join(" ")};`,
               "style-src 'self' 'unsafe-inline' https://accounts.google.com;",
               "style-src-elem 'self' 'unsafe-inline' https://accounts.google.com;",
               // OSM tiles are allowed by default; see map-picker.tsx for the
               // tile-policy rationale. Override with NEXT_PUBLIC_MAP_TILE_URL
               // when traffic outgrows OSM's public endpoint.
               `img-src ${mapImageSources.join(" ")};`,
-              "frame-src https://accounts.google.com;",
-              `connect-src 'self' ${apiOrigin};`,
+              // drive.google.com is required so the Community Guidelines PDF
+              // iframe on the landing page can render the file/preview URL.
+              `frame-src https://accounts.google.com https://drive.google.com ${vercelLiveFrame.join(" ")};`,
+              `connect-src 'self' ${apiOrigin} ${vercelLiveConnect.join(" ")};`,
             ].join(' '),
           },
         ],
