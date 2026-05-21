@@ -61,9 +61,11 @@ export function getPublicFeed(params: {
 }
 
 export function getPublicPost(postId: string) {
-  return publicGet<PublicPostDetail>(`/v1/public/posts/${postId}`);
+  const safe = encodeURIComponent(postId);
+  return publicGet<PublicPostDetail>(`/v1/public/posts/${safe}`);
 }
 
 export function listPublicComments(postId: string) {
-  return publicGet<PublicCommentResponse[]>(`/v1/public/posts/${postId}/comments`);
+  const safe = encodeURIComponent(postId);
+  return publicGet<PublicCommentResponse[]>(`/v1/public/posts/${safe}/comments`);
 }

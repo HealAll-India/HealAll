@@ -32,6 +32,9 @@ export function PublicPostView({ postId }: Props) {
     let active = true;
     (async () => {
       setLoading(true);
+      // Reset notFound on each postId so a previous miss can't shadow a
+      // valid post when the user navigates between detail URLs.
+      setNotFound(false);
       const [p, c] = await Promise.all([
         getPublicPost(postId),
         listPublicComments(postId)
@@ -39,7 +42,10 @@ export function PublicPostView({ postId }: Props) {
       if (!active) return;
       if (!p) {
         setNotFound(true);
+        setPost(null);
+        setComments([]);
       } else {
+        setNotFound(false);
         setPost(p);
         setComments(c ?? []);
       }
@@ -50,8 +56,11 @@ export function PublicPostView({ postId }: Props) {
     };
   }, [postId]);
 
-  const signupHref = `/signup?next=/posts/${postId}`;
-  const loginHref = `/login?next=/posts/${postId}`;
+  // Encode postId so reserved characters can't smuggle extra query params
+  // into the `next` redirect target.
+  const nextPath = encodeURIComponent(`/posts/${postId}`);
+  const signupHref = `/signup?next=${nextPath}`;
+  const loginHref = `/login?next=${nextPath}`;
 
   if (loading) {
     return <p className="muted">Loading…</p>;

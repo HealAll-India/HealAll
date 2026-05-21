@@ -8,9 +8,26 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import cache as cache_module
 from app.models.case import Case, CaseHelper, CaseHelperStatus, CaseStatus
 from app.models.post import Post, PostCategory, PostStatus, PostUrgency
 from app.models.user import User
+
+
+@pytest.fixture(autouse=True)
+async def _flush_public_cache():
+    """Drop stats/feed cache entries between tests so each case observes only
+    its own DB fixtures, not stale Redis state from a prior test."""
+    try:
+        keys = await cache_module._client.keys("public:*")
+        if keys:
+            await cache_module._client.delete(*keys)
+    except Exception:
+        # If Redis isn't reachable in the test env the cache is a no-op
+        # anyway (get_or_set falls back to the producer), so silently
+        # skip the flush.
+        pass
+    yield
 
 
 async def _make_user(
@@ -21,7 +38,10 @@ async def _make_user(
     is_active: bool = True,
     phone_suffix: str | None = None,
 ) -> User:
-    suffix = phone_suffix or uuid4().hex[:8]
+    # Generate a digits-only 8-character suffix so the phone column never
+    # contains hex letters — keeps the seed compatible with any future
+    # E.164 / numeric-only validation on the User model.
+    suffix = phone_suffix or f"{uuid4().int % 10**8:08d}"
     user = User(
         phone=f"+9199{suffix[:8]}",
         email=f"{suffix}@example.com",
@@ -148,7 +168,7 @@ async def test_public_posts_returns_only_active(client: AsyncClient, db_session:
 @pytest.mark.asyncio
 async def test_public_posts_no_pii_leak(client: AsyncClient, db_session: AsyncSession):
     author = await _make_user(db_session)
-    await _make_post(
+    post = await _make_post(
         db_session,
         author,
         status=PostStatus.ACTIVE.value,
@@ -169,11 +189,26 @@ async def test_public_posts_no_pii_leak(client: AsyncClient, db_session: AsyncSe
     assert "12.3456" not in raw
     assert "78.9012" not in raw
     assert "show_phone" not in raw
+    # Author PII (phone / email) must not leak either.
+    assert author.email not in raw
+    assert author.phone not in raw
 
-    item = resp.json()["items"][0]
-    # And the JSON shape itself must not carry the private keys.
+    # Bind to the exact post we seeded so the assertion can never validate
+    # the wrong record if test ordering or sort order shifts.
+    item = next(i for i in resp.json()["items"] if i["id"] == str(post.id))
     for forbidden in ("address", "pincode", "latitude", "longitude", "contact_prefs"):
         assert forbidden not in item
+    for forbidden in ("email", "phone", "contact_prefs"):
+        assert forbidden not in item["author"]
+
+    # Same guarantees on the single-post detail endpoint.
+    detail_resp = await client.get(f"/v1/public/posts/{post.id}")
+    assert detail_resp.status_code == 200
+    detail = detail_resp.json()
+    for forbidden in ("address", "pincode", "latitude", "longitude", "contact_prefs"):
+        assert forbidden not in detail
+    for forbidden in ("email", "phone", "contact_prefs"):
+        assert forbidden not in detail["author"]
 
 
 @pytest.mark.asyncio

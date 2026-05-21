@@ -8,7 +8,6 @@ helpers degrade gracefully on Redis failure — see ``core/cache.py``.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -108,12 +107,14 @@ async def _compute_stats(db: AsyncSession) -> dict[str, object]:
         Post.deleted_at.is_(None),
     )
 
-    helped, verified, active, cities = await asyncio.gather(
-        db.scalar(helped_q),
-        db.scalar(verified_q),
-        db.scalar(active_q),
-        db.scalar(cities_q),
-    )
+    # SQLAlchemy AsyncSession is NOT safe for concurrent use; running these
+    # under asyncio.gather on the same session crashes under load. Sequential
+    # awaits are fast enough at landing-page scale (four indexed counts) and
+    # the result is cached for 30s so the call rarely repeats.
+    helped = await db.scalar(helped_q)
+    verified = await db.scalar(verified_q)
+    active = await db.scalar(active_q)
+    cities = await db.scalar(cities_q)
 
     return {
         "helped": int(helped or 0),
