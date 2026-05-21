@@ -220,11 +220,10 @@ export default function PostDetailPage() {
                         height={220}
                       />
                       <a
-                        className="secondary"
+                        className="secondary post-loc-directions-link"
                         href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ width: "fit-content", textDecoration: "none" }}
                       >
                         🧭 Get Directions
                       </a>

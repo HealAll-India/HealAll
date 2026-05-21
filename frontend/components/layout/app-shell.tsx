@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -36,6 +36,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { accessToken, user, clearSession } = useAuthStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const closeDrawer = () => setMobileNavOpen(false);
+  const burgerRef = useRef<HTMLButtonElement | null>(null);
+  const drawerRef = useRef<HTMLElement | null>(null);
 
   const isAuthed = hydrated && Boolean(accessToken);
   const roles      = user?.roles ?? [];
@@ -62,19 +64,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("auth:expired", onExpired);
   }, [clearSession, router]);
 
-  // Lock body scroll while the drawer is open so the underlying page can't
-  // be flick-scrolled behind the overlay.
+  // Lock body scroll, trap focus inside the drawer, and restore focus to the
+  // burger on close. Without this, keyboard users could tab back behind the
+  // open overlay.
   useEffect(() => {
     if (!mobileNavOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const drawer = drawerRef.current;
+    // Move focus to the first focusable element inside the drawer (falls
+    // back to the drawer container itself if there is nothing focusable).
+    if (drawer) {
+      const first = drawer.querySelector<HTMLElement>(focusableSelector);
+      (first ?? drawer).focus();
+    }
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMobileNavOpen(false);
+      if (e.key === "Escape") {
+        setMobileNavOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !drawer) return;
+      const focusables = Array.from(
+        drawer.querySelectorAll<HTMLElement>(focusableSelector)
+      ).filter((el) => !el.hasAttribute("aria-hidden"));
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !drawer.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener("keydown", onKey);
+
+    const burger = burgerRef.current;
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      // Restore focus to the toggle so keyboard users land back where they
+      // opened the menu, not on document.body.
+      burger?.focus();
     };
   }, [mobileNavOpen]);
 
@@ -118,16 +155,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="row nav-actions">
             {isAuthed && user ? (
               <>
-                <Link href="/posts/new" className="nav-actions__post">
-                  <button type="button" className="btn-sm nav-actions__post-btn">
-                    + Post a Request
-                  </button>
+                <Link href="/posts/new" className="nav-actions__post btn-primary btn-sm nav-actions__post-btn">
+                  + Post a Request
                 </Link>
                 <span className="vpill nav-actions__pill">✓ {user.name} · L{user.verification_level}</span>
                 <button className="danger btn-sm nav-actions__logout" onClick={handleLogout} type="button">Logout</button>
               </>
             ) : null}
             <button
+              ref={burgerRef}
               type="button"
               className="nav-burger"
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
@@ -148,7 +184,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileNavOpen(false)}
             aria-hidden="true"
           />
-          <aside id="mobile-drawer" className="nav-drawer" role="dialog" aria-label="Site navigation">
+          <aside
+            ref={drawerRef}
+            id="mobile-drawer"
+            className="nav-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            tabIndex={-1}
+          >
             {isAuthed && user ? (
               <div className="nav-drawer__user">
                 <span className="vpill">✓ {user.name} · L{user.verification_level}</span>

@@ -1222,9 +1222,9 @@ p.success           { color: var(--ok); margin: 0; }
   flex-direction: column;
   gap: 20px;
   overflow-y: auto;
-  animation: navDrawerIn 180ms ease-out;
+  animation: nav-drawer-in 180ms ease-out;
 }
-@keyframes navDrawerIn {
+@keyframes nav-drawer-in {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }
 }
@@ -1590,6 +1590,7 @@ p.success           { color: var(--ok); margin: 0; }
 }
 .post-loc-address { margin: 0; font-size: 14px; }
 .post-loc-meta { font-size: 12px; margin: 0; }
+.post-loc-directions-link { width: fit-content; text-decoration: none; }
 
 /* Location safety banner on post creation */
 .location-safety {
