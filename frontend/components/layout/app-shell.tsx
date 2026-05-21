@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (e.key !== "Tab" || !drawer) return;
       const focusables = Array.from(
         drawer.querySelectorAll<HTMLElement>(focusableSelector)
-      ).filter((el) => !el.hasAttribute("aria-hidden"));
+      ).filter((el) => el.getAttribute("aria-hidden") !== "true");
       if (focusables.length === 0) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -234,15 +234,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {children}
-      <footer style={{ borderTop: "1px solid #e5e7eb", padding: "20px 24px", marginTop: "48px" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "13px", color: "#9ca3af" }}>
+      <footer className="app-footer">
+        <div className="app-footer__inner">
           <span>© 2026 HealAll</span>
-          <Link href="/privacy-policy" style={{ color: "#6b7280" }}>Privacy Policy</Link>
-          <Link href="/terms" style={{ color: "#6b7280" }}>Terms of Service</Link>
-          <Link href="/#community-guidelines" style={{ color: "#6b7280" }}>Community Guidelines</Link>
-          <Link href="/contributors" style={{ color: "#6b7280" }}>Contributors</Link>
-          <Link href="/changelog" style={{ color: "#6b7280" }}>Changelog</Link>
-          <a href="mailto:hello@healallindia.com" style={{ color: "#6b7280" }}>Contact</a>
+          <Link href="/privacy-policy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/#community-guidelines">Community Guidelines</Link>
+          <Link href="/contributors">Contributors</Link>
+          <Link href="/changelog">Changelog</Link>
+          <a href="mailto:hello@healallindia.com">Contact</a>
         </div>
       </footer>
     </>
