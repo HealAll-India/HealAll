@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
-import { AuthRequired } from "@/components/ui/auth-required";
+import { PublicPostView } from "@/components/posts/public-post-view";
 import { MapPicker } from "@/components/ui/map-picker";
 import { createComment, listComments } from "@/lib/api/comments";
 import { ApiError } from "@/lib/api/client";
@@ -273,7 +273,7 @@ export default function PostDetailPage() {
           {error   ? <p className="error">{error}</p>     : null}
         </>
       ) : (
-        <AuthRequired />
+        <PublicPostView postId={postId} />
       )}
     </main>
   );
