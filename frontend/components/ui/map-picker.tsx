@@ -97,13 +97,7 @@ export function MapPicker({
   return (
     <div className="stack stack--map">
       <div className="map-picker-frame" style={frameStyle}>
-        {!mapTileUrl ? (
-          <div className="map-picker-loading">
-            {process.env.NODE_ENV === 'development'
-              ? 'Map tiles are not configured. Set NEXT_PUBLIC_MAP_TILE_URL.'
-              : 'Map unavailable'}
-          </div>
-        ) : cssReady ? (
+        {cssReady ? (
           <MapPickerInner
             latitude={latitude}
             longitude={longitude}

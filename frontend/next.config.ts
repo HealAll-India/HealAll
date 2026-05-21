@@ -62,10 +62,9 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com;",
               "style-src 'self' 'unsafe-inline' https://accounts.google.com;",
               "style-src-elem 'self' 'unsafe-inline' https://accounts.google.com;",
-              // Public OSM tiles are donation-funded/rate-limited. Keep them
-              // local-dev only, preserve visible attribution, and set
-              // NEXT_PUBLIC_MAP_TILE_URL for production (MapTiler, Mapbox, or
-              // a self-hosted/CDN tile endpoint).
+              // OSM tiles are allowed by default; see map-picker.tsx for the
+              // tile-policy rationale. Override with NEXT_PUBLIC_MAP_TILE_URL
+              // when traffic outgrows OSM's public endpoint.
               `img-src ${mapImageSources.join(" ")};`,
               "frame-src https://accounts.google.com;",
               `connect-src 'self' ${apiOrigin};`,
