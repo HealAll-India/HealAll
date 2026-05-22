@@ -4,6 +4,13 @@ import { ReportIssueFab } from "@/components/feedback/report-issue-fab";
 import { LiveStats } from "@/components/landing/live-stats";
 import { LiveFeedPreview } from "@/components/landing/live-feed-preview";
 
+// Force ISR at the page level. Without this Next prerenders the landing
+// once at build time and the Vercel CDN serves it indefinitely — the
+// async RSC children alone do NOT propagate their revalidate=30 to the
+// page route, so 47/184/19 mock stats stuck around even after the live
+// components landed. 30s matches the backend Redis TTL on /v1/public/*.
+export const revalidate = 30;
+
 const COMMUNITY_GUIDELINES_PDF_ID = "16umjQCumoecqR0Y2AoNi8zY-IUKHKvws";
 const GUIDELINES_PDF_VIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/view`;
 const GUIDELINES_PDF_PREVIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/preview`;
