@@ -11,10 +11,17 @@ import { LiveFeedPreview } from "@/components/landing/live-feed-preview";
 // components landed. 30s matches the backend Redis TTL on /v1/public/*.
 export const revalidate = 30;
 
-const COMMUNITY_GUIDELINES_PDF_ID = "16umjQCumoecqR0Y2AoNi8zY-IUKHKvws";
-const GUIDELINES_PDF_VIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/view`;
-const GUIDELINES_PDF_PREVIEW = `https://drive.google.com/file/d/${COMMUNITY_GUIDELINES_PDF_ID}/preview`;
-const GUIDELINES_PDF_DOWNLOAD = `https://drive.google.com/uc?export=download&id=${COMMUNITY_GUIDELINES_PDF_ID}`;
+// Community Guidelines PDF is self-hosted under `frontend/public/`.
+// Previously we embedded the Drive `/file/d/<id>/preview` URL, but Drive
+// now serves its own `Content-Security-Policy: frame-ancestors
+// https://drive.google.com` on that iframe, which blocks every third-party
+// embed (including ours) and falls back to a chrome-error frame in
+// devtools. Serving the same PDF same-origin sidesteps the CSP entirely
+// and renders inline via the native browser PDF viewer.
+const GUIDELINES_PDF = "/community-guidelines.pdf";
+const GUIDELINES_PDF_VIEW = GUIDELINES_PDF;
+const GUIDELINES_PDF_PREVIEW = GUIDELINES_PDF;
+const GUIDELINES_PDF_DOWNLOAD = GUIDELINES_PDF;
 
 const CATEGORIES = [
   { emoji: "🆘", label: "Urgent",     color: "#e11d48", bg: "#fff1f2" },
@@ -180,7 +187,7 @@ export default function HomePage() {
               <span className="pdf-viewer__page-indicator">Embedded PDF · scroll to read</span>
               <span className="pdf-viewer__controls">
                 <a className="pdf-viewer__btn" href={GUIDELINES_PDF_VIEW} target="_blank" rel="noopener noreferrer" aria-label="Open in new tab">↗</a>
-                <a className="pdf-viewer__btn" href={GUIDELINES_PDF_DOWNLOAD} target="_blank" rel="noopener noreferrer" aria-label="Download PDF">↓</a>
+                <a className="pdf-viewer__btn" href={GUIDELINES_PDF_DOWNLOAD} download="HealAll-Community-Guidelines.pdf" aria-label="Download PDF">↓</a>
               </span>
             </div>
             <iframe
@@ -195,8 +202,7 @@ export default function HomePage() {
             <span className="hsec__note">📌 These guidelines apply to all members · HealAll v1.0</span>
             <a
               href={GUIDELINES_PDF_DOWNLOAD}
-              target="_blank"
-              rel="noopener noreferrer"
+              download="HealAll-Community-Guidelines.pdf"
               className="hsec__foot-link"
             >
               Download ↓
