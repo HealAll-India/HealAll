@@ -1,0 +1,327 @@
+"use client";
+
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+
+import { PublicPostView } from "@/components/posts/public-post-view";
+import { MapPicker } from "@/components/ui/map-picker";
+import { createComment, listComments } from "@/lib/api/comments";
+import { ApiError } from "@/lib/api/client";
+import { createReport } from "@/lib/api/moderation";
+import { requestConsent } from "@/lib/api/messages";
+import { getPost } from "@/lib/api/posts";
+import { reportReasons } from "@/lib/constants";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
+import { useAuthStore } from "@/lib/stores/auth-store";
+import type { CommentResponse, PostResponse, ReportReason } from "@/lib/types/api";
+
+export default function PostDetailClient() {
+  const params = useParams<{ postId: string }>();
+  const postId = params.postId;
+  const hydrated = useHydrated();
+  const token = useAuthStore((state) => state.accessToken);
+
+  const [post, setPost] = useState<PostResponse | null>(null);
+  const [comments, setComments] = useState<CommentResponse[] | null>([]);
+  const [commentBody, setCommentBody] = useState("");
+  const [reportReason, setReportReason] = useState<ReportReason>("other");
+  const [reportDescription, setReportDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  // Monotonic request token so a slow earlier load cannot overwrite the
+  // results of a newer postId / token. Compared inside the async load
+  // before every setter; mismatched seq → drop the result on the floor.
+  const requestSeq = useRef(0);
+
+  // Route-scoped token bumped on every postId/token change. Mutation
+  // handlers (comment / report / DM-consent) capture the current value
+  // before their await and bail out on commit if the user navigated
+  // away in-flight — otherwise a stale handler can paint post A's
+  // success banner on post B or append a comment to the wrong thread.
+  const viewSeq = useRef(0);
+
+  async function loadData() {
+    if (!token) {
+      return;
+    }
+
+    const seq = ++requestSeq.current;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Use allSettled so a failing comments fetch can't blank the page.
+      // Comments endpoint 404s on non-ACTIVE posts (draft / submitted /
+      // needs_info / rejected) — but the author is still entitled to view
+      // their own post in those states, so we must surface the post even
+      // when the comments call rejects.
+      const [postSettled, commentsSettled] = await Promise.allSettled([
+        getPost(token, postId),
+        listComments(token, postId),
+      ]);
+
+      if (seq !== requestSeq.current) {
+        // A newer load has been kicked off; drop this result.
+        return;
+      }
+
+      if (postSettled.status === "fulfilled") {
+        setPost(postSettled.value);
+      } else {
+        const err = postSettled.reason;
+        setError(err instanceof ApiError ? err.message : "Failed to load post");
+      }
+
+      // Comments endpoint 404s on non-ACTIVE posts by design. Swallow
+      // failures only for those statuses; on ACTIVE / RESOLVED posts a
+      // failed comments fetch is a real error (timeout / 500 / auth)
+      // and must surface so it isn't mistaken for "No comments yet."
+      const commentsExpectedToWork =
+        postSettled.status === "fulfilled" &&
+        (postSettled.value.status === "active" || postSettled.value.status === "resolved");
+
+      if (commentsSettled.status === "fulfilled") {
+        setComments(commentsSettled.value);
+      } else if (commentsExpectedToWork) {
+        const err = commentsSettled.reason;
+        setError(err instanceof ApiError ? err.message : "Failed to load comments");
+        // null distinguishes "load failed" from "load succeeded with zero
+        // comments" so the render layer doesn't show a fake empty thread.
+        setComments(null);
+      } else {
+        setComments([]);
+      }
+    } finally {
+      if (seq === requestSeq.current) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    // Bump the route token so any mutation handler from the previous
+    // post drops its result on commit instead of poisoning this view.
+    viewSeq.current += 1;
+    // Clear stale state immediately on postId/token change so we never
+    // paint the previous post's body, flash banner, or draft into the
+    // new view.
+    setPost(null);
+    setComments([]);
+    setError(null);
+    setMessage(null);
+    setCommentBody("");
+    setReportReason("other");
+    setReportDescription("");
+    if (token) {
+      void loadData();
+    }
+    return () => {
+      // Invalidate any in-flight load when the effect tears down.
+      requestSeq.current += 1;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, postId]);
+
+  async function handleCreateComment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token || !commentBody.trim()) {
+      return;
+    }
+
+    const view = viewSeq.current;
+    setError(null);
+    try {
+      const created = await createComment(token, postId, commentBody.trim());
+      if (view !== viewSeq.current) return;
+      if (comments === null) {
+        // Comments were in a load-failed state; a single append would
+        // hide all the existing ones we couldn't fetch. Re-load instead.
+        await loadData();
+        return;
+      }
+      setComments((prev) => (prev === null ? prev : [...prev, created]));
+      setCommentBody("");
+    } catch (err) {
+      if (view !== viewSeq.current) return;
+      setError(err instanceof ApiError ? err.message : "Failed to add comment");
+    }
+  }
+
+  async function handleReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+
+    const view = viewSeq.current;
+    setError(null);
+    setMessage(null);
+
+    try {
+      await createReport(token, {
+        target_type: "post",
+        target_id: postId,
+        reason: reportReason,
+        description: reportDescription || undefined
+      });
+      if (view !== viewSeq.current) return;
+      setMessage("Report submitted.");
+      setReportDescription("");
+    } catch (err) {
+      if (view !== viewSeq.current) return;
+      setError(err instanceof ApiError ? err.message : "Failed to report post");
+    }
+  }
+
+  async function handleRequestDmConsent() {
+    if (!token || !post) {
+      return;
+    }
+
+    const view = viewSeq.current;
+    setError(null);
+    setMessage(null);
+
+    try {
+      const consent = await requestConsent(token, post.author.id, post.id);
+      if (view !== viewSeq.current) return;
+      setMessage(`Consent request sent. Request id: ${consent.id}`);
+    } catch (err) {
+      if (view !== viewSeq.current) return;
+      setError(err instanceof ApiError ? err.message : "Failed to request DM consent");
+    }
+  }
+
+  return (
+    <main className="page">
+      {!hydrated ? null : token ? (
+        <>
+          <div>
+            <a href="/feed" className="pd-back-link">← Back to feed</a>
+          </div>
+          {loading ? <p className="muted">Loading…</p> : null}
+          {post ? (
+            <>
+              {post.status !== "active" && post.status !== "resolved" && (
+                <section className="card stack post-pending-banner" role="status">
+                  <strong>
+                    {post.status === "submitted" && "🕒 Pending community verification"}
+                    {post.status === "needs_info" && "ℹ️ Needs more information"}
+                    {post.status === "draft" && "📝 Draft — not yet submitted"}
+                    {post.status === "rejected" && "🚫 Rejected by moderators"}
+                  </strong>
+                  <p className="muted post-pending-banner__body">
+                    {post.status === "submitted" &&
+                      "Your post is visible only to you and verifiers right now. Once enough verified members approve it, it will appear in the public feed and comments will open."}
+                    {post.status === "needs_info" &&
+                      "A verifier asked for more details. Edit your post to provide them, then resubmit."}
+                    {post.status === "draft" &&
+                      "This post is saved as a draft. Submit it from the edit screen to begin verification."}
+                    {post.status === "rejected" &&
+                      "This post was rejected. If you believe this was a mistake, contact support."}
+                  </p>
+                </section>
+              )}
+              <section className="card stack">
+                <div className="row pd-author-row">
+                  <div className="pd-avatar" aria-hidden="true">
+                    {post.author.name[0].toUpperCase()}
+                  </div>
+                  <div className="pd-author-meta">
+                    <div className="pd-author-name">
+                      {post.author.name}
+                      {post.author.verification_level >= 1 && <span className="vbadge">✓ Verified</span>}
+                    </div>
+                    <div className="pd-author-sub">{post.city} · L{post.author.verification_level}</div>
+                  </div>
+                  <span className={post.category === "urgent" ? "badge badge-urgent" : "badge"}>{post.category.replace(/_/g, " ")}</span>
+                  <span className={`badge${post.urgency === "critical" ? " badge-urgent" : ""}`}>{post.urgency}</span>
+                </div>
+                <h2 className="pd-title">{post.title}</h2>
+                <p className="pd-body">{post.description}</p>
+                <div className="row pd-actions">
+                  {(post.status === "active" || post.status === "resolved") && (
+                    <button className="secondary" onClick={handleRequestDmConsent} type="button">💬 Send Message</button>
+                  )}
+                  <span className="badge pd-status-badge">{post.status}</span>
+                </div>
+              </section>
+
+              {(post.address || post.pincode || (post.latitude != null && post.longitude != null)) && (
+                <section className="card stack">
+                  <h3 className="post-loc-title">📍 Location</h3>
+                  {post.address && <p className="post-loc-address">{post.address}</p>}
+                  <p className="muted post-loc-meta">
+                    {post.city}{post.pincode ? ` · ${post.pincode}` : ""}
+                  </p>
+                  {post.latitude != null && post.longitude != null && (
+                    <>
+                      <MapPicker
+                        latitude={post.latitude}
+                        longitude={post.longitude}
+                        onChange={() => { /* read-only */ }}
+                        readOnly
+                        height={220}
+                      />
+                      <a
+                        className="secondary post-loc-directions-link"
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        🧭 Get Directions
+                      </a>
+                    </>
+                  )}
+                </section>
+              )}
+
+              {(post.status === "active" || post.status === "resolved") && (
+                <section className="card stack">
+                  <h3 className="post-comments-title">Comments</h3>
+                  <form className="row" onSubmit={handleCreateComment}>
+                    <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" className="post-comments-input" />
+                    <button type="submit">Post</button>
+                  </form>
+                  <div className="stack">
+                    {(comments ?? []).map(comment => (
+                      <article className="card post-comment-card" key={comment.id}>
+                        <p className="post-comment-body">{comment.body}</p>
+                        <p className="muted post-comment-meta">{comment.author.name} · L{comment.author.verification_level}</p>
+                      </article>
+                    ))}
+                    {comments === null ? (
+                      <p className="error">Failed to load comments. Try refreshing.</p>
+                    ) : !loading && comments.length === 0 ? (
+                      <p className="muted">No comments yet.</p>
+                    ) : null}
+                  </div>
+                </section>
+              )}
+
+              <section className="card stack">
+                <h3 className="pd-report-title">Report this post</h3>
+                <form className="grid" onSubmit={handleReport}>
+                  <label>Reason
+                    <select value={reportReason} onChange={e => setReportReason(e.target.value as ReportReason)}>
+                      {reportReasons.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </label>
+                  <label>Description (optional)<textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} placeholder="Additional context" /></label>
+                  <button className="ghost pd-report-submit" type="submit">Submit Report</button>
+                </form>
+              </section>
+            </>
+          ) : null}
+          {message ? <p className="success">{message}</p> : null}
+          {error   ? <p className="error">{error}</p>     : null}
+        </>
+      ) : (
+        <PublicPostView postId={postId} />
+      )}
+    </main>
+  );
+}

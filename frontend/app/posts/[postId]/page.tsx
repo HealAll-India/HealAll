@@ -1,280 +1,122 @@
-"use client";
+import type { Metadata } from "next";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import PostDetailClient from "./post-detail-client";
+import { JsonLd } from "@/components/seo/json-ld";
+import { getPublicPost, getPublicPostForMeta } from "@/lib/api/public";
 
-import { PublicPostView } from "@/components/posts/public-post-view";
-import { MapPicker } from "@/components/ui/map-picker";
-import { createComment, listComments } from "@/lib/api/comments";
-import { ApiError } from "@/lib/api/client";
-import { createReport } from "@/lib/api/moderation";
-import { requestConsent } from "@/lib/api/messages";
-import { getPost } from "@/lib/api/posts";
-import { reportReasons } from "@/lib/constants";
-import { useHydrated } from "@/lib/hooks/use-hydrated";
-import { useAuthStore } from "@/lib/stores/auth-store";
-import type { CommentResponse, PostResponse, ReportReason } from "@/lib/types/api";
+const SITE_URL = "https://healallindia.com";
 
-export default function PostDetailPage() {
-  const params = useParams<{ postId: string }>();
-  const postId = params.postId;
-  const hydrated = useHydrated();
-  const token = useAuthStore((state) => state.accessToken);
+const CATEGORY_LABEL: Record<string, string> = {
+  emotional_support: "Emotional Support",
+  mentorship: "Mentorship",
+  skill_sharing: "Skill Sharing",
+  navigation: "Navigation",
+  on_ground: "On-Ground Help",
+  urgent: "Urgent Help"
+};
 
-  const [post, setPost] = useState<PostResponse | null>(null);
-  const [comments, setComments] = useState<CommentResponse[] | null>([]);
-  const [commentBody, setCommentBody] = useState("");
-  const [reportReason, setReportReason] = useState<ReportReason>("other");
-  const [reportDescription, setReportDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+const URGENCY_LABEL: Record<string, string> = {
+  low: "Low priority",
+  normal: "Standard",
+  high: "High priority",
+  critical: "Critical"
+};
 
-  async function loadData() {
-    if (!token) {
-      return;
+interface RouteParams {
+  params: Promise<{ postId: string }>;
+}
+
+export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
+  const { postId } = await params;
+  const { post, status } = await getPublicPostForMeta(postId);
+
+  if (!post) {
+    // Only emit noindex when the backend confirmed the post is gone or
+    // private (404 / 410 / 403). On a transient failure (status null, 5xx,
+    // 429) fall through to a generic title without robots directives so a
+    // network blip can't trigger deindexing of a still-valid post.
+    const confirmedGone = status === 404 || status === 410 || status === 403;
+    return {
+      title: confirmedGone ? "Post not available · HealAll" : "HealAll",
+      description: confirmedGone
+        ? "This help request is no longer publicly visible."
+        : "India's invite-only mutual-aid community.",
+      ...(confirmedGone ? { robots: { index: false, follow: false } } : {})
+    };
+  }
+
+  const urgency = URGENCY_LABEL[post.urgency] ?? post.urgency;
+  const category = CATEGORY_LABEL[post.category] ?? post.category;
+  const title = `${post.title} · HealAll`;
+  const snippet = post.description.length > 160
+    ? post.description.slice(0, 157).trimEnd() + "…"
+    : post.description;
+  const description = `${urgency} · ${category} · ${post.city}. ${snippet}`;
+  const url = `${SITE_URL}/posts/${postId}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "HealAll",
+      locale: "en_IN",
+      type: "article"
+      // OG image is auto-discovered from ./opengraph-image.tsx by Next.
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description
     }
+  };
+}
 
-    setLoading(true);
-    setError(null);
+export default async function PostDetailPage({ params }: RouteParams) {
+  const { postId } = await params;
+  const post = await getPublicPost(postId);
 
-    try {
-      // Use allSettled so a failing comments fetch can't blank the page.
-      // Comments endpoint 404s on non-ACTIVE posts (draft / submitted /
-      // needs_info / rejected) — but the author is still entitled to view
-      // their own post in those states, so we must surface the post even
-      // when the comments call rejects.
-      const [postSettled, commentsSettled] = await Promise.allSettled([
-        getPost(token, postId),
-        listComments(token, postId),
-      ]);
-
-      if (postSettled.status === "fulfilled") {
-        setPost(postSettled.value);
-      } else {
-        const err = postSettled.reason;
-        setError(err instanceof ApiError ? err.message : "Failed to load post");
+  // Article-ish schema. We use SocialMediaPosting (a subtype of Article)
+  // because the help request is essentially a public social post; the
+  // location is encoded as a Place to help Google surface it on Maps
+  // alongside the post.
+  const jsonLd = post
+    ? {
+        "@context": "https://schema.org",
+        "@type": "SocialMediaPosting",
+        "headline": post.title,
+        "articleBody": post.description,
+        "datePublished": post.created_at,
+        "inLanguage": "en-IN",
+        "isAccessibleForFree": true,
+        "author": {
+          "@type": "Person",
+          "name": post.author.name
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "HealAll",
+          "url": SITE_URL
+        },
+        "contentLocation": {
+          "@type": "Place",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": post.city,
+            "addressCountry": "IN"
+          }
+        },
+        "url": `${SITE_URL}/posts/${postId}`
       }
-
-      // Comments endpoint 404s on non-ACTIVE posts by design. Swallow
-      // failures only for those statuses; on ACTIVE / RESOLVED posts a
-      // failed comments fetch is a real error (timeout / 500 / auth)
-      // and must surface so it isn't mistaken for "No comments yet."
-      const commentsExpectedToWork =
-        postSettled.status === "fulfilled" &&
-        (postSettled.value.status === "active" || postSettled.value.status === "resolved");
-
-      if (commentsSettled.status === "fulfilled") {
-        setComments(commentsSettled.value);
-      } else if (commentsExpectedToWork) {
-        const err = commentsSettled.reason;
-        setError(err instanceof ApiError ? err.message : "Failed to load comments");
-        // null distinguishes "load failed" from "load succeeded with zero
-        // comments" so the render layer doesn't show a fake empty thread.
-        setComments(null);
-      } else {
-        setComments([]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (token) {
-      void loadData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, postId]);
-
-  async function handleCreateComment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!token || !commentBody.trim()) {
-      return;
-    }
-
-    setError(null);
-    try {
-      const created = await createComment(token, postId, commentBody.trim());
-      if (comments === null) {
-        // Comments were in a load-failed state; a single append would
-        // hide all the existing ones we couldn't fetch. Re-load instead.
-        await loadData();
-      } else {
-        setComments((prev) => (prev === null ? prev : [...prev, created]));
-      }
-      setCommentBody("");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to add comment");
-    }
-  }
-
-  async function handleReport(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!token) {
-      return;
-    }
-
-    setError(null);
-    setMessage(null);
-
-    try {
-      await createReport(token, {
-        target_type: "post",
-        target_id: postId,
-        reason: reportReason,
-        description: reportDescription || undefined
-      });
-      setMessage("Report submitted.");
-      setReportDescription("");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to report post");
-    }
-  }
-
-  async function handleRequestDmConsent() {
-    if (!token || !post) {
-      return;
-    }
-
-    setError(null);
-    setMessage(null);
-
-    try {
-      const consent = await requestConsent(token, post.author.id, post.id);
-      setMessage(`Consent request sent. Request id: ${consent.id}`);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to request DM consent");
-    }
-  }
+    : null;
 
   return (
-    <main className="page">
-      {!hydrated ? null : token ? (
-        <>
-          <div>
-            <a href="/feed" style={{ fontSize: "13px", color: "#6b7280", display: "inline-flex", alignItems: "center", gap: "4px" }}>← Back to feed</a>
-          </div>
-          {loading ? <p className="muted">Loading…</p> : null}
-          {post ? (
-            <>
-              {post.status !== "active" && post.status !== "resolved" && (
-                <section className="card stack post-pending-banner" role="status">
-                  <strong>
-                    {post.status === "submitted" && "🕒 Pending community verification"}
-                    {post.status === "needs_info" && "ℹ️ Needs more information"}
-                    {post.status === "draft" && "📝 Draft — not yet submitted"}
-                    {post.status === "rejected" && "🚫 Rejected by moderators"}
-                  </strong>
-                  <p className="muted post-pending-banner__body">
-                    {post.status === "submitted" &&
-                      "Your post is visible only to you and verifiers right now. Once enough verified members approve it, it will appear in the public feed and comments will open."}
-                    {post.status === "needs_info" &&
-                      "A verifier asked for more details. Edit your post to provide them, then resubmit."}
-                    {post.status === "draft" &&
-                      "This post is saved as a draft. Submit it from the edit screen to begin verification."}
-                    {post.status === "rejected" &&
-                      "This post was rejected. If you believe this was a mistake, contact support."}
-                  </p>
-                </section>
-              )}
-              <section className="card stack">
-                <div className="row" style={{ alignItems: "flex-start", gap: "10px" }}>
-                  <div style={{ width: "44px", height: "44px", borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#16a34a,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "16px" }}>
-                    {post.author.name[0].toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>
-                      {post.author.name}
-                      {post.author.verification_level >= 1 && <span className="vbadge">✓ Verified</span>}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#9ca3af" }}>{post.city} · L{post.author.verification_level}</div>
-                  </div>
-                  <span className={post.category === "urgent" ? "badge badge-urgent" : "badge"}>{post.category.replace(/_/g, " ")}</span>
-                  <span className={`badge${post.urgency === "critical" ? " badge-urgent" : ""}`}>{post.urgency}</span>
-                </div>
-                <h2 style={{ margin: "4px 0 0", fontSize: "20px", fontWeight: 800 }}>{post.title}</h2>
-                <p style={{ margin: 0, lineHeight: 1.6 }}>{post.description}</p>
-                <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
-                  {(post.status === "active" || post.status === "resolved") && (
-                    <button className="secondary" onClick={handleRequestDmConsent} type="button">💬 Send Message</button>
-                  )}
-                  <span className="badge" style={{ background: "#f9fafb", color: "#6b7280" }}>{post.status}</span>
-                </div>
-              </section>
-
-              {(post.address || post.pincode || (post.latitude != null && post.longitude != null)) && (
-                <section className="card stack">
-                  <h3 className="post-loc-title">📍 Location</h3>
-                  {post.address && <p className="post-loc-address">{post.address}</p>}
-                  <p className="muted post-loc-meta">
-                    {post.city}{post.pincode ? ` · ${post.pincode}` : ""}
-                  </p>
-                  {post.latitude != null && post.longitude != null && (
-                    <>
-                      <MapPicker
-                        latitude={post.latitude}
-                        longitude={post.longitude}
-                        onChange={() => { /* read-only */ }}
-                        readOnly
-                        height={220}
-                      />
-                      <a
-                        className="secondary post-loc-directions-link"
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        🧭 Get Directions
-                      </a>
-                    </>
-                  )}
-                </section>
-              )}
-
-              {(post.status === "active" || post.status === "resolved") && (
-                <section className="card stack">
-                  <h3 className="post-comments-title">Comments</h3>
-                  <form className="row" onSubmit={handleCreateComment}>
-                    <input value={commentBody} onChange={e => setCommentBody(e.target.value)} placeholder="Write a public comment…" className="post-comments-input" />
-                    <button type="submit">Post</button>
-                  </form>
-                  <div className="stack">
-                    {(comments ?? []).map(comment => (
-                      <article className="card post-comment-card" key={comment.id}>
-                        <p className="post-comment-body">{comment.body}</p>
-                        <p className="muted post-comment-meta">{comment.author.name} · L{comment.author.verification_level}</p>
-                      </article>
-                    ))}
-                    {comments === null ? (
-                      <p className="error">Failed to load comments. Try refreshing.</p>
-                    ) : !loading && comments.length === 0 ? (
-                      <p className="muted">No comments yet.</p>
-                    ) : null}
-                  </div>
-                </section>
-              )}
-
-              <section className="card stack">
-                <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6b7280" }}>Report this post</h3>
-                <form className="grid" onSubmit={handleReport}>
-                  <label>Reason
-                    <select value={reportReason} onChange={e => setReportReason(e.target.value as ReportReason)}>
-                      {reportReasons.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  </label>
-                  <label>Description (optional)<textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} placeholder="Additional context" /></label>
-                  <button className="ghost" type="submit" style={{ width: "fit-content" }}>Submit Report</button>
-                </form>
-              </section>
-            </>
-          ) : null}
-          {message ? <p className="success">{message}</p> : null}
-          {error   ? <p className="error">{error}</p>     : null}
-        </>
-      ) : (
-        <PublicPostView postId={postId} />
-      )}
-    </main>
+    <>
+      {jsonLd && <JsonLd data={jsonLd} id={`ld-post-${postId}`} />}
+      <PostDetailClient />
+    </>
   );
 }
