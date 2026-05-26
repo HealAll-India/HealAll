@@ -3,6 +3,7 @@ import { AuthRedirect } from "@/components/auth/auth-redirect";
 import { ReportIssueFab } from "@/components/feedback/report-issue-fab";
 import { LiveStats } from "@/components/landing/live-stats";
 import { LiveFeedPreview } from "@/components/landing/live-feed-preview";
+import { LiveFeedHeadCount, LiveImpactStrip } from "@/components/landing/live-impact-strip";
 
 // Force ISR at the page level. Without this Next prerenders the landing
 // once at build time and the Vercel CDN serves it indefinitely — the
@@ -85,22 +86,10 @@ export default function HomePage() {
               <div className="land__feed-head">
                 <div className="logo-mark" style={{ width: 28, height: 28, borderRadius: 8 }} aria-hidden="true" />
                 <span className="land__feed-title">Feed · live</span>
-                <span className="land__feed-sub">
-                  <span className="impact-strip__dot" style={{ display: "inline-block", marginRight: 6, verticalAlign: "middle" }} />
-                  184 online
-                </span>
+                <LiveFeedHeadCount />
               </div>
               <LiveFeedPreview limit={3} />
-              <div style={{
-                padding: "10px 12px",
-                background: "var(--gradient-brand-soft)",
-                borderRadius: 12,
-                boxShadow: "inset 0 0 0 1px #bbf7d0",
-                fontSize: "11.5px", color: "#15803d", fontWeight: 600,
-                display: "flex", alignItems: "center", gap: 8,
-              }}>
-                <span className="impact-strip__dot" /> 47 helped today · 184 helpers online · 19 cities active
-              </div>
+              <LiveImpactStrip />
             </div>
           </div>
         </div>
