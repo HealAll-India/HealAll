@@ -175,7 +175,7 @@ export default function PostDetailClient() {
       {!hydrated ? null : token ? (
         <>
           <div>
-            <a href="/feed" style={{ fontSize: "13px", color: "#6b7280", display: "inline-flex", alignItems: "center", gap: "4px" }}>← Back to feed</a>
+            <a href="/feed" className="pd-back-link">← Back to feed</a>
           </div>
           {loading ? <p className="muted">Loading…</p> : null}
           {post ? (
@@ -201,27 +201,27 @@ export default function PostDetailClient() {
                 </section>
               )}
               <section className="card stack">
-                <div className="row" style={{ alignItems: "flex-start", gap: "10px" }}>
-                  <div style={{ width: "44px", height: "44px", borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#16a34a,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "16px" }}>
+                <div className="row pd-author-row">
+                  <div className="pd-avatar" aria-hidden="true">
                     {post.author.name[0].toUpperCase()}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>
+                  <div className="pd-author-meta">
+                    <div className="pd-author-name">
                       {post.author.name}
                       {post.author.verification_level >= 1 && <span className="vbadge">✓ Verified</span>}
                     </div>
-                    <div style={{ fontSize: "11px", color: "#9ca3af" }}>{post.city} · L{post.author.verification_level}</div>
+                    <div className="pd-author-sub">{post.city} · L{post.author.verification_level}</div>
                   </div>
                   <span className={post.category === "urgent" ? "badge badge-urgent" : "badge"}>{post.category.replace(/_/g, " ")}</span>
                   <span className={`badge${post.urgency === "critical" ? " badge-urgent" : ""}`}>{post.urgency}</span>
                 </div>
-                <h2 style={{ margin: "4px 0 0", fontSize: "20px", fontWeight: 800 }}>{post.title}</h2>
-                <p style={{ margin: 0, lineHeight: 1.6 }}>{post.description}</p>
-                <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
+                <h2 className="pd-title">{post.title}</h2>
+                <p className="pd-body">{post.description}</p>
+                <div className="row pd-actions">
                   {(post.status === "active" || post.status === "resolved") && (
                     <button className="secondary" onClick={handleRequestDmConsent} type="button">💬 Send Message</button>
                   )}
-                  <span className="badge" style={{ background: "#f9fafb", color: "#6b7280" }}>{post.status}</span>
+                  <span className="badge pd-status-badge">{post.status}</span>
                 </div>
               </section>
 
@@ -278,7 +278,7 @@ export default function PostDetailClient() {
               )}
 
               <section className="card stack">
-                <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#6b7280" }}>Report this post</h3>
+                <h3 className="pd-report-title">Report this post</h3>
                 <form className="grid" onSubmit={handleReport}>
                   <label>Reason
                     <select value={reportReason} onChange={e => setReportReason(e.target.value as ReportReason)}>
@@ -286,7 +286,7 @@ export default function PostDetailClient() {
                     </select>
                   </label>
                   <label>Description (optional)<textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} placeholder="Additional context" /></label>
-                  <button className="ghost" type="submit" style={{ width: "fit-content" }}>Submit Report</button>
+                  <button className="ghost pd-report-submit" type="submit">Submit Report</button>
                 </form>
               </section>
             </>
