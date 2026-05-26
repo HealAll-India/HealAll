@@ -4,6 +4,37 @@ import { ReportIssueFab } from "@/components/feedback/report-issue-fab";
 import { LiveStats } from "@/components/landing/live-stats";
 import { LiveFeedPreview } from "@/components/landing/live-feed-preview";
 import { LiveFeedHeadCount, LiveImpactStrip } from "@/components/landing/live-impact-strip";
+import { JsonLd } from "@/components/seo/json-ld";
+
+const SITE_URL = "https://healallindia.com";
+
+const LANDING_JSON_LD = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "HealAll",
+    "url": SITE_URL,
+    "logo": `${SITE_URL}/favicon-512.png`,
+    "description":
+      "India's invite-only mutual-aid community. Verified members helping each other with blood, medicine, shelter, food, fees, and mentorship.",
+    "areaServed": { "@type": "Country", "name": "India" },
+    "sameAs": [
+      "https://github.com/HealAll-India/HealAll"
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "HealAll",
+    "url": SITE_URL,
+    "inLanguage": "en-IN",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": `${SITE_URL}/feed?q={query}`,
+      "query-input": "required name=query"
+    }
+  }
+];
 
 // Force ISR at the page level. Without this Next prerenders the landing
 // once at build time and the Vercel CDN serves it indefinitely — the
@@ -36,6 +67,7 @@ const CATEGORIES = [
 export default function HomePage() {
   return (
     <>
+      <JsonLd data={LANDING_JSON_LD} id="ld-landing" />
       <AuthRedirect />
 
       {/* ── Editorial Hero ── */}
