@@ -681,6 +681,13 @@ p.success           { color: var(--ok); margin: 0; }
   flex-shrink: 0;
 }
 .impact-strip__num { font-weight: 800; color: var(--brand-green); margin-right: 3px; }
+.impact-strip__dot--inline {
+  display: inline-block;
+  width: 6px; height: 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18);
+}
 
 /* ── Hero post card (critical/urgent) ── */
 .hero-card {
