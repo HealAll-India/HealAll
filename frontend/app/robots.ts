@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
         // they 404 / redirect anonymously anyway; keep them out of the
         // index to save crawl budget for the public surfaces.
         disallow: [
+          "/admin",
           "/admin/",
           "/invites",
           "/messages",

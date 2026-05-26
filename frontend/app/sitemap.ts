@@ -26,6 +26,10 @@ async function collectActivePosts(): Promise<PostSitemapEntry[]> {
     const res = await getPublicFeed({ page, per_page: PAGE_SIZE });
     if (!res || res.items.length === 0) break;
     for (const item of res.items) {
+      // Defence-in-depth — public feed already filters to ACTIVE on the
+      // backend, but a future relaxation there must not silently leak
+      // non-active posts into the sitemap.
+      if (item.status !== "active") continue;
       out.push({ id: item.id, created_at: item.created_at });
       if (out.length >= MAX_POSTS) break;
     }
@@ -58,7 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const postEntries: MetadataRoute.Sitemap = posts.map((p) => ({
-    url: `${SITE_URL}/posts/${p.id}`,
+    url: `${SITE_URL}/posts/${encodeURIComponent(p.id)}`,
     lastModified: p.created_at ? new Date(p.created_at) : now,
     changeFrequency: "daily",
     priority: 0.8

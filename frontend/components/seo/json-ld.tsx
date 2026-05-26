@@ -17,7 +17,17 @@ interface Props {
 }
 
 export function JsonLd({ data, id }: Props) {
-  const json = JSON.stringify(data).replace(/</g, "\\u003c");
+  // JSON.stringify can return `undefined` (e.g. for raw undefined / a
+  // function / a symbol). Calling .replace on that would throw a
+  // TypeError during SSR, taking the whole page render down with it.
+  let json: string;
+  try {
+    const raw = JSON.stringify(data);
+    if (!raw) return null;
+    json = raw.replace(/</g, "\\u003c");
+  } catch {
+    return null;
+  }
   return (
     <script
       id={id}

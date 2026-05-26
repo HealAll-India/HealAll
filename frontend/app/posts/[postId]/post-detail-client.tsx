@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { PublicPostView } from "@/components/posts/public-post-view";
@@ -30,10 +30,17 @@ export default function PostDetailClient() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Monotonic request token so a slow earlier load cannot overwrite the
+  // results of a newer postId / token. Compared inside the async load
+  // before every setter; mismatched seq → drop the result on the floor.
+  const requestSeq = useRef(0);
+
   async function loadData() {
     if (!token) {
       return;
     }
+
+    const seq = ++requestSeq.current;
 
     setLoading(true);
     setError(null);
@@ -48,6 +55,11 @@ export default function PostDetailClient() {
         getPost(token, postId),
         listComments(token, postId),
       ]);
+
+      if (seq !== requestSeq.current) {
+        // A newer load has been kicked off; drop this result.
+        return;
+      }
 
       if (postSettled.status === "fulfilled") {
         setPost(postSettled.value);
@@ -76,14 +88,24 @@ export default function PostDetailClient() {
         setComments([]);
       }
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
+    // Clear stale state immediately on postId/token change so we never
+    // paint the previous post's body while the new one is loading.
+    setPost(null);
+    setComments([]);
     if (token) {
       void loadData();
     }
+    return () => {
+      // Invalidate any in-flight load when the effect tears down.
+      requestSeq.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, postId]);
 

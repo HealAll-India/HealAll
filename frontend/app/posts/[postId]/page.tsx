@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import PostDetailClient from "./post-detail-client";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getPublicPost } from "@/lib/api/public";
+import { getPublicPost, getPublicPostForMeta } from "@/lib/api/public";
 
 const SITE_URL = "https://healallindia.com";
 
@@ -28,13 +28,20 @@ interface RouteParams {
 
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { postId } = await params;
-  const post = await getPublicPost(postId);
+  const { post, status } = await getPublicPostForMeta(postId);
 
   if (!post) {
+    // Only emit noindex when the backend confirmed the post is gone or
+    // private (404 / 410 / 403). On a transient failure (status null, 5xx,
+    // 429) fall through to a generic title without robots directives so a
+    // network blip can't trigger deindexing of a still-valid post.
+    const confirmedGone = status === 404 || status === 410 || status === 403;
     return {
-      title: "Post not available · HealAll",
-      description: "This help request is no longer publicly visible.",
-      robots: { index: false, follow: false }
+      title: confirmedGone ? "Post not available · HealAll" : "HealAll",
+      description: confirmedGone
+        ? "This help request is no longer publicly visible."
+        : "India's invite-only mutual-aid community.",
+      ...(confirmedGone ? { robots: { index: false, follow: false } } : {})
     };
   }
 

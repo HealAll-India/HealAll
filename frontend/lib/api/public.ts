@@ -65,6 +65,34 @@ export function getPublicPost(postId: string) {
   return publicGet<PublicPostDetail>(`/v1/public/posts/${safe}`);
 }
 
+/**
+ * Fetch variant used by `generateMetadata` that distinguishes a confirmed
+ * "not public" (404) from a transient backend failure. Without this the
+ * metadata path would emit `noindex` on a network blip, telling crawlers
+ * to deindex perfectly valid public posts.
+ *
+ * `status` is the backend HTTP status, or null when the fetch itself
+ * threw (DNS / TCP / TLS / abort). Treat null as transient.
+ */
+export async function getPublicPostForMeta(
+  postId: string
+): Promise<{ post: PublicPostDetail | null; status: number | null }> {
+  const safe = encodeURIComponent(postId);
+  const url = `${PUBLIC_API_BASE}/v1/public/posts/${safe}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 30 }
+    });
+    if (!res.ok) {
+      return { post: null, status: res.status };
+    }
+    return { post: (await res.json()) as PublicPostDetail, status: res.status };
+  } catch {
+    return { post: null, status: null };
+  }
+}
+
 export function listPublicComments(postId: string) {
   const safe = encodeURIComponent(postId);
   return publicGet<PublicCommentResponse[]>(`/v1/public/posts/${safe}/comments`);
