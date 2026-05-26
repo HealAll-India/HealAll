@@ -35,6 +35,13 @@ export default function PostDetailClient() {
   // before every setter; mismatched seq → drop the result on the floor.
   const requestSeq = useRef(0);
 
+  // Route-scoped token bumped on every postId/token change. Mutation
+  // handlers (comment / report / DM-consent) capture the current value
+  // before their await and bail out on commit if the user navigated
+  // away in-flight — otherwise a stale handler can paint post A's
+  // success banner on post B or append a comment to the wrong thread.
+  const viewSeq = useRef(0);
+
   async function loadData() {
     if (!token) {
       return;
@@ -95,10 +102,19 @@ export default function PostDetailClient() {
   }
 
   useEffect(() => {
+    // Bump the route token so any mutation handler from the previous
+    // post drops its result on commit instead of poisoning this view.
+    viewSeq.current += 1;
     // Clear stale state immediately on postId/token change so we never
-    // paint the previous post's body while the new one is loading.
+    // paint the previous post's body, flash banner, or draft into the
+    // new view.
     setPost(null);
     setComments([]);
+    setError(null);
+    setMessage(null);
+    setCommentBody("");
+    setReportReason("other");
+    setReportDescription("");
     if (token) {
       void loadData();
     }
@@ -115,18 +131,21 @@ export default function PostDetailClient() {
       return;
     }
 
+    const view = viewSeq.current;
     setError(null);
     try {
       const created = await createComment(token, postId, commentBody.trim());
+      if (view !== viewSeq.current) return;
       if (comments === null) {
         // Comments were in a load-failed state; a single append would
         // hide all the existing ones we couldn't fetch. Re-load instead.
         await loadData();
-      } else {
-        setComments((prev) => (prev === null ? prev : [...prev, created]));
+        return;
       }
+      setComments((prev) => (prev === null ? prev : [...prev, created]));
       setCommentBody("");
     } catch (err) {
+      if (view !== viewSeq.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to add comment");
     }
   }
@@ -137,6 +156,7 @@ export default function PostDetailClient() {
       return;
     }
 
+    const view = viewSeq.current;
     setError(null);
     setMessage(null);
 
@@ -147,9 +167,11 @@ export default function PostDetailClient() {
         reason: reportReason,
         description: reportDescription || undefined
       });
+      if (view !== viewSeq.current) return;
       setMessage("Report submitted.");
       setReportDescription("");
     } catch (err) {
+      if (view !== viewSeq.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to report post");
     }
   }
@@ -159,13 +181,16 @@ export default function PostDetailClient() {
       return;
     }
 
+    const view = viewSeq.current;
     setError(null);
     setMessage(null);
 
     try {
       const consent = await requestConsent(token, post.author.id, post.id);
+      if (view !== viewSeq.current) return;
       setMessage(`Consent request sent. Request id: ${consent.id}`);
     } catch (err) {
+      if (view !== viewSeq.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to request DM consent");
     }
   }
