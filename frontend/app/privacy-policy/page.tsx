@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
   return (
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
       <div style={{ marginBottom: "2.5rem" }}>
-        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: April 26, 2026</p>
+        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: May 26, 2026</p>
         <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#111827", margin: "0 0 12px" }}>Privacy Policy</h1>
         <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
           HealAll (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is committed to protecting your privacy.
@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
           people who can offer it. We operate at{" "}
           <a href="https://healallindia.com" style={{ color: "#16a34a" }}>healallindia.com</a>.
         </p>
-        <p>Contact: <a href="mailto:hello@healallindia.com" style={{ color: "#16a34a" }}>hello@healallindia.com</a></p>
+        <p>Contact: <a href="mailto:anupamkumar.nith@gmail.com" style={{ color: "#16a34a" }}>anupamkumar.nith@gmail.com</a></p>
       </Section>
 
       <Section title="2. Information We Collect">
@@ -37,12 +37,28 @@ export default function PrivacyPolicyPage() {
         </ul>
 
         <h3>Information from Google (if you sign in with Google)</h3>
+        <p>
+          When you choose &ldquo;Sign in with Google&rdquo;, Google sends us a signed
+          ID token containing the scopes we request. We request only the
+          following non-sensitive OpenID Connect scopes:
+        </p>
         <ul>
-          <li>Your Google account email address</li>
-          <li>Your display name</li>
-          <li>A unique Google identifier (used only to link your Google account to your HealAll account)</li>
+          <li><code>openid</code> — confirms your Google account identity</li>
+          <li><code>email</code> — your Google account email address</li>
+          <li><code>profile</code> — your display name and (optionally) profile picture URL</li>
         </ul>
-        <p>We do not receive your Google password or access your Google Drive, Gmail, or other Google services.</p>
+        <p>From the ID token we store:</p>
+        <ul>
+          <li>Your verified Google email</li>
+          <li>Your display name (used as your HealAll name on first sign-up)</li>
+          <li>A unique Google subject identifier (<code>sub</code>) used only to link your Google account to your HealAll account on subsequent sign-ins</li>
+        </ul>
+        <p>
+          We do <strong>not</strong> receive your Google password and we do
+          <strong> not</strong> request access to Google Drive, Gmail, Calendar,
+          Contacts, or any other Google product. We do not use Google Sign-In
+          to send you marketing or transfer your data to third parties.
+        </p>
 
         <h3>Automatically collected information</h3>
         <ul>
@@ -72,12 +88,15 @@ export default function PrivacyPolicyPage() {
           <li>
             <strong>Service providers</strong> — we use third-party services to operate the platform:
             <ul style={{ marginTop: "8px" }}>
-              <li>Neon (PostgreSQL database hosting)</li>
+              <li>Neon (PostgreSQL database hosting, EU region)</li>
               <li>Upstash (Redis caching)</li>
+              <li>Amazon Web Services (S3 object storage for media uploads, ap-south-1 region)</li>
               <li>Resend (transactional email delivery)</li>
-              <li>Google (OAuth authentication)</li>
-              <li>Vercel (frontend hosting)</li>
+              <li>MSG91 (SMS OTP delivery for Indian phone numbers)</li>
+              <li>Google (OAuth authentication; ID-token-only flow)</li>
+              <li>Vercel (frontend hosting + CDN)</li>
               <li>Railway (backend hosting)</li>
+              <li>Sentry (error monitoring; no personally identifiable payloads are sent)</li>
             </ul>
             All providers are contractually bound to protect your data.
           </li>
@@ -115,7 +134,7 @@ export default function PrivacyPolicyPage() {
         </ul>
         <p>
           To exercise these rights, email{" "}
-          <a href="mailto:hello@healallindia.com" style={{ color: "#16a34a" }}>hello@healallindia.com</a>.
+          <a href="mailto:anupamkumar.nith@gmail.com" style={{ color: "#16a34a" }}>anupamkumar.nith@gmail.com</a>.
         </p>
       </Section>
 
@@ -154,7 +173,7 @@ export default function PrivacyPolicyPage() {
       <Section title="11. Contact">
         <p>
           Questions or concerns about this policy:{" "}
-          <a href="mailto:hello@healallindia.com" style={{ color: "#16a34a" }}>hello@healallindia.com</a>
+          <a href="mailto:anupamkumar.nith@gmail.com" style={{ color: "#16a34a" }}>anupamkumar.nith@gmail.com</a>
         </p>
         <p>We aim to respond within 7 business days.</p>
       </Section>
