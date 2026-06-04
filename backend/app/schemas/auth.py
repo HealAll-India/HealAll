@@ -115,6 +115,9 @@ class GoogleSignupRequest(BaseModel):
 
     invite_code: str = Field(..., min_length=5, max_length=20)
     id_token: str = Field(..., min_length=10)
+    # Server-issued single-use nonce echoed back from the Google ID token.
+    # Optional during deploy skew; the route enforces it once present.
+    nonce: str | None = Field(default=None, max_length=128)
     phone: str = Field(..., pattern=r"^\+91\d{10}$")
     city: str = Field(..., min_length=2, max_length=100)
     age_range: AgeRange
@@ -135,6 +138,14 @@ class GoogleLoginRequest(BaseModel):
     """Google OAuth login request."""
 
     id_token: str = Field(..., min_length=10)
+    # Server-issued single-use nonce echoed back from the Google ID token.
+    nonce: str | None = Field(default=None, max_length=128)
+
+
+class GoogleNonceResponse(BaseModel):
+    """Response for the issue-nonce endpoint."""
+
+    nonce: str
 
 
 class RefreshTokenRequest(BaseModel):

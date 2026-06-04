@@ -157,6 +157,58 @@ class TestGoogleSignup:
         assert resp.status_code == 404
 
 
+async def _redis_available() -> bool:
+    from app.core import cache
+
+    try:
+        return bool(await cache._client.ping())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+class TestGoogleNonce:
+    async def test_nonce_endpoint_returns_nonce(self, client: AsyncClient) -> None:
+        """GET /auth/google/nonce returns a non-empty nonce string."""
+        resp = await client.get("/v1/auth/google/nonce")
+        assert resp.status_code == 200, resp.text
+        nonce = resp.json()["nonce"]
+        assert isinstance(nonce, str) and len(nonce) >= 16
+
+    async def test_signup_with_issued_nonce_succeeds(self, client: AsyncClient, invite: str) -> None:
+        """A signup carrying a freshly-issued nonce is accepted."""
+        nonce = (await client.get("/v1/auth/google/nonce")).json()["nonce"]
+        body = {**SIGNUP_BODY, "nonce": nonce}
+        resp = await client.post("/v1/auth/google/signup", json=body)
+        assert resp.status_code == 201, resp.text
+
+    async def test_replayed_nonce_rejected(self, client: AsyncClient, invite: str, second_invite: str) -> None:
+        """The same nonce cannot be used twice (single-use)."""
+        if not await _redis_available():
+            pytest.skip("Redis not available; single-use enforcement is a no-op")
+
+        nonce = (await client.get("/v1/auth/google/nonce")).json()["nonce"]
+        first = await client.post("/v1/auth/google/signup", json={**SIGNUP_BODY, "nonce": nonce})
+        assert first.status_code == 201, first.text
+
+        # Reuse the same nonce on a fresh attempt — must be rejected as consumed.
+        replay = await client.post(
+            "/v1/auth/google/signup",
+            json={**SIGNUP_BODY, "nonce": nonce, "invite_code": "HEAL-GOGL02", "phone": "+919000000099"},
+        )
+        assert replay.status_code == 401, replay.text
+
+    async def test_unknown_nonce_rejected_when_redis_up(self, client: AsyncClient, invite: str) -> None:
+        """A nonce that was never issued is rejected (when Redis enforces it)."""
+        if not await _redis_available():
+            pytest.skip("Redis not available; single-use enforcement is a no-op")
+
+        resp = await client.post(
+            "/v1/auth/google/signup",
+            json={**SIGNUP_BODY, "nonce": "never-issued-nonce-value-123456"},
+        )
+        assert resp.status_code == 401, resp.text
+
+
 class TestGoogleLogin:
     async def test_login_after_google_signup(self, client: AsyncClient, invite: str) -> None:
         """Google login works after Google signup."""

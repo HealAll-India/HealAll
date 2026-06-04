@@ -4,7 +4,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { googleSignup } from "@/lib/api/auth";
+import { getGoogleNonce, googleSignup } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
@@ -18,6 +18,7 @@ interface GoogleData {
   id_token: string;
   email: string;
   name: string;
+  nonce?: string;
 }
 
 export default function SignupPage() {
@@ -28,6 +29,24 @@ export default function SignupPage() {
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const [googleBtnWidth, setGoogleBtnWidth] = useState<number | null>(null);
+  // Server-issued single-use nonce — GIS embeds it in the ID token; backend
+  // verifies + consumes it to block replay. Captured into googleData at
+  // button-click time and sent with the eventual signup POST.
+  const [googleNonce, setGoogleNonce] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getGoogleNonce()
+      .then((res) => {
+        if (active) setGoogleNonce(res.nonce);
+      })
+      .catch(() => {
+        if (active) setGoogleNonce(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const el = googleBtnRef.current;
@@ -74,6 +93,7 @@ export default function SignupPage() {
         id_token: credential,
         email: payload.email ?? "",
         name: payload.name ?? "",
+        nonce: googleNonce ?? undefined,
       });
       setError(null);
       setStep("phone");
@@ -96,6 +116,7 @@ export default function SignupPage() {
       const res = await googleSignup({
         invite_code: inviteCode,
         id_token: googleData.id_token,
+        nonce: googleData.nonce,
         phone: normalizedPhone,
         city,
         age_range: ageRange,
@@ -153,6 +174,7 @@ export default function SignupPage() {
                     shape="rectangular"
                     theme="outline"
                     width={googleBtnWidth}
+                    nonce={googleNonce ?? undefined}
                   />
                 ) : (
                   <div className="google-btn-placeholder" />
