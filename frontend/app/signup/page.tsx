@@ -110,8 +110,25 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
     try {
-      const rawPhone = phone.trim().replace(/[\s\-().]/g, "");
-      const normalizedPhone = rawPhone.startsWith("+91") ? rawPhone : `+91${rawPhone.replace(/^\+/, "")}`;
+      // Normalise Indian phone numbers to strict E.164 (+91 + 10 digits).
+      // Users commonly type one of:
+      //   "9876543210", "09876543210", "+91 9876543210", "91 9876543210",
+      //   "(0) 98765-43210"
+      // Backend regex is ^\+91\d{10}$ — anything else returns a 422
+      // "Request validation failed" so we MUST collapse the variants
+      // here before POSTing.
+      const digits = phone.trim().replace(/[^\d]/g, "");
+      const local10 = digits.startsWith("91") && digits.length === 12
+        ? digits.slice(2)
+        : digits.startsWith("0") && digits.length === 11
+        ? digits.slice(1)
+        : digits;
+      if (local10.length !== 10) {
+        setError("Enter a 10-digit Indian mobile number.");
+        setLoading(false);
+        return;
+      }
+      const normalizedPhone = `+91${local10}`;
 
       const res = await googleSignup({
         invite_code: inviteCode,

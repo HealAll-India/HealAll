@@ -113,7 +113,18 @@ async function request<T>(method: string, path: string, options: RequestOptions 
 
     if (typeof payload === "object" && payload !== null) {
       const typed = payload as ApiErrorEnvelope;
-      const message = typed.error?.message ?? `HTTP ${response.status}`;
+      let message = typed.error?.message ?? `HTTP ${response.status}`;
+      // Pydantic 422 returns `code: "VALIDATION_ERROR"` plus a `details`
+      // array of `{ field, message }`. The top-level message is the
+      // generic "Request validation failed" — useless to the user.
+      // Prefer the first detail so the toast actually names the broken
+      // field (e.g. "phone: String should match pattern …").
+      if (typed.error?.code === "VALIDATION_ERROR" && Array.isArray(typed.error.details)) {
+        const first = typed.error.details[0] as { field?: string; message?: string } | undefined;
+        if (first?.message) {
+          message = first.field ? `${first.field}: ${first.message}` : first.message;
+        }
+      }
       throw new ApiError(message, response.status, typed.error?.code, typed.error?.details);
     }
 
