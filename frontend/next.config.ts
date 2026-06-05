@@ -62,14 +62,14 @@ const nextConfig: NextConfig = {
           { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self';",
               "base-uri 'self';",
               "object-src 'none';",
-              "frame-ancestors 'none';",
+              "frame-ancestors 'self';",
               `script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com ${vercelLiveScript.join(" ")};`,
               `script-src-elem 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com ${vercelLiveScript.join(" ")};`,
               "style-src 'self' 'unsafe-inline' https://accounts.google.com;",
