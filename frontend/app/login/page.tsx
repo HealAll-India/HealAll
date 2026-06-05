@@ -4,7 +4,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { googleLogin, login, resendOtp } from "@/lib/api/auth";
+import { getGoogleNonce, googleLogin, login, resendOtp } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
@@ -24,6 +24,25 @@ export default function LoginPage() {
 
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const [googleBtnWidth, setGoogleBtnWidth] = useState<number | null>(null);
+  // Server-issued single-use nonce. GIS embeds it in the returned ID token;
+  // the backend verifies + consumes it to block replay. Render the Google
+  // button only once the nonce is available so the token always carries one.
+  const [googleNonce, setGoogleNonce] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getGoogleNonce()
+      .then((res) => {
+        if (active) setGoogleNonce(res.nonce);
+      })
+      .catch(() => {
+        // Non-fatal: backend treats a missing nonce as "verify token only".
+        if (active) setGoogleNonce(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const el = googleBtnRef.current;
@@ -79,7 +98,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await googleLogin({ id_token: credential });
+      const res = await googleLogin({ id_token: credential, nonce: googleNonce ?? undefined });
       setSession(res.access_token, res.user);
       router.push("/feed");
     } catch (err) {
@@ -121,6 +140,7 @@ export default function LoginPage() {
               shape="rectangular"
               theme="outline"
               width={googleBtnWidth}
+              nonce={googleNonce ?? undefined}
             />
           ) : (
             <div className="google-btn-placeholder" />

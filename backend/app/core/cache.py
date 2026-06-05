@@ -61,3 +61,48 @@ async def get_or_set(
         logger.warning("cache: SET %s failed (%s); ignoring", key, exc)
 
     return value
+
+
+# ---------------------------------------------------------------------------
+# Single-use token helpers (used by the Google OAuth nonce flow)
+# ---------------------------------------------------------------------------
+
+
+async def set_single_use(key: str, ttl_seconds: int) -> bool:
+    """Store a presence marker for ``key`` with a TTL. Returns True on success.
+
+    Used to register a server-issued one-time token (e.g. a Google OAuth
+    nonce). On Redis error returns False so the caller can decide how to
+    degrade — it never raises.
+    """
+    try:
+        await _client.set(key, "1", ex=ttl_seconds)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cache: set_single_use %s failed (%s)", key, exc)
+        return False
+
+
+async def consume_single_use(key: str) -> bool | None:
+    """Atomically delete ``key`` and report whether it existed.
+
+    Returns:
+        True  — the key existed and was just consumed (valid, unexpired).
+        False — the key was absent (never issued, already used, or expired).
+        None  — Redis was unreachable; the caller must decide how to degrade.
+
+    Uses GETDEL when available (atomic single-use) and falls back to a
+    pipelined GET+DEL on older Redis servers.
+    """
+    try:
+        try:
+            existed = await _client.getdel(key)
+        except Exception:  # noqa: BLE001 — GETDEL unsupported (<6.2): fall back
+            async with _client.pipeline(transaction=True) as pipe:
+                pipe.get(key)
+                pipe.delete(key)
+                existed, _ = await pipe.execute()
+        return existed is not None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cache: consume_single_use %s failed (%s)", key, exc)
+        return None

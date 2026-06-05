@@ -25,10 +25,15 @@ settings = get_settings()
 _google_request = google_requests.Request()
 
 
-async def verify_google_token(token: str) -> dict:
+async def verify_google_token(token: str, expected_nonce: str | None = None) -> dict:
     """Verify a Google ID token and return its payload.
 
-    Raises UnauthenticatedException if token is invalid.
+    When ``expected_nonce`` is provided, the token's ``nonce`` claim must
+    match it exactly. Google Identity Services embeds the raw nonce we set
+    on the client into this claim, so a token minted for one login attempt
+    cannot be replayed against a different (freshly issued) nonce.
+
+    Raises UnauthenticatedException if the token or nonce is invalid.
     Raises ValidationException if GOOGLE_CLIENT_ID is not configured.
     """
     if not settings.GOOGLE_CLIENT_ID:
@@ -48,6 +53,11 @@ async def verify_google_token(token: str) -> dict:
 
     if payload.get("email_verified") is not True:
         raise UnauthenticatedException("Google account email is not verified")
+
+    if expected_nonce is not None and payload.get("nonce") != expected_nonce:
+        # Token was not minted for the nonce this request claims — reject to
+        # block replay / token-injection.
+        raise UnauthenticatedException("Google token nonce mismatch")
 
     return payload
 

@@ -1,7 +1,8 @@
-import { apiPost } from "@/lib/api/client";
+import { apiGet, apiPost } from "@/lib/api/client";
 import type {
   GoogleAuthResponse,
   GoogleLoginRequest,
+  GoogleNonceResponse,
   GoogleSignupRequest,
   LoginRequest,
   ResendOtpRequest,
@@ -31,6 +32,10 @@ export function login(payload: LoginRequest) {
 
 export function logout(token: string) {
   return apiPost<{ message: string }>("/v1/auth/logout", { token });
+}
+
+export function getGoogleNonce() {
+  return apiGet<GoogleNonceResponse>("/v1/auth/google/nonce");
 }
 
 export function googleSignup(payload: GoogleSignupRequest) {

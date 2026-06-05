@@ -408,6 +408,7 @@ export interface InviteCodeResponse {
 export interface GoogleSignupRequest {
   invite_code: string;
   id_token: string;
+  nonce?: string;
   phone: string;
   city: string;
   age_range: AgeRange;
@@ -416,6 +417,11 @@ export interface GoogleSignupRequest {
 
 export interface GoogleLoginRequest {
   id_token: string;
+  nonce?: string;
+}
+
+export interface GoogleNonceResponse {
+  nonce: string;
 }
 
 // Google signup and login both return the same shape as OTP token login
