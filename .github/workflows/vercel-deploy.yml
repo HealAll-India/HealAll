@@ -45,30 +45,35 @@ jobs:
     # Skip on forks — they cannot access the VERCEL_TOKEN secret anyway.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Preflight — require VERCEL_TOKEN
+      - name: Preflight — is VERCEL_TOKEN configured?
+        id: pre
         run: |
           if [ -z "${VERCEL_TOKEN}" ]; then
-            echo "::error title=VERCEL_TOKEN missing::The VERCEL_TOKEN repo secret is not set, so this deploy cannot run."
-            {
-              echo "### Vercel deploy skipped — \`VERCEL_TOKEN\` not configured"
-              echo ""
-              echo "Create a token at <https://vercel.com/account/tokens>, then add it under"
-              echo "**Settings → Secrets and variables → Actions → New repository secret**, named \`VERCEL_TOKEN\`."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+            # No token: this is the normal state while the repo is PUBLIC and
+            # Vercel's own Git integration handles deploys. Skip cleanly (green)
+            # instead of failing — only deploy from CI when a token is present
+            # (e.g. after switching the repo back to private org + on Hobby).
+            echo "::notice title=VERCEL_TOKEN not set::Skipping CLI deploy — Vercel's Git integration handles public-repo deploys. Add VERCEL_TOKEN to deploy from CI instead."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@v5
+        if: steps.pre.outputs.has_token == 'true'
 
       - uses: actions/setup-node@v5
+        if: steps.pre.outputs.has_token == 'true'
         with:
           node-version: '20'
 
       - name: Install Vercel CLI
+        if: steps.pre.outputs.has_token == 'true'
         run: npm install --global vercel@39
 
       - name: Determine environment
         id: env
+        if: steps.pre.outputs.has_token == 'true'
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "vercel_env=production" >> "$GITHUB_OUTPUT"
@@ -79,20 +84,23 @@ jobs:
           fi
 
       - name: Pull Vercel project settings + env
-        run: vercel pull --yes --environment=${{ steps.env.outputs.vercel_env }} --token=${{ secrets.VERCEL_TOKEN }}
+        if: steps.pre.outputs.has_token == 'true'
+        run: vercel pull --yes --environment=${{ steps.env.outputs.vercel_env }}
 
       - name: Build
-        run: vercel build ${{ steps.env.outputs.prod_flag }} --token=${{ secrets.VERCEL_TOKEN }}
+        if: steps.pre.outputs.has_token == 'true'
+        run: vercel build ${{ steps.env.outputs.prod_flag }}
 
       - name: Deploy prebuilt output
         id: deploy
+        if: steps.pre.outputs.has_token == 'true'
         run: |
-          url=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }} --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }})
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to: $url" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
+        if: steps.pre.outputs.has_token == 'true' && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
