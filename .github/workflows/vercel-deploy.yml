@@ -32,6 +32,10 @@ concurrency:
 env:
   VERCEL_ORG_ID: team_IjiAiyWZYv6egBzGITomVwM8
   VERCEL_PROJECT_ID: prj_jIsyDXYr4sq0zedDpJ5JC7g24GTu
+  # The Vercel CLI reads VERCEL_TOKEN from the environment automatically, so we
+  # no longer pass --token= (an empty flag produced the confusing "No existing
+  # credentials found" error when the secret was unset).
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
 jobs:
   deploy:
@@ -41,6 +45,19 @@ jobs:
     # Skip on forks — they cannot access the VERCEL_TOKEN secret anyway.
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
+      - name: Preflight — require VERCEL_TOKEN
+        run: |
+          if [ -z "${VERCEL_TOKEN}" ]; then
+            echo "::error title=VERCEL_TOKEN missing::The VERCEL_TOKEN repo secret is not set, so this deploy cannot run."
+            {
+              echo "### Vercel deploy skipped — \`VERCEL_TOKEN\` not configured"
+              echo ""
+              echo "Create a token at <https://vercel.com/account/tokens>, then add it under"
+              echo "**Settings → Secrets and variables → Actions → New repository secret**, named \`VERCEL_TOKEN\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
