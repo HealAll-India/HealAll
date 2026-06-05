@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
               `img-src ${mapImageSources.join(" ")};`,
               // drive.google.com is required so the Community Guidelines PDF
               // iframe on the landing page can render the file/preview URL.
-              `frame-src https://accounts.google.com https://drive.google.com ${vercelLiveFrame.join(" ")};`,
+              `frame-src 'self' https://accounts.google.com https://drive.google.com ${vercelLiveFrame.join(" ")};`,
               `connect-src 'self' ${apiOrigin} ${vercelLiveConnect.join(" ")};`,
             ].join(' '),
           },
