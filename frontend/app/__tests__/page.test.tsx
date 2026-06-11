@@ -36,6 +36,19 @@ vi.mock("@/components/auth/auth-redirect", () => ({
   AuthRedirect: () => null,
 }));
 
+// The landing page mounts async server components (they `await` a fetch to
+// /v1/public/*) plus a client FAB. React Testing Library can't render async
+// server components synchronously, so stub them — this suite covers the
+// static landing markup (guidelines, contribute), not the live data widgets.
+vi.mock("@/components/landing/live-stats", () => ({ LiveStats: () => null }));
+vi.mock("@/components/landing/live-feed-preview", () => ({ LiveFeedPreview: () => null }));
+vi.mock("@/components/landing/live-impact-strip", () => ({
+  LiveFeedHeadCount: () => null,
+  LiveImpactStrip: () => null,
+}));
+vi.mock("@/components/seo/json-ld", () => ({ JsonLd: () => null }));
+vi.mock("@/components/feedback/report-issue-fab", () => ({ ReportIssueFab: () => null }));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -87,10 +100,7 @@ describe("Community Guidelines section", () => {
     const pdfLinks = screen.getAllByRole("link", { name: /Open PDF/i });
     expect(pdfLinks.length).toBeGreaterThanOrEqual(1);
     const openPdfLink = pdfLinks[0];
-    expect(openPdfLink).toHaveAttribute(
-      "href",
-      "https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
-    );
+    expect(openPdfLink).toHaveAttribute("href", "/community-guidelines.pdf");
     expect(openPdfLink).toHaveAttribute("rel", "noopener noreferrer");
     expect(openPdfLink).toHaveAttribute("target", "_blank");
   });
@@ -115,11 +125,9 @@ describe("Community Guidelines section", () => {
   it("renders the 'Download ↓' footer link with correct href", () => {
     // Use exact text to distinguish from the pdf-viewer "Download PDF" control
     const downloadLink = screen.getByRole("link", { name: "Download ↓" });
-    expect(downloadLink).toHaveAttribute(
-      "href",
-      "https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
-    );
-    expect(downloadLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(downloadLink).toHaveAttribute("href", "/community-guidelines.pdf");
+    // Self-hosted same-origin PDF uses the download attribute (no target/rel).
+    expect(downloadLink).toHaveAttribute("download", "HealAll-Community-Guidelines.pdf");
   });
 
   it("applies 'hsec__foot-link' class to the Download footer link", () => {
@@ -258,13 +266,18 @@ describe("Community Guidelines — embedded PDF viewer", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the iframe with the correct src (Google Drive preview)", () => {
+  it("renders the iframe with the self-hosted PDF src", () => {
     const iframe = document.querySelector("iframe.pdf-viewer__frame");
     expect(iframe).not.toBeNull();
-    expect(iframe).toHaveAttribute(
-      "src",
-      "https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/preview"
-    );
+    expect(iframe).toHaveAttribute("src", "/community-guidelines.pdf");
+  });
+
+  it("renders the mobile tap-to-open PDF card (shown via CSS below 768px)", () => {
+    const mobileCard = document.querySelector("a.pdf-viewer__mobile");
+    expect(mobileCard).not.toBeNull();
+    expect(mobileCard).toHaveAttribute("href", "/community-guidelines.pdf");
+    expect(mobileCard).toHaveAttribute("target", "_blank");
+    expect(mobileCard).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("iframe has loading='lazy' attribute for performance", () => {
@@ -285,10 +298,7 @@ describe("Community Guidelines — embedded PDF viewer", () => {
   it("renders the 'Open in new tab' control link with aria-label", () => {
     const openTabBtn = screen.getByRole("link", { name: /Open in new tab/i });
     expect(openTabBtn).toBeInTheDocument();
-    expect(openTabBtn).toHaveAttribute(
-      "href",
-      "https://drive.google.com/file/d/16umjQCumoecqR0Y2AoNi8zY-IUKHKvws/view"
-    );
+    expect(openTabBtn).toHaveAttribute("href", "/community-guidelines.pdf");
   });
 
   it("renders the 'Download PDF' control link with aria-label", () => {
@@ -394,8 +404,8 @@ describe("Developer Contribution — Tech stack", () => {
     expect(screen.getByText("Python 3.12, async")).toBeInTheDocument();
   });
 
-  it("renders Next.js 15 + React 19 stack item (updated name from PR)", () => {
-    expect(screen.getByText("Next.js 15 + React 19")).toBeInTheDocument();
+  it("renders Next.js 16 + React 19 stack item", () => {
+    expect(screen.getByText("Next.js 16 + React 19")).toBeInTheDocument();
     expect(screen.getByText("TypeScript, App Router")).toBeInTheDocument();
   });
 
