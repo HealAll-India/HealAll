@@ -211,12 +211,29 @@ export default function HomePage() {
                 <a className="pdf-viewer__btn" href={GUIDELINES_PDF_DOWNLOAD} download="HealAll-Community-Guidelines.pdf" aria-label="Download PDF">↓</a>
               </span>
             </div>
+            {/* Desktop: inline iframe. Mobile browsers (iOS Safari/Chrome,
+                Android Chrome) refuse to render a PDF inside an iframe and
+                show a blank box — so the iframe is hidden below 768px via CSS
+                and the tap-to-open card below is shown instead. */}
             <iframe
               className="pdf-viewer__frame"
               src={GUIDELINES_PDF_PREVIEW}
               title="HealAll Community Guidelines"
               loading="lazy"
             />
+            <a
+              className="pdf-viewer__mobile"
+              href={GUIDELINES_PDF_VIEW}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="pdf-viewer__mobile-icon" aria-hidden="true">📄</span>
+              <span className="pdf-viewer__mobile-text">
+                <strong>Open Community Guidelines</strong>
+                <span>Tap to read the full PDF (10 pages)</span>
+              </span>
+              <span className="pdf-viewer__mobile-cta" aria-hidden="true">Open ↗</span>
+            </a>
           </div>
 
           <div className="hsec__foot">
