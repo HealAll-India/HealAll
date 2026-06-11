@@ -83,19 +83,23 @@ jobs:
             echo "prod_flag=" >> "$GITHUB_OUTPUT"
           fi
 
+      # Vercel CLI 39.x does NOT read the token from the VERCEL_TOKEN env var
+      # for `pull` (it errors "No existing credentials found"), so pass it
+      # explicitly. The preflight above guarantees it is non-empty here, so
+      # this never expands to a bare `--token=` flag.
       - name: Pull Vercel project settings + env
         if: steps.pre.outputs.has_token == 'true'
-        run: vercel pull --yes --environment=${{ steps.env.outputs.vercel_env }}
+        run: vercel pull --yes --environment=${{ steps.env.outputs.vercel_env }} --token="$VERCEL_TOKEN"
 
       - name: Build
         if: steps.pre.outputs.has_token == 'true'
-        run: vercel build ${{ steps.env.outputs.prod_flag }}
+        run: vercel build ${{ steps.env.outputs.prod_flag }} --token="$VERCEL_TOKEN"
 
       - name: Deploy prebuilt output
         id: deploy
         if: steps.pre.outputs.has_token == 'true'
         run: |
-          url=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }})
+          url=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }} --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to: $url" >> "$GITHUB_STEP_SUMMARY"
 
