@@ -32,6 +32,10 @@ jobs:
             command: npm run typecheck
           - name: ESLint
             command: npm run lint
+          - name: Unit tests
+            command: npm test
+          - name: Build
+            command: npm run build
     steps:
       - uses: actions/checkout@v5
 
