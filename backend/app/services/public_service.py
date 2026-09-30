@@ -18,7 +18,7 @@ from app.core.cache import get_or_set
 from app.core.exceptions import NotFoundException
 from app.models.case import Case, CaseHelper, CaseHelperStatus, CaseStatus
 from app.models.comment import Comment
-from app.models.post import Post, PostStatus
+from app.models.post import Post, PostStatus, urgency_rank
 from app.models.user import User
 
 # Cache TTLs (seconds). Bump the version suffix on a key when the shape
@@ -160,7 +160,7 @@ async def _compute_public_feed(
     total = await db.scalar(select(func.count()).select_from(base.subquery())) or 0
 
     rows = await db.execute(
-        base.order_by(Post.urgency.desc(), Post.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
+        base.order_by(urgency_rank(), Post.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
     )
     posts = list(rows.scalars().all())
 

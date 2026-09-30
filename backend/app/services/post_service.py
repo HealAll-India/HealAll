@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenException, InvalidStateException, NotFoundException
-from app.models.post import Post, PostStatus
+from app.models.post import Post, PostStatus, urgency_rank
 from app.models.privacy import UserBlock
 from app.schemas.post import CreatePostRequest, UpdatePostRequest
 
@@ -156,7 +156,7 @@ async def get_feed(
     # Apply pagination and sorting
     query = (
         query.order_by(
-            Post.urgency.desc(),
+            urgency_rank(),
             Post.created_at.desc(),
         )
         .limit(per_page)
