@@ -32,6 +32,16 @@ Fixtures live in `backend/tests/conftest.py`.
 
 **Frontend storage uploads use raw `fetch`.** `frontend/lib/api/uploads.ts::putToPresignedUrl` intentionally does **not** route through the shared `apiClient`. `apiClient` is wired for JSON body + Bearer token + `API_BASE_URL`-relative paths — all three break S3 presigned PUT (HMAC mismatch, absolute URL, raw bytes). Don't "fix" it.
 
+**AI report triage is suggest-only (human-in-the-loop).** `services/triage_service.py` + `triage_llm.py` + `triage_masking.py`, routes in `api/v1/ai_triage.py`, table `report_triage` (migration 009). Rules:
+- The AI never changes `Report.status` and never calls `moderation_service`. Only a moderator's decision writes `decided_by` / `decision` / `final_*` / `decided_at`, once per suggestion (409 on a second write).
+- `reason=crisis` is **always** urgent, enforced in code (`triage_service.is_urgent`), never trusted to the model. The model's `imminent_danger=true` also forces urgent. `model_severity` keeps the raw model output for audit.
+- Only the reported content text + report reason are sent, after `mask_pii` (emails, phones, Aadhaar-shaped IDs, URLs → host only, @handles). Never send reporter/target identities or the reporter's description. Never log content.
+- Same hierarchy guard as moderation actions (moderators cannot triage reports about MODERATOR/ADMIN/HEAD_ADMIN, or about themselves); role check at route **and** service.
+- On demand only (no worker): cached per `(report_id, content_hash)`; cache hits don't count towards the per-moderator hourly limit (`AI_TRIAGE_RATE_LIMIT_PER_HOUR`, Redis with in-process fallback).
+- Any invalid/timeout/non-200 model output → `state: "no_suggestion"`. Bump `triage_llm.PROMPT_VERSION` when changing the prompt or schema.
+- Flag off or no key → `GET /v1/moderation/triage/config` returns `enabled: false` and the UI renders nothing. Report list sorts crisis/AI-urgent first only while enabled.
+- Tests stub `triage_llm._post_chat`; never hit a real provider in tests.
+
 **Security guards — don't remove.** See `docs/CODE_REVIEW.md` for the full list. Key files: `api/v1/posts.py` (visibility check, soft-delete guard), `services/report_service.py` (self-report guard), `services/moderation_service.py` (role-hierarchy check), `services/case_service.py` (closure state guard). Touch these files → verify guards intact.
 
 ---
@@ -128,6 +138,11 @@ Set on the backend service:
 | `RESEND_API_KEY` | resend.com domain-verified API key (Railway blocks SMTP ports) |
 | `SENTRY_DSN` | from sentry.io Python/FastAPI project |
 | `MSG91_API_KEY` + `MSG91_TEMPLATE_ID_OTP` | msg91 dashboard |
+| `AI_TRIAGE_ENABLED` | `true` to turn on AI report triage (default `false`; also needs a key below) |
+| `GROQ_API_KEY` | console.groq.com API key (primary triage provider) |
+| `GROQ_MODEL` | optional, default `openai/gpt-oss-20b` |
+| `GEMINI_API_KEY` | optional, aistudio.google.com key (fallback provider via OpenAI-compatible endpoint) |
+| `GEMINI_MODEL` | optional, default `gemini-3.5-flash-lite` |
 
 GitHub repo Variables (Settings → Secrets and variables → Actions → Variables):
 

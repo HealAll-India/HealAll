@@ -110,6 +110,21 @@ class Settings(BaseSettings):
     # Community verification
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
 
+    # AI report triage (moderator assist, human decides). Off unless explicitly
+    # enabled AND at least one provider key is set.
+    AI_TRIAGE_ENABLED: bool = False
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
+    AI_TRIAGE_TIMEOUT_SECONDS: float = Field(default=8.0, gt=0, le=30)
+    AI_TRIAGE_RATE_LIMIT_PER_HOUR: int = Field(default=60, ge=1)
+
+    @property
+    def ai_triage_active(self) -> bool:
+        """True only when the flag is on and a provider key is configured."""
+        return self.AI_TRIAGE_ENABLED and bool(self.GROQ_API_KEY or self.GEMINI_API_KEY)
+
     @property
     def allowed_origins(self) -> list[str]:
         """Parse comma-separated APP_ALLOWED_ORIGINS into a list."""

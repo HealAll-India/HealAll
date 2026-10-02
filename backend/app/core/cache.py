@@ -106,3 +106,26 @@ async def consume_single_use(key: str) -> bool | None:
     except Exception as exc:  # noqa: BLE001
         logger.warning("cache: consume_single_use %s failed (%s)", key, exc)
         return None
+
+
+# ---------------------------------------------------------------------------
+# Fixed-window counter (used by per-moderator AI triage rate limiting)
+# ---------------------------------------------------------------------------
+
+
+async def incr_with_ttl(key: str, ttl_seconds: int) -> int | None:
+    """Increment ``key`` and set its TTL on first use. Returns the new count.
+
+    Returns None when Redis is unreachable so the caller can fall back; it
+    never raises.
+    """
+    try:
+        async with _client.pipeline(transaction=True) as pipe:
+            # SET NX EX first so the window always has a TTL (works on Redis < 7).
+            pipe.set(key, 0, ex=ttl_seconds, nx=True)
+            pipe.incr(key)
+            _, count = await pipe.execute()
+        return int(count)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cache: incr_with_ttl %s failed (%s)", key, exc)
+        return None

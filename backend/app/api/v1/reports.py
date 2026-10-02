@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_any_role
+from app.core.config import get_settings
 from app.core.constants import UserRole
 from app.core.limiter import limiter
 from app.db.session import get_db
@@ -67,6 +68,7 @@ async def list_reports(
         status=status,
         page=page,
         per_page=per_page,
+        urgent_first=get_settings().ai_triage_active,
     )
 
     items = [

@@ -174,6 +174,13 @@ S3_ACCESS_KEY=...
 S3_SECRET_KEY=...
 ```
 
+**Optional — AI report triage** (off by default; moderators get a suggest-only severity/category/summary panel per report):
+```
+AI_TRIAGE_ENABLED=true
+GROQ_API_KEY=...               # primary provider (model: GROQ_MODEL, default openai/gpt-oss-20b)
+GEMINI_API_KEY=...             # optional fallback (model: GEMINI_MODEL, default gemini-3.5-flash-lite)
+```
+
 ---
 
 ## 🗺️ Roadmap

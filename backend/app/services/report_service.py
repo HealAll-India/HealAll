@@ -2,14 +2,16 @@
 
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import case, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.exceptions import DuplicateException, NotFoundException, ValidationException
 from app.models.comment import Comment
 from app.models.message import Message
 from app.models.post import Post
-from app.models.report import Report, ReportStatus, ReportTargetType
+from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
+from app.models.report_triage import ReportTriage, TriageSeverity
 from app.models.user import User
 
 
@@ -82,14 +84,31 @@ async def list_reports(
     status: ReportStatus | None = None,
     page: int = 1,
     per_page: int = 20,
+    urgent_first: bool = False,
 ) -> tuple[list[Report], int]:
-    """List reports with optional status filter."""
+    """List reports with optional status filter.
+
+    ``urgent_first`` (AI triage enabled) sorts reason=crisis reports, and reports
+    whose AI triage came back urgent, ahead of everything else.
+    """
     query = select(Report)
     if status:
         query = query.where(Report.status == status.value)
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
-    rows = await db.execute(query.order_by(Report.created_at.desc()).offset((page - 1) * per_page).limit(per_page))
+    order_by = [Report.created_at.desc()]
+    if urgent_first:
+        # Only the latest triage per report counts: once an edited post is
+        # re-triaged as non-urgent, the older urgent row stops floating it.
+        newer = aliased(ReportTriage)
+        triaged_urgent = exists().where(
+            ReportTriage.report_id == Report.id,
+            ReportTriage.suggested_severity == TriageSeverity.URGENT.value,
+            ~exists().where(newer.report_id == Report.id, newer.created_at > ReportTriage.created_at),
+        )
+        urgent = or_(Report.reason == ReportReason.CRISIS.value, triaged_urgent)
+        order_by.insert(0, case((urgent, 0), else_=1))
+    rows = await db.execute(query.order_by(*order_by).offset((page - 1) * per_page).limit(per_page))
     return list(rows.scalars().all()), total
 
 
