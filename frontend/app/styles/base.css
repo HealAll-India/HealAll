@@ -1,23 +1,56 @@
 /* ─────────────────────────────────────────────
-   Base — reset, layout, card, buttons, inputs, badges, alerts
-   Shared element styles and legacy primitives. Imported before every area partial.
+   Base — reset, typography, layout, card, buttons, inputs, badges, alerts
+   Element defaults plus the legacy primitives still used by unmigrated
+   pages. Imported right after tokens.css, before every area partial.
    ───────────────────────────────────────────── */
+
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; }
 
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
 body {
   margin: 0;
-  font-family: 'DM Sans', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a { color: inherit; text-decoration: none; }
 
+/* One visible, consistent focus indicator (WCAG 2.4.7 / 2.4.13). */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+h1, h2, h3, h4 { line-height: var(--lh-snug); color: var(--text); }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: var(--lh-tight);
+}
+
+/* Lucide icons inherit the text colour and never shrink in flex rows. */
+.lucide { flex-shrink: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Layout ── */
 main {
-  max-width: 1000px;
+  max-width: var(--content-max);
   margin: 0 auto;
   padding: 1.5rem 1.25rem;
 }
@@ -32,105 +65,128 @@ main {
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   padding: 1.25rem;
   box-shadow: var(--shadow-card);
-  transition: box-shadow var(--duration-fast) var(--ease-out);
 }
-.card:hover { box-shadow: var(--shadow-card-hover); }
 .card--sidebar { border-radius: var(--radius-lg); }
 
-/* ── Buttons ── */
-button { font: inherit; border: 0; cursor: pointer; border-radius: var(--radius-md); padding: 0.6rem 1rem; }
-
-button,
-.btn-primary {
-  background: var(--gradient-brand);
-  color: #fff;
-  font-weight: 700;
-  padding: 9px 20px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-btn);
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: transform var(--duration-fast) var(--ease-out),
-              opacity var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
-  white-space: nowrap;
-  letter-spacing: -0.005em;
+/* ── Buttons ──
+   A bare <button> is the primary action (solid green, 44px tall) — the
+   historical default the whole app relies on. Variants: .secondary
+   (green tint), .ghost (outlined), .danger. Links styled as buttons use
+   .btn-primary / .btn-secondary / .btn-ghost. */
+button {
+  font: inherit;
+  border: 0;
+  cursor: pointer;
 }
 
-button:not(:disabled):active { transform: translateY(1px) scale(0.98); }
-button:not(:disabled):hover { box-shadow: 0 6px 22px rgba(22,163,74,0.42); }
+button,
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: none;
+  transition: background-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+button:not(:disabled):hover,
+.btn-primary:hover { background: var(--primary-hover); }
+button:not(:disabled):active,
+.btn-primary:active,
+.btn-secondary:active,
+.btn-ghost:active { transform: translateY(1px); }
 
 button.secondary,
 .btn-secondary {
-  background: var(--gradient-brand-soft);
-  color: var(--brand-green);
-  box-shadow: inset 0 0 0 1px #bbf7d0;
+  background: var(--primary-soft);
+  color: var(--primary-ink);
+  box-shadow: inset 0 0 0 1px var(--primary-line);
 }
+button.secondary:not(:disabled):hover,
+.btn-secondary:hover { background: #DDF0E2; }
 
 button.ghost,
 .btn-ghost {
-  background: #fff;
-  color: var(--text-muted);
+  background: var(--surface);
+  color: var(--text);
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
+button.ghost:not(:disabled):hover,
+.btn-ghost:hover { background: var(--surface-sunken); }
 
-button.ghost:hover,
-.btn-ghost:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--text-subtle); }
+button.danger { background: var(--danger); color: #fff; }
+button.danger:not(:disabled):hover { background: #912018; }
 
-button.danger { background: var(--danger); box-shadow: none; }
-button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* btn-sm / btn-lg / btn-block size modifiers */
-.btn-sm  { padding: 7px 12px; font-size: 12px; }
-.btn-lg  { padding: 12px 22px; font-size: 14px; }
-.btn-block { width: 100%; justify-content: center; }
+/* size modifiers */
+.btn-sm    { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.btn-lg    { min-height: 52px; padding: 0 22px; font-size: 17px; }
+.btn-block { width: 100%; }
 
 /* ── Inputs ── */
 /* Scope text-like inputs only — checkboxes/radios keep native sizing so they
-   don't get stretched to width:100% inside flex/grid rows. */
+   don't get stretched to width:100% inside flex/grid rows. 16px text stops
+   iOS Safari from zooming on focus. */
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 textarea,
 select {
   font: inherit;
   width: 100%;
+  min-height: 48px;
   background: var(--surface);
   color: var(--text);
-  border: 1.5px solid var(--border-strong);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 10px 14px;
-  font-size: 13px;
+  font-size: 16px;
+  /* Fields usually sit inside a <label>; don't inherit its semibold weight. */
+  font-weight: var(--fw-regular);
   transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
 }
+
+input::placeholder, textarea::placeholder { color: var(--text-subtle); opacity: 1; }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--brand-green);
+  border-color: var(--primary);
   box-shadow: var(--shadow-focus-ring);
 }
 
-/* Make native checkboxes adopt brand color on tick — small detail, big polish */
 input[type="checkbox"], input[type="radio"] {
-  accent-color: var(--brand-green);
-  width: 16px;
-  height: 16px;
+  accent-color: var(--primary);
+  width: 18px;
+  height: 18px;
   cursor: pointer;
 }
 
-textarea { min-height: 100px; resize: vertical; }
+textarea { min-height: 112px; resize: vertical; line-height: var(--lh-normal); }
 
 label {
   display: grid;
-  gap: 0.35rem;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  font-weight: 500;
+  gap: 6px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
 }
 
 /* ── Badges ── */
@@ -140,25 +196,28 @@ label {
   gap: 4px;
   font-size: var(--fs-micro);
   font-weight: var(--fw-bold);
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
+  background: var(--surface-sunken);
+  color: var(--text-2);
+  text-transform: capitalize;
 }
 
-.badge-urgent       { background: var(--urgent-bg);   color: var(--urgent);   border-color: var(--urgent-border); }
-.badge-medicine     { background: var(--medicine-bg); color: var(--medicine); border-color: var(--medicine-border); }
-.badge-shelter      { background: var(--shelter-bg);  color: var(--shelter);  border-color: var(--shelter-border); }
-.badge-food         { background: var(--food-bg);     color: var(--food);     border-color: var(--food-border); }
-.badge-finance      { background: var(--finance-bg);  color: var(--finance);  border-color: var(--finance-border); }
-.badge-mentorship   { background: var(--shelter-bg);  color: var(--shelter);  border-color: var(--shelter-border); }
-.badge-support      { background: #fef3c7;             color: #b45309;         border-color: #fde68a; }
-.badge-skills       { background: var(--food-bg);     color: var(--food);     border-color: var(--food-border); }
-.badge-on_ground    { background: var(--medicine-bg); color: var(--medicine); border-color: var(--medicine-border); }
-.badge-navigation   { background: var(--finance-bg);  color: var(--finance);  border-color: var(--finance-border); }
+.badge-urgent       { background: var(--cat-urgent-bg);     color: var(--cat-urgent);     border-color: var(--urgent-border); }
+.badge-medicine     { background: var(--cat-on-ground-bg);  color: var(--cat-on-ground);  border-color: var(--medicine-border); }
+.badge-shelter      { background: var(--cat-mentorship-bg); color: var(--cat-mentorship); border-color: var(--shelter-border); }
+.badge-food         { background: var(--primary-soft);      color: var(--primary-ink);    border-color: var(--primary-line); }
+.badge-finance      { background: var(--cat-navigation-bg); color: var(--cat-navigation); border-color: var(--finance-border); }
+.badge-mentorship   { background: var(--cat-mentorship-bg); color: var(--cat-mentorship); border-color: var(--shelter-border); }
+.badge-support      { background: var(--cat-support-bg);    color: var(--cat-support);    border-color: #F5C6DE; }
+.badge-skills       { background: var(--cat-skills-bg);     color: var(--cat-skills);     border-color: #BFE5DC; }
+.badge-on_ground    { background: var(--cat-on-ground-bg);  color: var(--cat-on-ground);  border-color: var(--medicine-border); }
+.badge-navigation   { background: var(--cat-navigation-bg); color: var(--cat-navigation); border-color: var(--finance-border); }
 
 /* Legacy compat */
-.badge.warn { background: #fffbeb; color: var(--warning); border-color: #fde68a; }
-.badge.ok   { background: var(--food-bg); color: var(--ok); border-color: var(--food-border); }
+.badge.warn { background: var(--warning-soft); color: var(--warning); border-color: var(--warning-line); }
+.badge.ok   { background: var(--primary-soft); color: var(--primary-ink); border-color: var(--primary-line); }
 
 /* Verification pill */
 .vbadge {
@@ -167,9 +226,9 @@ label {
   gap: 3px;
   font-size: var(--fs-micro);
   font-weight: var(--fw-bold);
-  color: var(--brand-green);
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  color: var(--primary-ink);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-line);
   padding: 2px 8px;
   border-radius: var(--radius-full);
   margin-left: 6px;
@@ -177,34 +236,34 @@ label {
 
 /* Eyebrow / section label */
 .eyebrow {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-meta);
   font-weight: var(--fw-bold);
   color: var(--text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-/* Filter chips */
+/* Filter chips (legacy — new code uses .chip-toggle from primitives.css) */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--fs-xs);
+  min-height: 36px;
+  font-size: var(--fs-small);
   font-weight: var(--fw-semibold);
-  padding: 5px 12px;
+  padding: 0 14px;
   border-radius: var(--radius-full);
-  border: 1.5px solid var(--border-strong);
-  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
   background: var(--surface);
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
 }
-.chip:hover { border-color: var(--brand-green); color: var(--brand-green); }
+.chip:hover { border-color: var(--primary); }
 .chip.active {
-  background: var(--gradient-brand);
+  background: var(--text);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 2px 8px rgba(22,163,74,0.2);
 }
 
 /* ── Inline alerts (replaces plain p.error / p.success) ── */
@@ -213,13 +272,13 @@ label {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: 12px;
-  font-size: var(--fs-body);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-small);
   line-height: var(--lh-normal);
 }
-.alert.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-.alert.error   { background: #fff1f2; color: #be123c; border: 1px solid #fecaca; }
-.alert.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.alert.success { background: var(--primary-soft); color: var(--primary-ink); border: 1px solid var(--primary-line); }
+.alert.error   { background: var(--danger-soft);  color: #912018;             border: 1px solid var(--danger-line); }
+.alert.info    { background: var(--info-soft);    color: #1E3A8A;             border: 1px solid var(--info-line); }
 
 /* Backward-compat plain text helpers */
 p.muted, span.muted { color: var(--text-muted); margin: 0; }
@@ -263,6 +322,7 @@ p.success           { color: var(--ok); margin: 0; }
   color: var(--text-muted);
   box-shadow: none;
   padding: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;

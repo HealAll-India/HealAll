@@ -1,0 +1,353 @@
+/* ─────────────────────────────────────────────
+   Primitives — shared building blocks used across pages.
+   React counterparts live in components/ui/*. Class names here are the
+   stable contract: area partials compose these rather than restyling them.
+   ───────────────────────────────────────────── */
+
+/* ── Page header ── */
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-header__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.page-header__title { margin: 0; font-size: var(--fs-h1); }
+.page-header__sub { margin: 0; font-size: 15px; color: var(--text-2); }
+.page-header__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.section-title { margin: 0; font-size: 18px; font-weight: var(--fw-bold); }
+
+/* ── Icon button (44 × 44 target) ── */
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  min-height: 0;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+.icon-btn:not(:disabled):hover { background: var(--surface-sunken); }
+.icon-btn--outline { box-shadow: inset 0 0 0 1px var(--border-strong); background: var(--surface); }
+
+/* ── Avatar — tinted fill + dark initials (no white-on-gradient) ── */
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.01em;
+  line-height: 1;
+  user-select: none;
+}
+.avatar--sm { width: 30px; height: 30px; font-size: 12px; }
+.avatar--md { width: 40px; height: 40px; font-size: 15px; }
+.avatar--lg { width: 56px; height: 56px; font-size: 20px; }
+.avatar--xl { width: 88px; height: 88px; font-size: 30px; }
+.avatar__img { width: 100%; height: 100%; object-fit: cover; }
+.avatar--tone-0 { background: var(--primary-soft);      color: var(--primary-ink); }
+.avatar--tone-1 { background: var(--cat-mentorship-bg); color: var(--cat-mentorship); }
+.avatar--tone-2 { background: var(--cat-on-ground-bg);  color: var(--cat-on-ground); }
+.avatar--tone-3 { background: var(--cat-skills-bg);     color: var(--cat-skills); }
+.avatar--tone-4 { background: var(--cat-navigation-bg); color: var(--cat-navigation); }
+.avatar--tone-5 { background: var(--cat-support-bg);    color: var(--cat-support); }
+
+/* ── Category badge — icon + word + tone ── */
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+  background: var(--surface-sunken);
+  color: var(--text-2);
+}
+.cat-badge--urgent            { background: var(--cat-urgent-bg);     color: var(--cat-urgent); }
+.cat-badge--emotional_support { background: var(--cat-support-bg);    color: var(--cat-support); }
+.cat-badge--mentorship        { background: var(--cat-mentorship-bg); color: var(--cat-mentorship); }
+.cat-badge--skill_sharing     { background: var(--cat-skills-bg);     color: var(--cat-skills); }
+.cat-badge--navigation        { background: var(--cat-navigation-bg); color: var(--cat-navigation); }
+.cat-badge--on_ground         { background: var(--cat-on-ground-bg);  color: var(--cat-on-ground); }
+
+/* Category tone for icons placed outside a badge (chips, radio cards). */
+.cat-tone--urgent            { color: var(--cat-urgent); }
+.cat-tone--emotional_support { color: var(--cat-support); }
+.cat-tone--mentorship        { color: var(--cat-mentorship); }
+.cat-tone--skill_sharing     { color: var(--cat-skills); }
+.cat-tone--navigation        { color: var(--cat-navigation); }
+.cat-tone--on_ground         { color: var(--cat-on-ground); }
+
+/* ── Urgency badge — only high and critical render ── */
+.urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+}
+.urgency-badge--critical { background: var(--urgency-critical); color: #fff; }
+.urgency-badge--high {
+  background: var(--urgency-high-soft);
+  color: var(--urgency-high);
+  box-shadow: inset 0 0 0 1px var(--urgency-high-line);
+}
+
+/* ── Verified badge — a button that explains what was checked ── */
+.verified { position: relative; display: inline-flex; }
+.verified__btn {
+  min-height: 0;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--primary);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-semibold);
+}
+.verified__btn:not(:disabled):hover { background: var(--primary-soft); }
+.verified__pop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(280px, 80vw);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-raised), 0 0 0 1px var(--border);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-normal);
+  white-space: normal;
+}
+.verified__pop strong { display: block; margin-bottom: 2px; }
+
+/* ── Chips: toggle filters in a horizontal rail ── */
+.chip-rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  padding-bottom: 2px;
+}
+.chip-rail::-webkit-scrollbar { display: none; }
+.chip-toggle {
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  min-height: 40px;
+  padding: 0 14px;
+  gap: 6px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+}
+.chip-toggle:not(:disabled):hover { background: var(--surface-sunken); }
+.chip-toggle[aria-pressed="true"],
+.chip-toggle[aria-pressed="true"]:not(:disabled):hover {
+  background: var(--text);
+  color: #fff;
+  box-shadow: none;
+  font-weight: var(--fw-semibold);
+}
+.chip-toggle[aria-pressed="true"] .lucide { color: inherit; }
+
+/* ── Segmented control (radio group) ── */
+.segmented {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.segmented__option { position: relative; display: block; font-weight: var(--fw-semibold); }
+.segmented__option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.segmented__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 9px;
+  font-size: var(--fs-small);
+  color: var(--text-2);
+  text-align: center;
+}
+.segmented__option input:checked + .segmented__label {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(28, 31, 27, 0.1);
+}
+.segmented__option input:focus-visible + .segmented__label {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ── Switch — <input type="checkbox" role="switch" class="switch"> ── */
+input[type="checkbox"].switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  margin: 0;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+input[type="checkbox"].switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(28, 31, 27, 0.2);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+input[type="checkbox"].switch:checked { background: var(--primary); }
+input[type="checkbox"].switch:checked::after { transform: translateX(20px); }
+
+/* ── Notice — inline, icon-led ── */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  line-height: var(--lh-normal);
+}
+.notice > .lucide { margin-top: 1px; }
+.notice p { margin: 0; }
+.notice--info    { background: var(--info-soft);    color: #1E3A8A; }
+.notice--warning { background: var(--warning-soft); color: var(--warning-ink); box-shadow: inset 0 0 0 1px var(--warning-line); }
+.notice--warning > .lucide { color: var(--warning); }
+.notice--safety > .lucide { color: var(--primary); }
+.notice--error   { background: var(--danger-soft);  color: #912018; box-shadow: inset 0 0 0 1px var(--danger-line); }
+
+/* ── Meta row — icon + text facts ── */
+.meta-row { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--fs-small); color: var(--text-2); }
+.meta-row__item { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+}
+.empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-full);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.empty-state__title { margin: 0; font-size: 17px; font-weight: var(--fw-bold); }
+.empty-state__body { margin: 0; max-width: 42ch; font-size: 15px; color: var(--text-2); }
+.empty-state__action { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* Sign-in prompt shown in place of member-only pages. */
+.auth-required { max-width: 560px; margin: 48px auto; padding: 0 16px; }
+
+/* ── Skeleton — content-shaped placeholders ── */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, #EFEBE2 0%, #F7F4EE 50%, #EFEBE2 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.skeleton--line  { height: 14px; }
+.skeleton--title { height: 20px; width: 80%; }
+.skeleton--pill  { height: 28px; width: 96px; border-radius: var(--radius-full); }
+.skeleton--avatar { width: 36px; height: 36px; border-radius: var(--radius-full); }
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+@keyframes skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to   { background-position: -100% 0; }
+}
+
+/* ── Dropdown menu (account menu, ⋯ menus) ── */
+.menu { position: relative; display: inline-flex; }
+.menu__panel {
+  position: absolute;
+  z-index: 120;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised), 0 0 0 1px var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+  justify-content: flex-start;
+  text-align: left;
+}
+.menu__item:hover,
+.menu__item:not(:disabled):hover { background: var(--surface-sunken); }
+.menu__item--danger { color: var(--danger); }
+.menu__sep { height: 1px; margin: 6px 4px; background: var(--divider); }

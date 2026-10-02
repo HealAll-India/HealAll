@@ -1,18 +1,23 @@
 import Link from "next/link";
+import { Lock } from "lucide-react";
+
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function AuthRequired() {
   return (
-    <section className="card stack">
-      <h2>Authentication Required</h2>
-      <p className="muted">This module needs an access token from Module 1 login.</p>
-      <div className="row">
-        <Link href="/login">
-          <button>Go to Login</button>
-        </Link>
-        <Link href="/signup">
-          <button className="ghost">Go to Signup</button>
-        </Link>
-      </div>
-    </section>
+    <div className="auth-required">
+      <EmptyState
+        Icon={Lock}
+        title="Sign in to continue"
+        action={
+          <>
+            <Link href="/login" className="btn-primary">Sign in</Link>
+            <Link href="/signup" className="btn-ghost">I have an invite</Link>
+          </>
+        }
+      >
+        HealAll is invite-only. Sign in to see requests from verified members and offer help.
+      </EmptyState>
+    </div>
   );
 }

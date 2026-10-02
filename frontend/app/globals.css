@@ -6,6 +6,7 @@
    ───────────────────────────────────────────── */
 @import "./styles/tokens.css";
 @import "./styles/base.css";
+@import "./styles/primitives.css";
 @import "./styles/shell.css";
 @import "./styles/feed.css";
 @import "./styles/post.css";
@@ -15,6 +16,8 @@
 @import "./styles/verify.css";
 @import "./styles/cases.css";
 @import "./styles/auth.css";
+@import "./styles/admin.css";
+@import "./styles/legal.css";
 
 /* Impact strip */
 .impact-strip {
