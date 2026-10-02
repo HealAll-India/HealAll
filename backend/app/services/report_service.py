@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import case, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.exceptions import DuplicateException, NotFoundException, ValidationException
 from app.models.comment import Comment
@@ -97,9 +98,13 @@ async def list_reports(
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     order_by = [Report.created_at.desc()]
     if urgent_first:
+        # Only the latest triage per report counts: once an edited post is
+        # re-triaged as non-urgent, the older urgent row stops floating it.
+        newer = aliased(ReportTriage)
         triaged_urgent = exists().where(
             ReportTriage.report_id == Report.id,
             ReportTriage.suggested_severity == TriageSeverity.URGENT.value,
+            ~exists().where(newer.report_id == Report.id, newer.created_at > ReportTriage.created_at),
         )
         urgent = or_(Report.reason == ReportReason.CRISIS.value, triaged_urgent)
         order_by.insert(0, case((urgent, 0), else_=1))

@@ -4,16 +4,16 @@ import json
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.constants import UserRole
-from app.core.exceptions import ForbiddenException
+from app.core.exceptions import DuplicateException, ForbiddenException
 from app.core.security import create_access_token
 from app.models.post import Post, PostStatus
 from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
-from app.models.report_triage import ReportTriage
+from app.models.report_triage import ReportTriage, TriageSeverity
 from app.models.user import User
 from app.services import triage_llm, triage_service
 
@@ -436,6 +436,42 @@ async def test_decision_is_audited_once_and_feeds_metrics(
     assert metrics == {"suggestions": 1, "decided": 1, "accepted": 1, "overridden": 0, "agreement_rate": 1.0}
 
 
+async def test_concurrent_decision_cannot_overwrite_audit_row(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    triage_on,
+    moderator: User,
+    admin: User,
+    post_report: Report,
+    fake_llm: FakeLLM,
+):
+    triaged = (await client.post(f"/v1/moderation/reports/{post_report.id}/triage", headers=_auth(moderator))).json()
+    row = (await _triage_rows(db_session, post_report))[0]
+    assert row.decided_at is None  # in-memory copy says "undecided"
+
+    # Another request records a decision directly in the DB; this session's
+    # identity map still holds the stale, undecided row.
+    await db_session.execute(
+        update(ReportTriage)
+        .where(ReportTriage.id == row.id)
+        .values(
+            decision="accepted",
+            final_severity="medium",
+            final_category="solicitation",
+            decided_by=admin.id,
+            decided_at=row.created_at,
+        )
+        .execution_options(synchronize_session=False)
+    )
+
+    with pytest.raises(DuplicateException):
+        await triage_service.record_decision(db_session, moderator, row.id, TriageSeverity.HIGH, ReportReason.FRAUD)
+    await db_session.refresh(row)
+    assert row.decided_by == admin.id
+    assert row.final_severity == "medium"
+    assert triaged["suggestion"]["id"] == str(row.id)
+
+
 async def test_override_is_recorded_as_overridden(
     client: AsyncClient, triage_on, moderator: User, post_report: Report, fake_llm: FakeLLM
 ):
@@ -543,6 +579,15 @@ async def test_report_list_puts_crisis_and_ai_urgent_first_only_when_enabled(
     ids = [item["id"] for item in listed]
     assert set(ids[:2]) == {str(crisis.id), str(danger.id)}
     assert ids[2] == str(spam.id)
+
+    # Edit the post and re-triage as non-urgent: the older urgent row must stop
+    # floating it (only the latest triage per report counts).
+    danger_post.description = "Edited: all good now, thanks everyone"
+    await db_session.commit()
+    fake_llm.reply = json.dumps(VALID)
+    await client.post(f"/v1/moderation/reports/{danger.id}/triage", headers=_auth(moderator))
+    listed = (await client.get("/v1/reports", headers=_auth(moderator))).json()["items"]
+    assert [item["id"] for item in listed] == [str(crisis.id), str(spam.id), str(danger.id)]
 
     monkeypatch.setattr(get_settings(), "AI_TRIAGE_ENABLED", False)
     listed = (await client.get("/v1/reports", headers=_auth(moderator))).json()["items"]

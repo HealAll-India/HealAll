@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -207,16 +207,23 @@ async def record_decision(
         raise NotFoundException("Triage suggestion not found")
     report = await _get_report(db, triage.report_id)
     await _guard_report_access(db, actor, report)
-    if triage.decided_at is not None:
-        raise DuplicateException("A decision was already recorded for this suggestion")
-
     agreed = final_severity.value == triage.suggested_severity and final_category.value == triage.suggested_category
-    triage.decision = (TriageDecision.ACCEPTED if agreed else TriageDecision.OVERRIDDEN).value
-    triage.final_severity = final_severity.value
-    triage.final_category = final_category.value
-    triage.decided_by = actor.id
-    triage.decided_at = datetime.now(UTC)
-    await db.flush()
+    # Check-and-write in one conditional UPDATE so two concurrent decisions
+    # cannot both pass a Python-side check and overwrite each other.
+    result = await db.execute(
+        update(ReportTriage)
+        .where(ReportTriage.id == triage.id, ReportTriage.decided_at.is_(None))
+        .values(
+            decision=(TriageDecision.ACCEPTED if agreed else TriageDecision.OVERRIDDEN).value,
+            final_severity=final_severity.value,
+            final_category=final_category.value,
+            decided_by=actor.id,
+            decided_at=datetime.now(UTC),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount == 0:
+        raise DuplicateException("A decision was already recorded for this suggestion")
     await db.refresh(triage)
     return triage, report
 
