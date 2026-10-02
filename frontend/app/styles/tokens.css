@@ -1,0 +1,107 @@
+/* ─────────────────────────────────────────────
+   HealAll Design System — globals.css
+   Brand: green (#16a34a) + blue (#2563eb) heart
+   Style: clean white, social-community, elevated
+   ───────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --brand-green:        #16a34a;
+  --brand-blue:         #2563eb;
+  --gradient-brand:     linear-gradient(135deg, #16a34a, #2563eb);
+  --gradient-brand-soft: linear-gradient(135deg, #f0fdf4, #eff6ff);
+
+  /* Backgrounds */
+  --bg:                 #ffffff;
+  --bg-subtle:          #f9fafb;
+  --surface:            #ffffff;
+
+  /* Borders */
+  --border:             #f3f4f6;
+  --border-strong:      #e5e7eb;
+
+  /* Text */
+  --text:               #111827;
+  --text-muted:         #6b7280;
+  --text-subtle:        #9ca3af;
+
+  /* Semantic */
+  --primary:            #16a34a;
+  --primary-strong:     #15803d;
+  --danger:             #e11d48;
+  --warning:            #d97706;
+  --ok:                 #16a34a;
+
+  /* Category colours — foreground / soft-bg / border */
+  --urgent:             #e11d48;
+  --urgent-bg:          #fff1f2;
+  --urgent-border:      #fecaca;
+  --medicine:           #d97706;
+  --medicine-bg:        #fffbeb;
+  --medicine-border:    #fde68a;
+  --shelter:            #2563eb;
+  --shelter-bg:         #eff6ff;
+  --shelter-border:     #bfdbfe;
+  --food:               #16a34a;
+  --food-bg:            #f0fdf4;
+  --food-border:        #bbf7d0;
+  --finance:            #7c3aed;
+  --finance-bg:         #faf5ff;
+  --finance-border:     #e9d5ff;
+
+  /* Radius */
+  --radius-sm:          8px;
+  --radius-md:          10px;
+  --radius-lg:          16px;
+  --radius-xl:          20px;
+  --radius-full:        9999px;
+
+  /* Shadows */
+  --shadow-card:        0 2px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-card-hover:  0 6px 28px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-btn:         0 3px 12px rgba(22,163,74,0.30);
+  --shadow-nav:         0 1px 12px rgba(0,0,0,0.06);
+  --shadow-sidebar:     0 2px 14px rgba(0,0,0,0.05);
+  --shadow-focus-ring:  0 0 0 3px rgba(22,163,74,0.12);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Type scale */
+  --fs-display: 28px;
+  --fs-h1:      22px;
+  --fs-h2:      18px;
+  --fs-h3:      15px;
+  --fs-body:    13px;
+  --fs-small:   12px;
+  --fs-xs:      11px;
+  --fs-micro:   10px;
+
+  /* Line heights */
+  --lh-tight:   1.15;
+  --lh-snug:    1.35;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.65;
+
+  /* Font weights */
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-black:    800;
+
+  /* Motion */
+  --ease-out:       cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast:  120ms;
+  --duration-base:  180ms;
+}

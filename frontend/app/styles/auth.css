@@ -1,0 +1,21 @@
+/* ─────────────────────────────────────────────
+   Auth — /login, /signup, OTP pages
+   Owned by app/login, app/signup, app/verify-otp.
+   ───────────────────────────────────────────── */
+/* Login expired-session banner */
+.login-expired-banner {
+  text-align: center;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.sms-helper-text {
+  display: block;
+  font-size: 10px;
+  color: var(--text-subtle, #9ca3af);
+  margin-top: 2px;
+}
+/* Placeholder spacer for Google Login button */
+.google-btn-placeholder {
+  height: 40px;
+  width: 100%;
+}
