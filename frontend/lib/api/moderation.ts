@@ -8,6 +8,9 @@ import type {
   ReportResponse,
   ReportStatus,
   ReportTargetType,
+  TriageConfigResponse,
+  TriageResponse,
+  TriageSeverity,
   UUID
 } from "@/lib/types/api";
 
@@ -48,4 +51,20 @@ export function listModerationActions(token: string, page = 1, perPage = 20) {
     token,
     query: { page, per_page: perPage }
   });
+}
+
+export function getTriageConfig(token: string) {
+  return apiGet<TriageConfigResponse>("/v1/moderation/triage/config", { token });
+}
+
+export function triageReport(token: string, reportId: UUID) {
+  return apiPost<TriageResponse>(`/v1/moderation/reports/${reportId}/triage`, { token });
+}
+
+export function decideTriage(
+  token: string,
+  triageId: UUID,
+  payload: { final_severity: TriageSeverity; final_category: ReportReason }
+) {
+  return apiPost<TriageResponse>(`/v1/moderation/triage/${triageId}/decision`, { token, data: payload });
 }

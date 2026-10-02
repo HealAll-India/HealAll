@@ -20,6 +20,7 @@ from app.models.case import Case, CaseHelper, CaseNote, CaseClosure
 from app.models.comment import Comment
 from app.models.message import DMConsentRequest, Conversation, Message
 from app.models.report import Report, ModerationAction
+from app.models.report_triage import ReportTriage
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

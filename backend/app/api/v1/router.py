@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    ai_triage,
     auth,
     cases,
     comments,
@@ -37,6 +38,7 @@ router.include_router(cases.router)
 router.include_router(messages.router)
 router.include_router(reports.router)
 router.include_router(moderation.router)
+router.include_router(ai_triage.router)
 router.include_router(uploads.router)
 router.include_router(admin.router)
 router.include_router(issue_reports.router)

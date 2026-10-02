@@ -395,6 +395,42 @@ export interface ModerationActionListResponse {
   has_next: boolean;
 }
 
+export type TriageSeverity = "low" | "medium" | "high" | "urgent";
+
+export interface TriageConfigResponse {
+  enabled: boolean;
+}
+
+export interface TriageDecisionOut {
+  decision: "accepted" | "overridden";
+  final_severity: TriageSeverity;
+  final_category: ReportReason;
+  decided_by: UUID | null;
+  decided_at: string;
+}
+
+export interface TriageSuggestion {
+  id: UUID;
+  report_id: UUID;
+  provider: string;
+  model: string;
+  severity: TriageSeverity;
+  category: ReportReason;
+  summary: string;
+  rationale: string;
+  danger_flag: boolean;
+  created_at: string;
+  cached: boolean;
+  decision: TriageDecisionOut | null;
+}
+
+export interface TriageResponse {
+  state: "disabled" | "ok" | "no_suggestion";
+  urgent: boolean;
+  suggestion: TriageSuggestion | null;
+  message: string | null;
+}
+
 export interface InviteCodeResponse {
   id: UUID;
   code: string;

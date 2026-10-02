@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
   return (
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
       <div style={{ marginBottom: "2.5rem" }}>
-        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: May 26, 2026</p>
+        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: October 2, 2026</p>
         <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#111827", margin: "0 0 12px" }}>Privacy Policy</h1>
         <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
           HealAll (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is committed to protecting your privacy.
@@ -97,6 +97,12 @@ export default function PrivacyPolicyPage() {
               <li>Vercel (frontend hosting + CDN)</li>
               <li>Railway (backend hosting)</li>
               <li>Sentry (error monitoring; no personally identifiable payloads are sent)</li>
+              <li>
+                Groq, with Google Gemini as a fallback (AI-assisted moderation triage). When a moderator asks for a
+                suggestion on a report, we send only the text of the reported content and the report reason, after
+                masking emails, phone numbers, ID numbers, links and @handles. We never send who reported it or who
+                it is about. The AI only suggests; a human moderator makes every decision.
+              </li>
             </ul>
             All providers are contractually bound to protect your data.
           </li>

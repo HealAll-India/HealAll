@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { AiTriagePanel } from "@/components/moderation/ai-triage-panel";
 import { AuthRequired } from "@/components/ui/auth-required";
 import { ApiError } from "@/lib/api/client";
-import { createModerationAction, listModerationActions, listReports } from "@/lib/api/moderation";
+import {
+  createModerationAction,
+  getTriageConfig,
+  listModerationActions,
+  listReports,
+} from "@/lib/api/moderation";
 import { moderationActions } from "@/lib/constants";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -157,6 +163,28 @@ export default function ModerationAdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [triageEnabled, setTriageEnabled] = useState(false);
+  const [aiUrgentIds, setAiUrgentIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (!token) return;
+    // Any failure (flag off, older backend) means no panel at all.
+    getTriageConfig(token)
+      .then((res) => setTriageEnabled(res.enabled))
+      .catch(() => setTriageEnabled(false));
+  }, [token]);
+
+  function markUrgent(reportId: string) {
+    setAiUrgentIds((prev) => (prev.has(reportId) ? prev : new Set(prev).add(reportId)));
+  }
+
+  // Crisis reports and AI-flagged urgent ones float to the top (stable sort).
+  const isUrgent = (r: ReportResponse) => r.reason === "crisis" || aiUrgentIds.has(r.id);
+  const sortedReports = reports
+    ? triageEnabled
+      ? [...reports.items].sort((a, b) => Number(isUrgent(b)) - Number(isUrgent(a)))
+      : reports.items
+    : [];
 
   async function loadData() {
     if (!token) return;
@@ -276,7 +304,7 @@ export default function ModerationAdminPage() {
           </div>
         ) : (
           <div className="stack" style={{ gap: "10px" }}>
-            {reports.items.map((report) => (
+            {sortedReports.map((report) => (
               <div key={report.id} className="card stack" style={{ gap: "10px", padding: "16px 20px" }}>
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
                   <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
@@ -315,6 +343,10 @@ export default function ModerationAdminPage() {
                 <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
                   Target: {report.target_id.slice(0, 12)}… · Reporter: {report.reporter_id.slice(0, 12)}…
                 </p>
+
+                {triageEnabled && (
+                  <AiTriagePanel token={token} report={report} onUrgent={markUrgent} />
+                )}
 
                 {report.status === "pending" && (
                   <InlineActionForm
