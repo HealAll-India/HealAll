@@ -423,3 +423,53 @@ async def test_feed_response_structure(
     author = item["author"]
     for field in ("id", "name", "verification_level"):
         assert field in author, f"Missing author field '{field}'"
+
+
+async def _seed_one_of_each_urgency(db: AsyncSession, author_id: str, city: str) -> None:
+    """Seed CRITICAL → HIGH → NORMAL → LOW, oldest first."""
+    for urgency in (
+        PostUrgency.CRITICAL.value,
+        PostUrgency.HIGH.value,
+        PostUrgency.NORMAL.value,
+        PostUrgency.LOW.value,
+    ):
+        await _seed_active_post(
+            db,
+            author_id,
+            title=f"Urgency ordering check post ({urgency})",
+            urgency=urgency,
+            city=city,
+        )
+
+
+@pytest.mark.asyncio
+async def test_feed_orders_by_urgency_severity(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    viewer_user_id: str,
+    db_session: AsyncSession,
+):
+    """Critical requests sort first — not alphabetically (normal > low > high > critical)."""
+    city = f"UrgencyOrder-{uuid4().hex[:8]}"
+    await _seed_one_of_each_urgency(db_session, viewer_user_id, city)
+
+    resp = await client.get("/v1/feed", params={"city": city}, headers=auth_headers)
+    assert resp.status_code == 200
+    urgencies = [item["urgency"] for item in resp.json()["items"]]
+    assert urgencies == ["critical", "high", "normal", "low"]
+
+
+@pytest.mark.asyncio
+async def test_public_feed_orders_by_urgency_severity(
+    client: AsyncClient,
+    viewer_user_id: str,
+    db_session: AsyncSession,
+):
+    """The logged-out landing feed uses the same severity ordering."""
+    city = f"UrgencyOrder-{uuid4().hex[:8]}"
+    await _seed_one_of_each_urgency(db_session, viewer_user_id, city)
+
+    resp = await client.get("/v1/public/posts", params={"city": city})
+    assert resp.status_code == 200
+    urgencies = [item["urgency"] for item in resp.json()["items"]]
+    assert urgencies == ["critical", "high", "normal", "low"]

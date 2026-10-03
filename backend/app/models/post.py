@@ -3,7 +3,7 @@
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import ColumnElement, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, case, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -86,6 +86,25 @@ class Post(Base, TimestampMixin, SoftDeleteMixin):
         "PostMedia",
         back_populates="post",
         cascade="all, delete-orphan",
+    )
+
+
+def urgency_rank() -> ColumnElement[int]:
+    """Sort key that orders posts by urgency severity, most severe first.
+
+    `urgency` is stored as a string, so ordering by the column itself is
+    alphabetical: `.desc()` yields normal > low > high > critical and sinks
+    critical requests to the bottom of the feed. Map to an explicit rank.
+    """
+    return case(
+        {
+            PostUrgency.CRITICAL.value: 0,
+            PostUrgency.HIGH.value: 1,
+            PostUrgency.NORMAL.value: 2,
+            PostUrgency.LOW.value: 3,
+        },
+        value=Post.urgency,
+        else_=4,
     )
 
 
