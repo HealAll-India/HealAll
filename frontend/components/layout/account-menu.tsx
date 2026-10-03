@@ -46,10 +46,10 @@ export function AccountMenu({ user, onSignOut }: Props) {
         triggerRef.current?.focus();
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        list[(i + 1) % list.length]?.focus();
+        list[i < 0 ? 0 : (i + 1) % list.length]?.focus();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        list[(i - 1 + list.length) % list.length]?.focus();
+        list[i < 0 ? list.length - 1 : (i - 1 + list.length) % list.length]?.focus();
       } else if (e.key === "Home") {
         e.preventDefault();
         list[0]?.focus();

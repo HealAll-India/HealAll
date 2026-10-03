@@ -78,3 +78,34 @@ describe("AccountMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 });
+
+describe("useVerifyCount", () => {
+  it("never shows another account's count after the token changes", async () => {
+    const { renderHook, waitFor } = await import("@testing-library/react");
+    const api = await import("@/lib/api/community-verification");
+    const spy = vi.spyOn(api, "getCommunityQueue")
+      .mockResolvedValueOnce({ total: 7 } as Awaited<ReturnType<typeof api.getCommunityQueue>>)
+      .mockImplementationOnce(() => new Promise(() => {})); // second account: still loading
+    const { useVerifyCount } = await import("@/components/layout/use-verify-count");
+    const { result, rerender } = renderHook(
+      ({ token }) => useVerifyCount(token, 1, "/feed"),
+      { initialProps: { token: "token-a" as string | null } },
+    );
+    await waitFor(() => expect(result.current).toBe(7));
+    rerender({ token: "token-b" });
+    expect(result.current).toBeNull();
+    spy.mockRestore();
+  });
+});
+
+describe("AccountMenu arrow keys from the trigger", () => {
+  it("ArrowUp from outside the items lands on the last item", () => {
+    render(<AccountMenu user={user(["helper"])} onSignOut={() => {}} />);
+    const trigger = screen.getByRole("button", { name: /account menu/i });
+    fireEvent.click(trigger);
+    trigger.focus();
+    fireEvent.keyDown(document, { key: "ArrowUp" });
+    const items = screen.getAllByRole("menuitem");
+    expect(document.activeElement).toBe(items[items.length - 1]);
+  });
+});
