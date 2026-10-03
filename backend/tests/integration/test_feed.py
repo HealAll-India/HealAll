@@ -426,12 +426,12 @@ async def test_feed_response_structure(
 
 
 async def _seed_one_of_each_urgency(db: AsyncSession, author_id: str, city: str) -> None:
-    """Seed LOW → NORMAL → HIGH → CRITICAL, oldest first, so recency can't mask severity."""
+    """Seed CRITICAL → HIGH → NORMAL → LOW, oldest first."""
     for urgency in (
-        PostUrgency.LOW.value,
-        PostUrgency.NORMAL.value,
-        PostUrgency.HIGH.value,
         PostUrgency.CRITICAL.value,
+        PostUrgency.HIGH.value,
+        PostUrgency.NORMAL.value,
+        PostUrgency.LOW.value,
     ):
         await _seed_active_post(
             db,
