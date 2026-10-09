@@ -1,0 +1,200 @@
+/* ─────────────────────────────────────────────
+   App shell — top bar, mobile tab bar, account menu, footer
+   Owned by components/layout/*.
+   ───────────────────────────────────────────── */
+
+/* Skip link: visible only when focused. */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -100px;
+  z-index: 300;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--text);
+  color: #fff;
+  font-weight: var(--fw-semibold);
+}
+.skip-link:focus { top: 12px; }
+.app-body:focus { outline: none; }
+
+/* ── Top bar ── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar__inner {
+  max-width: var(--content-max);
+  height: var(--topbar-h);
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: var(--tap);
+  color: var(--text);
+}
+.topbar__mark { border-radius: 9px; }
+.topbar__wordmark {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.topbar__nav {
+  display: flex;
+  align-self: stretch;
+  gap: 4px;
+}
+.topbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 0 -3px 0 transparent;
+  transition: color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+.topbar__link:hover { color: var(--text); }
+.topbar__link[aria-current="page"] {
+  color: var(--text);
+  font-weight: var(--fw-bold);
+  box-shadow: inset 0 -3px 0 var(--primary);
+}
+
+.topbar__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Count badge shared by the top bar and the tab bar. */
+.nav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--text);
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+/* Account menu trigger */
+.topbar__account {
+  min-height: var(--tap);
+  padding: 0 6px 0 4px;
+  gap: 4px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+}
+.topbar__account:not(:disabled):hover { background: var(--surface-sunken); }
+.topbar__menu-head { display: flex; flex-direction: column; padding: 8px 12px 6px; }
+.topbar__menu-name { font-weight: var(--fw-bold); }
+.topbar__menu-sub { font-size: var(--fs-meta); color: var(--text-subtle); }
+
+/* ── Mobile tab bar ── */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: none;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding: 0 4px env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.tabbar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--tabbar-h);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+}
+.tabbar__item[aria-current="page"] { color: var(--primary); font-weight: var(--fw-bold); }
+.tabbar__icon { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 32px; }
+.tabbar__count {
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.tabbar__item--primary { color: var(--text); }
+.tabbar__item--primary .tabbar__icon {
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* ── Footer ── */
+.app-footer {
+  margin-top: 48px;
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--border);
+}
+.app-footer__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 18px;
+  font-size: var(--fs-small);
+  color: var(--text-subtle);
+}
+.app-footer__inner a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--text-2);
+}
+.app-footer__inner a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.app-footer__copy { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+/* ── Responsive ── */
+@media (max-width: 899px) {
+  .topbar__inner { padding: 0 8px 0 16px; height: 56px; gap: 12px; }
+  .topbar__wordmark { font-size: 20px; }
+  .topbar__nav,
+  .topbar__ask { display: none; }
+  .tabbar { display: grid; }
+  /* Keep page content and focused elements clear of the fixed tab bar (WCAG 2.4.11). */
+  .app-body--tabbar { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+  html:has(.tabbar) { scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px); }
+}

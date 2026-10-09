@@ -1,0 +1,160 @@
+/* ─────────────────────────────────────────────
+   HealAll design tokens
+   Warm ground, one confident green for action, and colour + icon + word
+   for every urgency and category. Every text/background pair below is
+   WCAG 2.2 AA (≥ 4.5 : 1) — ratios noted where they were checked.
+   Legacy token names are kept (mapped to the new values) so rules that
+   haven't been migrated yet still resolve.
+   ───────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+
+  /* Fonts — the --font-*-face variables are injected by next/font in app/layout.tsx */
+  --font-sans: var(--font-noto-sans-face, "Noto Sans"), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces-face, "Fraunces"), Georgia, "Times New Roman", serif;
+
+  /* Ground & surfaces */
+  --bg:                 #FAF8F4;
+  --surface:            #FFFFFF;
+  --surface-sunken:     #F4F1EA;
+  --bg-subtle:          #F4F1EA;
+
+  /* Lines */
+  --border:             #E8E4DA;
+  --border-strong:      #D8D2C4;
+  --divider:            #EFEBE2;
+
+  /* Ink — on #FFFFFF: 16.4 / 8.7 / 5.2 : 1 */
+  --text:               #1C1F1B;
+  --text-2:             #484D45;
+  --text-muted:         #484D45;
+  --text-subtle:        #6A6F65;
+
+  /* Action — white on #15803D is 5.0 : 1 (the old #16a34a was 3.3 : 1) */
+  --primary:            #15803D;
+  --primary-hover:      #166534;
+  --primary-strong:     #166534;
+  --primary-soft:       #ECF7EF;
+  --primary-line:       #CFE8D6;
+  --primary-ink:        #14532D;
+  --on-primary:         #FFFFFF;
+  --brand-green:        #15803D;
+  --brand-blue:         #1D4ED8;
+  --gradient-brand:     linear-gradient(135deg, #15803D, #1D4ED8);
+  --gradient-brand-soft: linear-gradient(135deg, #ECF7EF, #EEF3FE);
+
+  /* Status */
+  --danger:             #B42318;
+  --danger-soft:        #FEF1F0;
+  --danger-line:        #F7C8C2;
+  --warning:            #B54708;
+  --warning-soft:       #FFF6E8;
+  --warning-line:       #F6D9A8;
+  --warning-ink:        #7A2E0B;
+  --ok:                 #15803D;
+  --info:               #1D4ED8;
+  --info-soft:          #EEF3FE;
+  --info-line:          #C9D7FB;
+  --focus-ring:         #1D4ED8;
+
+  /* Urgency — only high and critical get a badge (alarm fatigue) */
+  --urgency-critical:       #B42318;
+  --urgency-critical-soft:  #FEF1F0;
+  --urgency-high:           #B54708;
+  --urgency-high-soft:      #FFF6E8;
+  --urgency-high-line:      #F6D9A8;
+
+  /* Category tones — foreground on its own tint is ≥ 4.6 : 1 */
+  --cat-urgent:             #B42318;   --cat-urgent-bg:          #FEF1F0;
+  --cat-support:            #C11574;   --cat-support-bg:         #FDF2F8;
+  --cat-mentorship:         #1D4ED8;   --cat-mentorship-bg:      #EEF3FE;
+  --cat-skills:             #0E7C66;   --cat-skills-bg:          #EBF7F4;
+  --cat-navigation:         #6941C6;   --cat-navigation-bg:      #F4F1FD;
+  --cat-on-ground:          #B54708;   --cat-on-ground-bg:       #FFF6E8;
+
+  /* Legacy category tokens (old .badge-* / .cbadge-* rules) */
+  --urgent:             var(--cat-urgent);
+  --urgent-bg:          var(--cat-urgent-bg);
+  --urgent-border:      #F7C8C2;
+  --medicine:           var(--cat-on-ground);
+  --medicine-bg:        var(--cat-on-ground-bg);
+  --medicine-border:    #F6D9A8;
+  --shelter:            var(--cat-mentorship);
+  --shelter-bg:         var(--cat-mentorship-bg);
+  --shelter-border:     #C9D7FB;
+  --food:               var(--primary);
+  --food-bg:            var(--primary-soft);
+  --food-border:        var(--primary-line);
+  --finance:            var(--cat-navigation);
+  --finance-bg:         var(--cat-navigation-bg);
+  --finance-border:     #DDD3FA;
+
+  /* Radius */
+  --radius-sm:          8px;
+  --radius-md:          12px;
+  --radius-lg:          16px;
+  --radius-xl:          20px;
+  --radius-full:        9999px;
+
+  /* Shadows — quiet; borders do most of the separating */
+  --shadow-card:        0 1px 2px rgba(28, 31, 27, 0.05);
+  --shadow-card-hover:  0 6px 20px -6px rgba(28, 31, 27, 0.14), 0 1px 2px rgba(28, 31, 27, 0.05);
+  --shadow-raised:      0 12px 32px -10px rgba(28, 31, 27, 0.22);
+  --shadow-btn:         none;
+  --shadow-nav:         0 1px 0 var(--border);
+  --shadow-sidebar:     var(--shadow-card);
+  --shadow-focus-ring:  0 0 0 3px rgba(21, 128, 61, 0.22);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Type scale — 16px body; 12px is the floor for any text */
+  --fs-display: 34px;
+  --fs-h1:      28px;
+  --fs-h2:      20px;
+  --fs-h3:      17px;
+  --fs-body:    16px;
+  --fs-small:   14px;
+  --fs-meta:    13px;
+  --fs-xs:      13px;
+  --fs-micro:   12px;
+
+  /* Line heights */
+  --lh-tight:   1.15;
+  --lh-snug:    1.3;
+  --lh-normal:  1.5;
+  --lh-body:    1.55;
+  --lh-relaxed: 1.65;
+
+  /* Font weights */
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+  --fw-black:    800;
+
+  /* Motion */
+  --ease-out:       cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast:  120ms;
+  --duration-base:  180ms;
+
+  /* Layout */
+  --content-max:  1120px;
+  --topbar-h:     64px;
+  --tabbar-h:     64px;
+  --tap:          44px;
+}
+
+/* Devanagari and other Indic scripts need more vertical room for matras. */
+:lang(hi), :lang(mr), :lang(ne), :lang(bn), :lang(ta), :lang(te), :lang(kn), :lang(ml), :lang(gu), :lang(pa) {
+  --lh-body: 1.8;
+}

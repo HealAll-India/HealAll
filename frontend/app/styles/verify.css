@@ -1,0 +1,28 @@
+/* ─────────────────────────────────────────────
+   Community verification — /verify
+   Owned by app/verify.
+   ───────────────────────────────────────────── */
+/* /verify community queue */
+.verify-title { margin: 0; font-size: 22px; font-weight: 800; }
+.verify-subtitle { margin: 0; font-size: 13px; }
+.verify-item { margin-bottom: 12px; }
+.verify-item__header { gap: 8px; align-items: flex-start; }
+.verify-item__meta { font-size: 12px; margin: 2px 0 0; }
+.verify-item__body { margin: 0; font-size: 13px; line-height: 1.6; color: #374151; }
+.verify-item__loc { font-size: 12px; color: #6b7280; }
+.verify-note-label { font-size: 12px; }
+/* Community verification header */
+.verify-header-row { align-items: center; justify-content: space-between; gap: 8px; }
+
+/* Community verification — own pending section */
+.verify-own-title { font-size: var(--fs-h3); margin: 0; }
+.verify-own-item { border-left: 3px solid var(--border-strong); opacity: 0.92; }
+.verify-own-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.verify-own-link:hover,
+.verify-own-link:focus-visible { text-decoration-thickness: 2px; }
+
+/* Component-scoped stack variants */
+.stack--map { gap: 8px; }
+.verify-item__body-col { flex: 1; }
+.verify-item__title-lg { font-size: 17px; }
+.verify-item__actions { gap: 8px; flex-wrap: wrap; }

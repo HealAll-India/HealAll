@@ -1,56 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 
 import { logout } from "@/lib/api/auth";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
-const BASE_LINKS = [
-  { href: "/feed",      label: "Feed" },
-  { href: "/posts/new", label: "New Post" },
-  { href: "/verify",    label: "Vote" },
-  { href: "/cases",     label: "Cases" },
-  { href: "/messages",  label: "Messages" },
-  { href: "/profile",   label: "Profile" },
-];
+import { AccountMenu } from "./account-menu";
+import { NAV_BADGE_SR, PRIMARY_LINKS, isActive, isTabBarHidden, type NavBadgeKey } from "./nav-config";
+import { TabBar } from "./tab-bar";
+import { useVerifyCount } from "./use-verify-count";
 
-const MOD_LINKS = [
-  { href: "/admin/moderation", label: "Moderation" },
-];
+interface Props {
+  children: React.ReactNode;
+  /**
+   * Optional count for the Messages badge (pending message requests). Not
+   * wired yet — the inbox API that provides it is landing separately.
+   */
+  messagesCount?: number | null;
+}
 
-const VERIFIER_LINKS = [
-  { href: "/admin/verification", label: "Verify" },
-];
-
-const ADMIN_LINKS = [
-  { href: "/invites", label: "Invites" },
-];
-
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const hydrated  = useHydrated();
-  const pathname  = usePathname();
-  const router    = useRouter();
+export function AppShell({ children, messagesCount = null }: Props) {
+  const hydrated = useHydrated();
+  const pathname = usePathname();
+  const router = useRouter();
   const { accessToken, user, clearSession } = useAuthStore();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const closeDrawer = () => setMobileNavOpen(false);
-  const burgerRef = useRef<HTMLButtonElement | null>(null);
-  const drawerRef = useRef<HTMLElement | null>(null);
 
-  const isAuthed = hydrated && Boolean(accessToken);
-  const roles      = user?.roles ?? [];
-  const isMod      = roles.some(r => ["moderator", "admin", "head_admin"].includes(r));
-  const isAdmin    = roles.some(r => ["admin", "head_admin"].includes(r));
-  const isVerifier = roles.some(r => ["case_verifier", "admin", "head_admin"].includes(r));
-
-  const visibleLinks = [
-    ...BASE_LINKS,
-    ...(isMod      ? MOD_LINKS      : []),
-    ...(isVerifier ? VERIFIER_LINKS : []),
-    ...(isAdmin    ? ADMIN_LINKS    : []),
-  ];
+  const isAuthed = hydrated && Boolean(accessToken) && Boolean(user);
+  const verifyCount = useVerifyCount(isAuthed ? accessToken : null, user?.verification_level ?? 0, pathname);
+  const badges: Partial<Record<NavBadgeKey, number | null>> = { verify: verifyCount, messages: messagesCount };
+  const showTabBar = isAuthed && !isTabBarHidden(pathname);
 
   // Auto-recover from expired/invalid tokens: any 401 from the API client
   // dispatches `auth:expired` — clear session and bounce to /login.
@@ -64,58 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("auth:expired", onExpired);
   }, [clearSession, router]);
 
-  // Lock body scroll, trap focus inside the drawer, and restore focus to the
-  // burger on close. Without this, keyboard users could tab back behind the
-  // open overlay.
-  useEffect(() => {
-    if (!mobileNavOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const focusableSelector =
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const drawer = drawerRef.current;
-    // Move focus to the first focusable element inside the drawer (falls
-    // back to the drawer container itself if there is nothing focusable).
-    if (drawer) {
-      const first = drawer.querySelector<HTMLElement>(focusableSelector);
-      (first ?? drawer).focus();
-    }
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setMobileNavOpen(false);
-        return;
-      }
-      if (e.key !== "Tab" || !drawer) return;
-      const focusables = Array.from(
-        drawer.querySelectorAll<HTMLElement>(focusableSelector)
-      ).filter((el) => el.getAttribute("aria-hidden") !== "true");
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && (active === first || !drawer.contains(active))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-
-    const burger = burgerRef.current;
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
-      // Restore focus to the toggle so keyboard users land back where they
-      // opened the menu, not on document.body.
-      burger?.focus();
-    };
-  }, [mobileNavOpen]);
-
-  async function handleLogout() {
+  async function handleSignOut() {
     if (accessToken) {
       try { await logout(accessToken); } catch { /* ignore */ }
     }
@@ -125,126 +57,71 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <nav className="main-nav">
-        <div className="inner">
-          <Link href="/" className="logo">
-            <div className="logo-mark" aria-hidden="true" />
-            <span className="logo-text">HealAll</span>
-            <span className="brand-dot" aria-hidden="true" />
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      <header className="topbar">
+        <div className="topbar__inner">
+          <Link href={isAuthed ? "/feed" : "/"} className="topbar__brand" aria-label="HealAll home">
+            <Image src="/heart-mark.png" alt="" width={32} height={32} className="topbar__mark" priority />
+            <span className="topbar__wordmark">HealAll</span>
           </Link>
 
-          <div className="links">
-            {isAuthed ? (
-              visibleLinks.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={pathname.startsWith(link.href) ? "active" : ""}
-                >
-                  {link.label}
-                </Link>
-              ))
-            ) : (
-              <>
-                <Link href="/signup">Sign up</Link>
-                <Link href="/login">Login</Link>
-              </>
-            )}
-          </div>
-
-          <div className="row nav-actions">
-            {isAuthed && user ? (
-              <>
-                <Link href="/posts/new" className="nav-actions__post btn-primary btn-sm nav-actions__post-btn">
-                  + Post a Request
-                </Link>
-                <span className="vpill nav-actions__pill">✓ {user.name} · L{user.verification_level}</span>
-                <button className="danger btn-sm nav-actions__logout" onClick={handleLogout} type="button">Logout</button>
-              </>
-            ) : null}
-            <button
-              ref={burgerRef}
-              type="button"
-              className="nav-burger"
-              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
-              aria-expanded={mobileNavOpen}
-              aria-controls="mobile-drawer"
-              onClick={() => setMobileNavOpen(v => !v)}
-            >
-              <span aria-hidden="true">{mobileNavOpen ? "✕" : "☰"}</span>
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {mobileNavOpen && (
-        <>
-          <div
-            className="nav-drawer-backdrop"
-            onClick={() => setMobileNavOpen(false)}
-            aria-hidden="true"
-          />
-          <aside
-            ref={drawerRef}
-            id="mobile-drawer"
-            className="nav-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Site navigation"
-            tabIndex={-1}
-          >
-            {isAuthed && user ? (
-              <div className="nav-drawer__user">
-                <span className="vpill">✓ {user.name} · L{user.verification_level}</span>
-              </div>
-            ) : null}
-            <div className="nav-drawer__links">
-              {isAuthed ? (
-                visibleLinks.map(link => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={pathname.startsWith(link.href) ? "active" : ""}
-                    onClick={closeDrawer}
-                  >
-                    {link.label}
+          {isAuthed ? (
+            <nav className="topbar__nav" aria-label="Primary">
+              {PRIMARY_LINKS.map(({ href, label, badge }) => {
+                const active = isActive(pathname, href);
+                const count = badge ? badges[badge] : null;
+                return (
+                  <Link key={href} href={href} className="topbar__link" aria-current={active ? "page" : undefined}>
+                    {label}
+                    {count && badge ? (
+                      <>
+                        <span className="sr-only">, </span>
+                        <span className="nav-count">
+                          {count > 99 ? "99+" : count}
+                          <span className="sr-only"> {NAV_BADGE_SR[badge]}</span>
+                        </span>
+                      </>
+                    ) : null}
                   </Link>
-                ))
-              ) : (
-                <>
-                  <Link href="/signup" onClick={closeDrawer}>Sign up</Link>
-                  <Link href="/login" onClick={closeDrawer}>Login</Link>
-                </>
-              )}
-            </div>
-            {isAuthed && (
-              <div className="nav-drawer__actions">
-                <Link href="/posts/new" className="nav-drawer__cta" onClick={closeDrawer}>+ Post a Request</Link>
-                <button type="button" className="danger btn-sm" onClick={() => { closeDrawer(); handleLogout(); }}>Logout</button>
-              </div>
-            )}
-            <div className="nav-drawer__footer">
-              <Link href="/privacy-policy" onClick={closeDrawer}>Privacy</Link>
-              <Link href="/terms" onClick={closeDrawer}>Terms</Link>
-              <Link href="/contributors" onClick={closeDrawer}>Contributors</Link>
-              <Link href="/changelog" onClick={closeDrawer}>Changelog</Link>
-            </div>
-          </aside>
-        </>
-      )}
+                );
+              })}
+            </nav>
+          ) : null}
 
-      {children}
-      <footer className="app-footer">
-        <div className="app-footer__inner">
-          <span>© 2026 HealAll</span>
-          <Link href="/privacy-policy">Privacy Policy</Link>
-          <Link href="/terms">Terms of Service</Link>
-          <Link href="/#community-guidelines">Community Guidelines</Link>
-          <Link href="/contributors">Contributors</Link>
-          <Link href="/changelog">Changelog</Link>
-          <a href="mailto:hello@healallindia.com">Contact</a>
+          <div className="topbar__actions">
+            {isAuthed && user ? (
+              <>
+                <Link href="/posts/new" className="btn-primary btn-sm topbar__ask">
+                  <Plus size={18} strokeWidth={2.5} aria-hidden="true" /> Ask for help
+                </Link>
+                <AccountMenu user={user} onSignOut={handleSignOut} />
+              </>
+            ) : hydrated ? (
+              <>
+                <Link href="/login" className="btn-ghost btn-sm">Sign in</Link>
+                <Link href="/signup" className="btn-primary btn-sm">Join</Link>
+              </>
+            ) : null}
+          </div>
         </div>
-      </footer>
+      </header>
+
+      <div id="main-content" tabIndex={-1} className={showTabBar ? "app-body app-body--tabbar" : "app-body"}>
+        {children}
+        <footer className="app-footer">
+          <div className="app-footer__inner">
+            <span className="app-footer__copy">© 2026 HealAll</span>
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
+            <Link href="/#community-guidelines">Community guidelines</Link>
+            <Link href="/contributors">Contributors</Link>
+            <Link href="/changelog">Changelog</Link>
+            <a href="mailto:hello@healallindia.com">Contact</a>
+          </div>
+        </footer>
+      </div>
+
+      {showTabBar ? <TabBar pathname={pathname} badges={badges} /> : null}
     </>
   );
 }

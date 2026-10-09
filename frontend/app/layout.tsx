@@ -1,8 +1,28 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, Noto_Sans } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import GoogleAuthProvider from "@/components/GoogleAuthProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
+// Self-hosted at build time (CSP-safe: no request to Google at runtime).
+// Noto Sans ships Devanagari in the same family; next/font emits a
+// unicode-range per subset, so the Devanagari file only downloads when
+// Hindi text is actually on the page.
+const notoSans = Noto_Sans({
+  subsets: ["latin", "latin-ext", "devanagari"],
+  weight: "variable",
+  display: "swap",
+  variable: "--font-noto-sans-face",
+});
+
+// Display face for page titles only — one static weight keeps it small.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: "600",
+  display: "swap",
+  variable: "--font-fraunces-face",
+});
 
 export const metadata: Metadata = {
   title: "HealAll — Helping in Any Way Possible",
@@ -35,12 +55,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#16a34a",
+  themeColor: "#FAF8F4",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en-IN" className={`${notoSans.variable} ${fraunces.variable}`}>
       <body>
         <GoogleAuthProvider>
           <AppShell>{children}</AppShell>

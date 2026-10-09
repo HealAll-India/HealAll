@@ -347,11 +347,13 @@ describe("globals.css — mobile responsive overrides", () => {
 // ---------------------------------------------------------------------------
 
 describe("globals.css — structural regression", () => {
-  it("new hsec section appears after pre-existing .prof-hero rules", () => {
-    const profHeroIdx = css.indexOf(".prof-hero {");
+  it("imports the design-system partials before any landing rules", () => {
+    const tokensIdx = css.indexOf('@import "./styles/tokens.css";');
+    const baseIdx = css.indexOf('@import "./styles/base.css";');
     const hsecIdx = css.indexOf(".hsec {");
-    expect(profHeroIdx).toBeGreaterThan(-1);
-    expect(hsecIdx).toBeGreaterThan(profHeroIdx);
+    expect(tokensIdx).toBeGreaterThan(-1);
+    expect(baseIdx).toBeGreaterThan(tokensIdx);
+    expect(hsecIdx).toBeGreaterThan(baseIdx);
   });
 
   it("section is introduced with the expected comment header", () => {
