@@ -74,10 +74,13 @@ export function AppShell({ children, messagesCount = null }: Props) {
                   <Link key={href} href={href} className="topbar__link" aria-current={active ? "page" : undefined}>
                     {label}
                     {count && badge ? (
-                      <span className="nav-count">
-                        {count > 99 ? "99+" : count}
-                        <span className="sr-only"> {NAV_BADGE_SR[badge]}</span>
-                      </span>
+                      <>
+                        <span className="sr-only">, </span>
+                        <span className="nav-count">
+                          {count > 99 ? "99+" : count}
+                          <span className="sr-only"> {NAV_BADGE_SR[badge]}</span>
+                        </span>
+                      </>
                     ) : null}
                   </Link>
                 );

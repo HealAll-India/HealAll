@@ -23,7 +23,7 @@ export function TabBar({ pathname, badges }: Props) {
           >
             <span className="tabbar__icon">
               <Icon size={primary ? 22 : 24} strokeWidth={active || primary ? 2.25 : 2} aria-hidden="true" />
-              {count ? <span className="nav-count tabbar__count">{count > 99 ? "99+" : count}</span> : null}
+              {count ? <span className="nav-count tabbar__count" aria-hidden="true">{count > 99 ? "99+" : count}</span> : null}
             </span>
             <span className="tabbar__label">
               {label}
