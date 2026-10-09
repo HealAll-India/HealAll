@@ -11,7 +11,7 @@ import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
 import { AccountMenu } from "./account-menu";
-import { PRIMARY_LINKS, isActive, isTabBarHidden, type NavBadgeKey } from "./nav-config";
+import { NAV_BADGE_SR, PRIMARY_LINKS, isActive, isTabBarHidden, type NavBadgeKey } from "./nav-config";
 import { TabBar } from "./tab-bar";
 import { useVerifyCount } from "./use-verify-count";
 
@@ -73,10 +73,10 @@ export function AppShell({ children, messagesCount = null }: Props) {
                 return (
                   <Link key={href} href={href} className="topbar__link" aria-current={active ? "page" : undefined}>
                     {label}
-                    {count ? (
+                    {count && badge ? (
                       <span className="nav-count">
                         {count > 99 ? "99+" : count}
-                        <span className="sr-only"> waiting</span>
+                        <span className="sr-only"> {NAV_BADGE_SR[badge]}</span>
                       </span>
                     ) : null}
                   </Link>

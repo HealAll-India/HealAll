@@ -109,3 +109,12 @@ describe("AccountMenu arrow keys from the trigger", () => {
     expect(document.activeElement).toBe(items[items.length - 1]);
   });
 });
+
+describe("TabBar badges", () => {
+  it("says what each count means to screen readers", async () => {
+    const { TabBar } = await import("@/components/layout/tab-bar");
+    render(<TabBar pathname="/feed" badges={{ verify: 3, messages: 2 }} />);
+    expect(screen.getByRole("link", { name: /Verify, 3 waiting for your vote/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Messages, 2 new message requests/ })).toBeTruthy();
+  });
+});

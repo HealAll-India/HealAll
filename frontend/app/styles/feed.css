@@ -173,7 +173,7 @@
   margin: 4px 0 0;
 }
 .feed-pending-banner__link {
-  color: #16a34a;
+  color: var(--primary);
   font-weight: 600;
 }
 @media (max-width: 1080px) {

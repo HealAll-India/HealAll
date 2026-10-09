@@ -158,12 +158,6 @@
   .land__grid { grid-template-columns: 1fr; gap: 36px; }
   .land__how { grid-template-columns: 1fr; }
 }
-/* Kept at its original position: it precedes the .fab-root base rule below. */
-@media (max-width: 640px) {
-  /* Keep the FAB clear of the OS gesture bar on iOS. */
-  .fab-root { bottom: max(12px, env(safe-area-inset-bottom)); }
-}
-
 /* ===== Home info sections (hsec) ===== */
 .hsec { margin: 40px 0; }
 .hsec__card {
@@ -411,6 +405,10 @@
   .fab-button { padding: 11px 14px; font-size: 13px; }
   .fab-button__label { display: none; }
   .fab-panel { padding: 14px; }
+}
+/* Keep the FAB clear of the OS gesture bar on iOS (after the rule above, so it wins). */
+@media (max-width: 640px) {
+  .fab-root { bottom: max(12px, env(safe-area-inset-bottom)); }
 }
 
 /* ── Contributors / Changelog pages ── */

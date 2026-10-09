@@ -100,7 +100,7 @@
   height: 44px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #16a34a, #2563eb);
+  background: linear-gradient(135deg, var(--primary), #1D4ED8);
   display: flex;
   align-items: center;
   justify-content: center;

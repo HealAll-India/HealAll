@@ -16,6 +16,12 @@ import type { UserRole } from "@/lib/types/api";
 
 export type NavBadgeKey = "verify" | "messages";
 
+/** Screen-reader wording after a badge count ("Verify, 3 waiting for your vote"). */
+export const NAV_BADGE_SR: Record<NavBadgeKey, string> = {
+  verify: "waiting for your vote",
+  messages: "new message requests",
+};
+
 export interface NavLink {
   href: string;
   label: string;

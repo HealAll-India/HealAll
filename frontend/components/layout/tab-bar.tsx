@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { TAB_LINKS, isActive, type NavBadgeKey } from "./nav-config";
+import { NAV_BADGE_SR, TAB_LINKS, isActive, type NavBadgeKey } from "./nav-config";
 
 interface Props {
   pathname: string;
@@ -27,7 +27,7 @@ export function TabBar({ pathname, badges }: Props) {
             </span>
             <span className="tabbar__label">
               {label}
-              {count ? <span className="sr-only">, {count} waiting</span> : null}
+              {count && badge ? <span className="sr-only">, {count} {NAV_BADGE_SR[badge]}</span> : null}
             </span>
           </Link>
         );
