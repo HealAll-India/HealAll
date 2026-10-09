@@ -53,3 +53,18 @@
 @media (max-width: 480px) {
   .ai-triage__override { grid-template-columns: 1fr; }
 }
+
+/* ── Moderation: inline "Take action" form ── */
+.mod-action {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.mod-action label { font-size: var(--fs-small); }
+.mod-action textarea { resize: vertical; }
+.mod-action__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.mod-action__buttons { display: flex; gap: 8px; }

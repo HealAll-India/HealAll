@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AiTriagePanel } from "@/components/moderation/ai-triage-panel";
+import { InlineActionForm } from "@/components/moderation/inline-action-form";
 import { AuthRequired } from "@/components/ui/auth-required";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -12,7 +13,6 @@ import {
   listModerationActions,
   listReports,
 } from "@/lib/api/moderation";
-import { moderationActions } from "@/lib/constants";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type {
@@ -48,108 +48,6 @@ function timeAgo(iso: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
-}
-
-interface InlineActionFormProps {
-  report: ReportResponse;
-  onSubmit: (reportId: string, targetUserId: string, action: ModerationActionType, reason: string, durationHours?: number) => Promise<void>;
-  acting: boolean;
-}
-
-function InlineActionForm({ report, onSubmit, acting }: InlineActionFormProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [action, setAction] = useState<ModerationActionType>("warn");
-  const [reason, setReason] = useState(`Report reviewed: ${report.reason}`);
-  const [targetUserId, setTargetUserId] = useState(report.reporter_id);
-  const [durationHours, setDurationHours] = useState<number | "">("");
-
-  if (!expanded) {
-    return (
-      <button
-        className="ghost"
-        type="button"
-        onClick={() => setExpanded(true)}
-        style={{ fontSize: "12px", padding: "4px 12px" }}
-      >
-        Take action →
-      </button>
-    );
-  }
-
-  return (
-    <div style={{ background: "var(--bg-subtle)", borderRadius: "10px", padding: "14px", marginTop: "8px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
-        <label style={{ fontSize: "12px" }}>
-          Action
-          <select
-            value={action}
-            onChange={(e) => setAction(e.target.value as ModerationActionType)}
-            style={{ fontSize: "12px", marginTop: "3px" }}
-          >
-            {moderationActions.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-        </label>
-        <label style={{ fontSize: "12px" }}>
-          Target user ID
-          <input
-            value={targetUserId}
-            onChange={(e) => setTargetUserId(e.target.value)}
-            style={{ fontSize: "12px", marginTop: "3px" }}
-          />
-        </label>
-      </div>
-      <label style={{ fontSize: "12px", display: "block", marginBottom: "10px" }}>
-        Reason
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={2}
-          style={{ fontSize: "12px", marginTop: "3px", resize: "vertical" }}
-        />
-      </label>
-      {(action === "suspend" || action === "restrict") && (
-        <label style={{ fontSize: "12px", display: "block", marginBottom: "10px" }}>
-          Duration (hours)
-          <input
-            type="number"
-            min={1}
-            max={8760}
-            value={durationHours}
-            onChange={(e) => setDurationHours(e.target.value ? Number(e.target.value) : "")}
-            style={{ fontSize: "12px", marginTop: "3px" }}
-          />
-        </label>
-      )}
-      <div className="row" style={{ gap: "8px" }}>
-        <button
-          type="button"
-          style={{ fontSize: "12px" }}
-          disabled={acting || !reason.trim() || !targetUserId.trim()}
-          onClick={() =>
-            void onSubmit(
-              report.id,
-              targetUserId,
-              action,
-              reason,
-              durationHours === "" ? undefined : durationHours
-            )
-          }
-        >
-          Confirm
-        </button>
-        <button
-          className="ghost"
-          type="button"
-          style={{ fontSize: "12px" }}
-          onClick={() => setExpanded(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
 }
 
 export default function ModerationAdminPage() {
@@ -209,6 +107,7 @@ export default function ModerationAdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, reportStatus]);
 
+  // An empty targetUserId lets the API resolve the reported member from the report.
   async function handleAction(
     reportId: string,
     targetUserId: string,
@@ -223,7 +122,7 @@ export default function ModerationAdminPage() {
     try {
       await createModerationAction(token, {
         report_id: reportId,
-        target_user_id: targetUserId,
+        target_user_id: targetUserId.trim() || undefined,
         action,
         reason,
         duration_hours: durationHours,
