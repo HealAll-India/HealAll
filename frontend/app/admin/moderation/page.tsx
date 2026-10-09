@@ -107,9 +107,9 @@ export default function ModerationAdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, reportStatus]);
 
+  // An empty targetUserId lets the API resolve the reported member from the report.
   async function handleAction(
     reportId: string,
-    /** Empty = let the API resolve the reported member from the report. */
     targetUserId: string,
     action: ModerationActionType,
     reason: string,

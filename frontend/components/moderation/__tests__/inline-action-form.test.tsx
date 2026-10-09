@@ -34,4 +34,13 @@ describe("InlineActionForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     expect(onSubmit.mock.calls[0][1]).toBe("user-9");
   });
+
+  it("submits an empty target for whitespace-only input", () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<InlineActionForm report={REPORT} onSubmit={onSubmit} acting={false} />);
+    fireEvent.click(screen.getByRole("button", { name: /take action/i }));
+    fireEvent.change(screen.getByLabelText(/different member id/i), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(onSubmit.mock.calls[0][1]).toBe("");
+  });
 });
