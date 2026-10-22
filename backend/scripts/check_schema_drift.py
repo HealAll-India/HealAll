@@ -8,9 +8,10 @@ queries (migration 008 shipped ``post_verification_votes`` without
 
 Only drift that breaks queries is reported: a model table or column the
 database lacks, a NOT NULL column whose server default the model relies on but
-the database lacks, or a NOT NULL database column without a default that the
-model never writes or lets be empty. Index names, constraint styles,
-equivalent types and differently-written defaults are ignored.
+the database lacks, a NOT NULL database column without a default that the
+model never writes, or a NOT NULL column the model lets be empty. Index names,
+constraint styles, equivalent types and differently-written defaults are
+ignored.
 
 Usage: DATABASE_URL=postgresql+asyncpg://... python scripts/check_schema_drift.py
 """
@@ -49,11 +50,12 @@ def _breaking(diff: tuple) -> str | None:
             return f"column {table}.{column} has no server default, but the model relies on one"
         return None
     if kind == "modify_nullable":
-        # (op, schema, table, column, existing, db_nullable, model_nullable);
-        # Alembic reports "no database default" as False, not None.
-        _, _, table, column, existing, db_nullable, model_nullable = diff
-        if db_nullable is False and model_nullable and not existing.get("existing_server_default"):
-            return f"column {table}.{column} is NOT NULL without a default, but the model lets it be empty"
+        # (op, schema, table, column, existing, db_nullable, model_nullable).
+        # A server default doesn't help: it only fills an omitted value, and
+        # the model may write None explicitly.
+        _, _, table, column, _, db_nullable, model_nullable = diff
+        if db_nullable is False and model_nullable:
+            return f"column {table}.{column} is NOT NULL, but the model lets it be empty"
         return None
     if kind == "add_table":
         return f"table {diff[1].name} is missing"

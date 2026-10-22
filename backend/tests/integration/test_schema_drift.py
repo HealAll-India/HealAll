@@ -30,12 +30,14 @@ async def _drift(engine, columns_sql: str, metadata: MetaData) -> list[str]:
 @pytest.mark.asyncio
 async def test_not_null_column_the_model_lets_be_empty_is_reported(engine):
     problems = await _drift(engine, ", note TEXT NOT NULL", _model(nullable=True))
-    assert problems == ["column drift_probe.note is NOT NULL without a default, but the model lets it be empty"]
+    assert problems == ["column drift_probe.note is NOT NULL, but the model lets it be empty"]
 
 
 @pytest.mark.asyncio
-async def test_not_null_column_with_a_default_is_not_reported(engine):
-    assert await _drift(engine, ", note TEXT NOT NULL DEFAULT ''", _model(nullable=True)) == []
+async def test_not_null_column_the_model_lets_be_empty_is_reported_despite_a_default(engine):
+    # The default only fills an omitted value; an explicit None still fails.
+    problems = await _drift(engine, ", note TEXT NOT NULL DEFAULT ''", _model(nullable=True, server_default=""))
+    assert problems == ["column drift_probe.note is NOT NULL, but the model lets it be empty"]
 
 
 @pytest.mark.asyncio
