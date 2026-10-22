@@ -351,3 +351,22 @@ input[type="checkbox"].switch:checked::after { transform: translateX(20px); }
 .menu__item:not(:disabled):hover { background: var(--surface-sunken); }
 .menu__item--danger { color: var(--danger); }
 .menu__sep { height: 1px; margin: 6px 4px; background: var(--divider); }
+
+/* ── Share button + its "Link copied" confirmation (a polite live region) ── */
+.share { position: relative; display: inline-flex; flex-shrink: 0; }
+.share__status {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-semibold);
+  pointer-events: none;
+}
+.share__status:not(:empty) {
+  padding: 4px 8px;
+  background: var(--text);
+  color: #fff;
+  box-shadow: var(--shadow-raised);
+}

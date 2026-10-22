@@ -1,113 +1,142 @@
-"use client";
-
 import Link from "next/link";
-import type { FeedFilters, FeedResponse } from "@/lib/types/api";
+import { ChevronRight, ClipboardCheck, Clock, ShieldCheck } from "lucide-react";
 
-const AVATAR_GRADIENTS = [
-  "linear-gradient(135deg,#16a34a,#2563eb)",
-  "linear-gradient(135deg,#7c3aed,#2563eb)",
-  "linear-gradient(135deg,#d97706,#e11d48)",
-];
+import { formatCount, plural } from "@/lib/format";
+import type { PostSummary } from "@/lib/types/api";
+import type { LandingStatsResponse } from "@/lib/types/public";
+
+import { VoteText } from "./feed-notices";
+import type { WaitingStatus } from "./use-waiting";
 
 interface Props {
-  feedResult:     FeedResponse | null;
-  filters:        FeedFilters;
-  onFilterChange: (partial: Partial<FeedFilters>) => void;
+  pending: readonly PostSummary[];
+  voteCount: number | null;
+  /** "Caught up" is only true once both sources loaded and came back empty. */
+  status: WaitingStatus;
+  stats: LandingStatsResponse | null;
+  openTotal: number | null;
 }
 
-export function FeedSidebar({ feedResult, filters, onFilterChange }: Props) {
-  const items = feedResult?.items ?? [];
-  const cities        = Array.from(new Set(items.map(p => p.city))).sort();
-  const uniqueHelpers = new Set(items.map(p => p.author.id)).size;
-  const citiesCount   = new Set(items.map(p => p.city)).size;
-  const recentAuthors = Array.from(
-    new Map(items.map(p => [p.author.id, p])).values()
-  ).slice(0, 3);
-
+/** Desktop (≥ 1024px) right rail: what needs you, community numbers, safety tips. */
+export function FeedSidebar({ pending, voteCount, status, stats, openTotal }: Props) {
   return (
-    <aside style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
-      <div className="card stack" style={{ borderRadius: "16px" }}>
-        <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>Search & Filter</h3>
-        <input
-          value={filters.search}
-          onChange={e => onFilterChange({ search: e.target.value })}
-          placeholder="Search posts…"
-          style={{ fontSize: "12px" }}
-        />
-        <div className="row" style={{ gap: "6px", flexWrap: "wrap" }}>
-          {([
-            { label: "All",      value: "" },
-            { label: "🟡 High",  value: "high" },
-            { label: "🔴 Critical", value: "critical" },
-          ] as const).map(chip => (
-            <button
-              key={chip.label}
-              type="button"
-              className={`chip${filters.urgency === chip.value ? " active" : ""}`}
-              onClick={() => onFilterChange({ urgency: chip.value })}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-        <select
-          value={filters.city}
-          onChange={e => onFilterChange({ city: e.target.value })}
-          style={{ fontSize: "12px" }}
-        >
-          <option value="">All cities</option>
-          {cities.map(city => (
-            <option key={city} value={city}>{city}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="card stack" style={{ borderRadius: "16px" }}>
-        <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>Community</h3>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-          <span style={{ color: "#6b7280" }}>Active posts</span>
-          <span style={{ fontWeight: 700 }}>{feedResult?.total ?? "—"}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-          <span style={{ color: "#6b7280" }}>Unique helpers</span>
-          <span style={{ fontWeight: 700, color: "#16a34a" }}>{uniqueHelpers || "—"}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-          <span style={{ color: "#6b7280" }}>Cities covered</span>
-          <span style={{ fontWeight: 700 }}>{citiesCount || "—"}</span>
-        </div>
-      </div>
-
-      {recentAuthors.length > 0 && (
-        <div className="card stack" style={{ borderRadius: "16px" }}>
-          <h3 style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>Recent helpers</h3>
-          {recentAuthors.map((post, i) => (
-            <div key={post.author.id} className="row" style={{ gap: "10px", alignItems: "center" }}>
-              <div style={{
-                width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
-                background: AVATAR_GRADIENTS[i % AVATAR_GRADIENTS.length],
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#fff", fontWeight: 700, fontSize: "13px",
-              }}>
-                {post.author.name[0].toUpperCase()}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "12px", fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {post.author.name}
-                </div>
-                <div style={{ fontSize: "11px", color: "#9ca3af" }}>{post.city}</div>
-              </div>
-              <Link href={`/posts/${post.id}`}>
-                <button type="button" className="secondary" style={{ fontSize: "11px", padding: "4px 10px" }}>
-                  View
-                </button>
-              </Link>
-            </div>
-          ))}
-        </div>
-      )}
-
+    <aside className="feed-aside" aria-label="For you">
+      <WaitingCard pending={pending} voteCount={voteCount} status={status} />
+      <CommunityCard stats={stats} openTotal={openTotal} />
+      <SafetyCard />
     </aside>
+  );
+}
+
+function WaitingCard({ pending, voteCount, status }: Pick<Props, "pending" | "voteCount" | "status">) {
+  const votes = voteCount ?? 0;
+  const queueFailed = status.queue === "failed";
+  const pendingFailed = status.pending === "failed";
+  const hasItems = queueFailed || votes > 0 || pending.length > 0;
+  const loading = status.pending === "loading" || status.queue === "loading";
+  return (
+    <section className="feed-side-card">
+      <h2 className="feed-side-card__title">Waiting on you</h2>
+      {!hasItems ? (
+        <p className="feed-side-card__muted" role="status">
+          {loading
+            ? "Checking what needs you…"
+            : pendingFailed
+              ? "Couldn't check your requests right now."
+              : "You're all caught up."}
+        </p>
+      ) : (
+        <ul className="feed-waiting-list">
+          {queueFailed ? (
+            <li>
+              <Link href="/verify" className="feed-waiting-item">
+                <span className="feed-waiting-icon" aria-hidden="true">
+                  <ClipboardCheck size={18} />
+                </span>
+                <span className="feed-waiting-item__text">
+                  Couldn&apos;t check requests waiting for your vote. <strong>Open Verify</strong>
+                </span>
+                <ChevronRight size={16} aria-hidden="true" />
+              </Link>
+            </li>
+          ) : votes > 0 ? (
+            <li>
+              <Link href="/verify" className="feed-waiting-item">
+                <span className="feed-waiting-icon" aria-hidden="true">
+                  <ClipboardCheck size={18} />
+                </span>
+                <span className="feed-waiting-item__text">
+                  <VoteText count={votes} />
+                </span>
+                <ChevronRight size={16} aria-hidden="true" />
+              </Link>
+            </li>
+          ) : null}
+          {pending.length > 0 ? (
+            <li>
+              <Link href={`/posts/${pending[0].id}`} className="feed-waiting-item">
+                <span className="feed-waiting-icon feed-waiting-icon--warning" aria-hidden="true">
+                  <Clock size={18} />
+                </span>
+                <span className="feed-waiting-item__text">
+                  {pending.length === 1 ? (
+                    <>
+                      Your request is <strong>awaiting approval</strong>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{plural(pending.length, "request")}</strong> of yours are awaiting approval
+                    </>
+                  )}
+                </span>
+                <ChevronRight size={16} aria-hidden="true" />
+              </Link>
+            </li>
+          ) : null}
+          {pendingFailed ? <li className="feed-waiting-note">Couldn&apos;t check your requests right now.</li> : null}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function CommunityCard({ stats, openTotal }: Pick<Props, "stats" | "openTotal">) {
+  if (!stats) return null;
+  const figures = [
+    ...(openTotal === null ? [] : [{ label: "open requests", value: openTotal }]),
+    { label: "cities", value: stats.cities },
+    { label: "verified members", value: stats.verified_members },
+  ];
+  return (
+    <section className="feed-side-card">
+      <h2 className="feed-side-card__title">Community</h2>
+      <dl className="feed-stats">
+        {figures.map((f) => (
+          <div key={f.label} className="feed-stats__item">
+            <dt className="feed-stats__label">{f.label}</dt>
+            <dd className="feed-stats__value">{formatCount(f.value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function SafetyCard() {
+  return (
+    <section className="feed-side-card feed-side-card--tips">
+      <h2 className="feed-side-card__title">
+        <ShieldCheck size={18} className="feed-side-card__title-icon" aria-hidden="true" />
+        Helping safely
+      </h2>
+      <ul className="feed-tips">
+        <li>Meet in public places — hospitals, stations, offices.</li>
+        <li>Never share an OTP or send money before verifying.</li>
+        <li>Report anything that feels off. We act fast.</li>
+      </ul>
+      <Link href="/#community-guidelines" className="feed-side-card__link">
+        Community guidelines
+      </Link>
+    </section>
   );
 }
