@@ -22,6 +22,8 @@ const PENDING_STATUSES = new Set(["submitted", "needs_info"]);
 export function useWaiting(token: string | null, verificationLevel: number) {
   const [pending, setPending] = useState<PostSummary[]>([]);
   const [voteCount, setVoteCount] = useState<number | null>(null);
+  /** The vote queue failed to load, so "nothing to vote on" is unknown, not zero. */
+  const [queueFailed, setQueueFailed] = useState(false);
   const [stats, setStats] = useState<LandingStatsResponse | null>(null);
 
   // The member's own requests that are still in community voting — so they
@@ -48,10 +50,14 @@ export function useWaiting(token: string | null, verificationLevel: number) {
     let cancelled = false;
     getCommunityQueue(token, 1, 1)
       .then((r) => {
-        if (!cancelled) setVoteCount(r.total);
+        if (cancelled) return;
+        setVoteCount(r.total);
+        setQueueFailed(false);
       })
       .catch(() => {
-        if (!cancelled) setVoteCount(null);
+        if (cancelled) return;
+        setVoteCount(null);
+        setQueueFailed(true);
       });
     return () => {
       cancelled = true;
@@ -60,13 +66,23 @@ export function useWaiting(token: string | null, verificationLevel: number) {
 
   useEffect(() => {
     let cancelled = false;
-    void getLandingStats().then((s) => {
-      if (!cancelled) setStats(s);
-    });
+    getLandingStats()
+      .then((s) => {
+        if (!cancelled) setStats(s);
+      })
+      .catch(() => {
+        // Community card simply stays hidden when stats are unavailable.
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return { pending, voteCount: verificationLevel >= 1 ? voteCount : null, stats };
+  const verified = verificationLevel >= 1;
+  return {
+    pending,
+    voteCount: verified ? voteCount : null,
+    queueUnavailable: verified && queueFailed,
+    stats,
+  };
 }

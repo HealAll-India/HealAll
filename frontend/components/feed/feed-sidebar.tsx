@@ -10,24 +10,30 @@ import { VoteText } from "./feed-notices";
 interface Props {
   pending: readonly PostSummary[];
   voteCount: number | null;
+  /** The vote queue failed to load; don't claim the member is caught up. */
+  queueUnavailable: boolean;
   stats: LandingStatsResponse | null;
   openTotal: number | null;
 }
 
 /** Desktop (≥ 1024px) right rail: what needs you, community numbers, safety tips. */
-export function FeedSidebar({ pending, voteCount, stats, openTotal }: Props) {
+export function FeedSidebar({ pending, voteCount, queueUnavailable, stats, openTotal }: Props) {
   return (
     <aside className="feed-aside" aria-label="For you">
-      <WaitingCard pending={pending} voteCount={voteCount} />
+      <WaitingCard pending={pending} voteCount={voteCount} queueUnavailable={queueUnavailable} />
       <CommunityCard stats={stats} openTotal={openTotal} />
       <SafetyCard />
     </aside>
   );
 }
 
-function WaitingCard({ pending, voteCount }: Pick<Props, "pending" | "voteCount">) {
+function WaitingCard({
+  pending,
+  voteCount,
+  queueUnavailable,
+}: Pick<Props, "pending" | "voteCount" | "queueUnavailable">) {
   const votes = voteCount ?? 0;
-  const empty = votes === 0 && pending.length === 0;
+  const empty = !queueUnavailable && votes === 0 && pending.length === 0;
   return (
     <section className="feed-side-card">
       <h2 className="feed-side-card__title">Waiting on you</h2>
@@ -35,7 +41,19 @@ function WaitingCard({ pending, voteCount }: Pick<Props, "pending" | "voteCount"
         <p className="feed-side-card__muted">You&apos;re all caught up.</p>
       ) : (
         <ul className="feed-waiting-list">
-          {votes > 0 ? (
+          {queueUnavailable ? (
+            <li>
+              <Link href="/verify" className="feed-waiting-item">
+                <span className="feed-waiting-icon" aria-hidden="true">
+                  <ClipboardCheck size={18} />
+                </span>
+                <span className="feed-waiting-item__text">
+                  Couldn&apos;t check requests waiting for your vote. <strong>Open Verify</strong>
+                </span>
+                <ChevronRight size={16} aria-hidden="true" />
+              </Link>
+            </li>
+          ) : votes > 0 ? (
             <li>
               <Link href="/verify" className="feed-waiting-item">
                 <span className="feed-waiting-icon" aria-hidden="true">

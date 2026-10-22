@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
@@ -9,11 +9,19 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/lib/api/posts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/posts")>()),
+  getFeed: vi.fn(),
+}));
+
 import { FeedControls } from "@/components/feed/feed-controls";
+import { FeedSidebar } from "@/components/feed/feed-sidebar";
 import { EMPTY_FILTERS, appendUnique, hasActiveFilters, toFeedQuery, unionCities } from "@/components/feed/feed-query";
 import { RequestCard } from "@/components/feed/request-card";
+import { useFeed } from "@/components/feed/use-feed";
 import { shareLink, shareMessage } from "@/components/ui/share";
-import type { PostSummary } from "@/lib/types/api";
+import { getFeed } from "@/lib/api/posts";
+import type { FeedResponse, PostSummary } from "@/lib/types/api";
 
 function post(overrides: Partial<PostSummary> = {}): PostSummary {
   return {
@@ -59,6 +67,51 @@ describe("toFeedQuery", () => {
     expect(toFeedQuery({ ...EMPTY_FILTERS, search: "   " })).toEqual({ page: 1, per_page: 20 });
     expect(hasActiveFilters({ ...EMPTY_FILTERS, search: "   " })).toBe(false);
     expect(hasActiveFilters({ ...EMPTY_FILTERS, urgency: "critical" })).toBe(true);
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+function feedPage(ids: string[]): FeedResponse {
+  return { items: ids.map((id) => post({ id })), page: 1, per_page: 20, total: ids.length, has_next: false };
+}
+
+describe("useFeed", () => {
+  it("never lets a slower, superseded response overwrite a newer one", async () => {
+    const initial = deferred<FeedResponse>();
+    const filtered = deferred<FeedResponse>();
+    vi.mocked(getFeed).mockReturnValueOnce(initial.promise).mockReturnValueOnce(filtered.promise);
+
+    const { result } = renderHook(() => useFeed("token"));
+    act(() => result.current.setFilter({ urgency: "critical" }));
+    expect(getFeed).toHaveBeenCalledTimes(2);
+
+    await act(async () => filtered.resolve(feedPage(["new"])));
+    await act(async () => initial.resolve(feedPage(["old"])));
+
+    expect(result.current.items?.map((p) => p.id)).toEqual(["new"]);
+    expect(result.current.loading).toBe(false);
+  });
+});
+
+describe("FeedSidebar", () => {
+  const props = { pending: [], voteCount: null, stats: null, openTotal: null };
+
+  it("says caught up only when the vote queue actually loaded empty", () => {
+    const { rerender } = render(<FeedSidebar {...props} voteCount={0} queueUnavailable={false} />);
+    expect(screen.getByText(/all caught up/)).toBeTruthy();
+
+    rerender(<FeedSidebar {...props} queueUnavailable />);
+    expect(screen.queryByText(/all caught up/)).toBeNull();
+    expect(screen.getByRole("link", { name: /Couldn.t check requests waiting for your vote/ }).getAttribute("href")).toBe(
+      "/verify",
+    );
   });
 });
 
