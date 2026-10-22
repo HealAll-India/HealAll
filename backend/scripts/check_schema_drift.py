@@ -7,8 +7,10 @@ queries (migration 008 shipped ``post_verification_votes`` without
 ``alembic upgrade head``.
 
 Only drift that breaks queries is reported: a model table or column the
-database lacks, or a NOT NULL database column without a default that the model
-never writes. Index names, constraint styles and equivalent types are ignored.
+database lacks, a NOT NULL column whose server default the model relies on but
+the database lacks, or a NOT NULL database column without a default that the
+model never writes. Index names, constraint styles, equivalent types and
+differently-written defaults are ignored.
 
 Usage: DATABASE_URL=postgresql+asyncpg://... python scripts/check_schema_drift.py
 """
@@ -19,8 +21,8 @@ import asyncio
 import importlib
 import os
 import pkgutil
-import re
 import sys
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
@@ -39,6 +41,12 @@ def _load_models() -> None:
 def _breaking(diff: tuple) -> str | None:
     """Describe a diff that would break queries, or return None for cosmetic drift."""
     kind = diff[0]
+    if kind == "modify_default":
+        # (op, schema, table, column, existing, db_default, model_default)
+        _, _, table, column, existing, db_default, model_default = diff
+        if db_default is None and model_default is not None and existing.get("existing_nullable") is False:
+            return f"column {table}.{column} has no server default, but the model relies on one"
+        return None
     if kind == "add_table":
         return f"table {diff[1].name} is missing"
     if kind == "add_column":
@@ -52,10 +60,26 @@ def _breaking(diff: tuple) -> str | None:
 
 def _compare(connection) -> list[str]:
     """Return the breaking drift between the connected database and the models."""
-    context = MigrationContext.configure(connection)
+    context = MigrationContext.configure(connection, opts={"compare_server_default": True})
     diffs = compare_metadata(context, Base.metadata)
-    # Column-level changes come back as lists of tuples; only top-level tuples matter here.
-    return [problem for diff in diffs if isinstance(diff, tuple) and (problem := _breaking(diff))]
+    # Table-level ops are tuples; column modifications come grouped in lists of tuples.
+    flat = [op for diff in diffs for op in (diff if isinstance(diff, list) else [diff])]
+    return [problem for op in flat if (problem := _breaking(op))]
+
+
+def _asyncpg_url(raw_url: str) -> tuple[str, dict[str, str]]:
+    """Move libpq's sslmode=... out of the URL into asyncpg's ssl= connect arg.
+
+    Only that one query parameter changes: the database path and any other
+    parameters are kept, and the mode (require, verify-ca, verify-full, …) is
+    passed through rather than weakened.
+    """
+    parts = urlsplit(raw_url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    sslmode = next((value for key, value in query if key == "sslmode"), None)
+    kept = urlencode([(key, value) for key, value in query if key != "sslmode"])
+    url = urlunsplit((parts.scheme, parts.netloc, parts.path, kept, parts.fragment))
+    return url, ({"ssl": sslmode} if sslmode else {})
 
 
 async def main() -> int:
@@ -64,9 +88,7 @@ async def main() -> int:
     if not raw_url:
         print("DATABASE_URL is not set", file=sys.stderr)
         return 2
-    # Same handling as alembic/env.py: asyncpg takes ssl via connect_args, not sslmode=.
-    url = re.sub(r"[?&]sslmode=\w+", "", raw_url).rstrip("?&")
-    connect_args = {"ssl": "require"} if "sslmode=" in raw_url else {}
+    url, connect_args = _asyncpg_url(raw_url)
 
     _load_models()
     engine = create_async_engine(url, connect_args=connect_args)
@@ -81,7 +103,7 @@ async def main() -> int:
         for problem in problems:
             print(f"  - {problem}")
         return 1
-    print("Schema matches the models (tables and columns).")
+    print("Schema matches the models (tables, columns and required defaults).")
     return 0
 
 
