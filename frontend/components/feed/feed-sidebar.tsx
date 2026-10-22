@@ -6,42 +6,47 @@ import type { PostSummary } from "@/lib/types/api";
 import type { LandingStatsResponse } from "@/lib/types/public";
 
 import { VoteText } from "./feed-notices";
+import type { WaitingStatus } from "./use-waiting";
 
 interface Props {
   pending: readonly PostSummary[];
   voteCount: number | null;
-  /** The vote queue failed to load; don't claim the member is caught up. */
-  queueUnavailable: boolean;
+  /** "Caught up" is only true once both sources loaded and came back empty. */
+  status: WaitingStatus;
   stats: LandingStatsResponse | null;
   openTotal: number | null;
 }
 
 /** Desktop (≥ 1024px) right rail: what needs you, community numbers, safety tips. */
-export function FeedSidebar({ pending, voteCount, queueUnavailable, stats, openTotal }: Props) {
+export function FeedSidebar({ pending, voteCount, status, stats, openTotal }: Props) {
   return (
     <aside className="feed-aside" aria-label="For you">
-      <WaitingCard pending={pending} voteCount={voteCount} queueUnavailable={queueUnavailable} />
+      <WaitingCard pending={pending} voteCount={voteCount} status={status} />
       <CommunityCard stats={stats} openTotal={openTotal} />
       <SafetyCard />
     </aside>
   );
 }
 
-function WaitingCard({
-  pending,
-  voteCount,
-  queueUnavailable,
-}: Pick<Props, "pending" | "voteCount" | "queueUnavailable">) {
+function WaitingCard({ pending, voteCount, status }: Pick<Props, "pending" | "voteCount" | "status">) {
   const votes = voteCount ?? 0;
-  const empty = !queueUnavailable && votes === 0 && pending.length === 0;
+  const queueFailed = status.queue === "failed";
+  const hasItems = queueFailed || votes > 0 || pending.length > 0;
+  const loading = status.pending === "loading" || status.queue === "loading";
   return (
     <section className="feed-side-card">
       <h2 className="feed-side-card__title">Waiting on you</h2>
-      {empty ? (
-        <p className="feed-side-card__muted">You&apos;re all caught up.</p>
+      {!hasItems ? (
+        <p className="feed-side-card__muted" role="status">
+          {loading
+            ? "Checking what needs you…"
+            : status.pending === "failed"
+              ? "Couldn't check your requests right now."
+              : "You're all caught up."}
+        </p>
       ) : (
         <ul className="feed-waiting-list">
-          {queueUnavailable ? (
+          {queueFailed ? (
             <li>
               <Link href="/verify" className="feed-waiting-item">
                 <span className="feed-waiting-icon" aria-hidden="true">

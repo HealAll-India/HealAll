@@ -40,7 +40,7 @@ interface MemberFeedProps {
 
 function MemberFeed({ token, viewerId, verificationLevel }: MemberFeedProps) {
   const feed = useFeed(token);
-  const { pending, voteCount, queueUnavailable, stats } = useWaiting(token, verificationLevel);
+  const { pending, voteCount, status, stats } = useWaiting(token, verificationLevel);
 
   const subtitle = feed.items === null ? "Most urgent first" : `${plural(feed.total, "request")} · most urgent first`;
 
@@ -75,7 +75,7 @@ function MemberFeed({ token, viewerId, verificationLevel }: MemberFeedProps) {
         <FeedSidebar
           pending={pending}
           voteCount={voteCount}
-          queueUnavailable={queueUnavailable}
+          status={status}
           stats={stats}
           openTotal={feed.openTotal}
         />

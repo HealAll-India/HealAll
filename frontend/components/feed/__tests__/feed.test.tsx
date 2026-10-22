@@ -12,15 +12,20 @@ vi.mock("next/link", () => ({
 vi.mock("@/lib/api/posts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/posts")>()),
   getFeed: vi.fn(),
+  getMyPosts: vi.fn(),
 }));
+vi.mock("@/lib/api/community-verification", () => ({ getCommunityQueue: vi.fn() }));
+vi.mock("@/lib/api/public", () => ({ getLandingStats: vi.fn(() => new Promise(() => {})) }));
 
 import { FeedControls } from "@/components/feed/feed-controls";
 import { FeedSidebar } from "@/components/feed/feed-sidebar";
 import { EMPTY_FILTERS, appendUnique, hasActiveFilters, toFeedQuery, unionCities } from "@/components/feed/feed-query";
 import { RequestCard } from "@/components/feed/request-card";
 import { useFeed } from "@/components/feed/use-feed";
+import { useWaiting } from "@/components/feed/use-waiting";
 import { shareLink, shareMessage } from "@/components/ui/share";
-import { getFeed } from "@/lib/api/posts";
+import { getCommunityQueue } from "@/lib/api/community-verification";
+import { getFeed, getMyPosts } from "@/lib/api/posts";
 import type { FeedResponse, PostSummary } from "@/lib/types/api";
 
 function post(overrides: Partial<PostSummary> = {}): PostSummary {
@@ -72,10 +77,12 @@ describe("toFeedQuery", () => {
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function feedPage(ids: string[]): FeedResponse {
@@ -100,18 +107,58 @@ describe("useFeed", () => {
   });
 });
 
+describe("useWaiting", () => {
+  it("reports each source as loading until it settles, then ready or failed", async () => {
+    const posts = deferred<Awaited<ReturnType<typeof getMyPosts>>>();
+    const queue = deferred<Awaited<ReturnType<typeof getCommunityQueue>>>();
+    vi.mocked(getMyPosts).mockReturnValueOnce(posts.promise);
+    vi.mocked(getCommunityQueue).mockReturnValueOnce(queue.promise);
+
+    const { result } = renderHook(() => useWaiting("token", 1));
+    expect(result.current.status).toEqual({ pending: "loading", queue: "loading" });
+
+    await act(async () => queue.resolve({ total: 0 } as Awaited<ReturnType<typeof getCommunityQueue>>));
+    expect(result.current.status).toEqual({ pending: "loading", queue: "ready" });
+    expect(result.current.voteCount).toBe(0);
+
+    await act(async () => posts.reject(new Error("offline")));
+    expect(result.current.status).toEqual({ pending: "failed", queue: "ready" });
+  });
+
+  it("treats the vote queue as settled for members who can't vote", () => {
+    vi.mocked(getCommunityQueue).mockClear();
+    vi.mocked(getMyPosts).mockReturnValueOnce(new Promise(() => {}));
+    const { result } = renderHook(() => useWaiting("token", 0));
+    expect(result.current.status.queue).toBe("ready");
+    expect(result.current.voteCount).toBeNull();
+    expect(getCommunityQueue).not.toHaveBeenCalled();
+  });
+});
+
 describe("FeedSidebar", () => {
   const props = { pending: [], voteCount: null, stats: null, openTotal: null };
+  const ready = { pending: "ready", queue: "ready" } as const;
 
-  it("says caught up only when the vote queue actually loaded empty", () => {
-    const { rerender } = render(<FeedSidebar {...props} voteCount={0} queueUnavailable={false} />);
-    expect(screen.getByText(/all caught up/)).toBeTruthy();
+  it("says caught up only once both sources loaded empty", () => {
+    const { rerender } = render(<FeedSidebar {...props} status={{ pending: "loading", queue: "ready" }} />);
+    expect(screen.getByRole("status").textContent).toBe("Checking what needs you…");
 
-    rerender(<FeedSidebar {...props} queueUnavailable />);
+    rerender(<FeedSidebar {...props} voteCount={0} status={{ pending: "ready", queue: "loading" }} />);
+    expect(screen.queryByText(/all caught up/)).toBeNull();
+
+    rerender(<FeedSidebar {...props} voteCount={0} status={ready} />);
+    expect(screen.getByRole("status").textContent).toBe("You're all caught up.");
+  });
+
+  it("never reports a failed load as caught up", () => {
+    const { rerender } = render(<FeedSidebar {...props} status={{ pending: "ready", queue: "failed" }} />);
     expect(screen.queryByText(/all caught up/)).toBeNull();
     expect(screen.getByRole("link", { name: /Couldn.t check requests waiting for your vote/ }).getAttribute("href")).toBe(
       "/verify",
     );
+
+    rerender(<FeedSidebar {...props} voteCount={0} status={{ pending: "failed", queue: "ready" }} />);
+    expect(screen.getByRole("status").textContent).toBe("Couldn't check your requests right now.");
   });
 });
 

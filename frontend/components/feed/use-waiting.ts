@@ -14,16 +14,28 @@ import type { LandingStatsResponse } from "@/lib/types/public";
  */
 const PENDING_STATUSES = new Set(["submitted", "needs_info"]);
 
+/** Where each "waiting on you" source stands; only "ready" results are trustworthy. */
+export type LoadStatus = "loading" | "ready" | "failed";
+
+export interface WaitingStatus {
+  /** The member's own requests still in community voting. */
+  pending: LoadStatus;
+  /** Requests awaiting this member's vote ("ready" for unverified members, who can't vote). */
+  queue: LoadStatus;
+}
+
 /**
  * Things that need the member's attention, plus community stats for the
  * sidebar. Mounted per account (the page keys it by user), so state starts
  * empty after an account switch and never shows the previous user's counts.
  */
 export function useWaiting(token: string | null, verificationLevel: number) {
+  // Only promise callbacks update these (react-hooks/set-state-in-effect); the
+  // page remounts this hook per account, so "loading" is the right start.
   const [pending, setPending] = useState<PostSummary[]>([]);
+  const [pendingStatus, setPendingStatus] = useState<LoadStatus>("loading");
   const [voteCount, setVoteCount] = useState<number | null>(null);
-  /** The vote queue failed to load, so "nothing to vote on" is unknown, not zero. */
-  const [queueFailed, setQueueFailed] = useState(false);
+  const [queueStatus, setQueueStatus] = useState<LoadStatus>("loading");
   const [stats, setStats] = useState<LandingStatsResponse | null>(null);
 
   // The member's own requests that are still in community voting — so they
@@ -33,11 +45,15 @@ export function useWaiting(token: string | null, verificationLevel: number) {
     let cancelled = false;
     getMyPosts(token)
       .then((r) => {
-        if (!cancelled) setPending(r.items.filter((p) => PENDING_STATUSES.has(p.status)));
+        if (cancelled) return;
+        setPending(r.items.filter((p) => PENDING_STATUSES.has(p.status)));
+        setPendingStatus("ready");
       })
       .catch(() => {
+        if (cancelled) return;
         // Drop stale state on failure — don't leave a misleading banner up.
-        if (!cancelled) setPending([]);
+        setPending([]);
+        setPendingStatus("failed");
       });
     return () => {
       cancelled = true;
@@ -52,12 +68,12 @@ export function useWaiting(token: string | null, verificationLevel: number) {
       .then((r) => {
         if (cancelled) return;
         setVoteCount(r.total);
-        setQueueFailed(false);
+        setQueueStatus("ready");
       })
       .catch(() => {
         if (cancelled) return;
         setVoteCount(null);
-        setQueueFailed(true);
+        setQueueStatus("failed");
       });
     return () => {
       cancelled = true;
@@ -79,10 +95,6 @@ export function useWaiting(token: string | null, verificationLevel: number) {
   }, []);
 
   const verified = verificationLevel >= 1;
-  return {
-    pending,
-    voteCount: verified ? voteCount : null,
-    queueUnavailable: verified && queueFailed,
-    stats,
-  };
+  const status: WaitingStatus = { pending: pendingStatus, queue: verified ? queueStatus : "ready" };
+  return { pending, voteCount: verified ? voteCount : null, status, stats };
 }
