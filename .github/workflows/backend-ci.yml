@@ -38,7 +38,7 @@ jobs:
             backend/requirements*.txt
 
       - name: Install ruff
-        run: python -m pip install ruff --prefer-binary
+        run: python -m pip install ruff pyyaml --prefer-binary
         working-directory: backend
 
       - name: Ruff check
@@ -47,6 +47,22 @@ jobs:
 
       - name: Ruff format check
         run: ruff format --check app/ tests/
+        working-directory: backend
+
+      # The test job runs an explicit list of files per shard, so a new test
+      # file is silently skipped unless it is added to one.
+      - name: Every test file is in a test shard
+        run: |
+          python - <<'PY'
+          import pathlib, sys, yaml
+          workflow = yaml.safe_load(pathlib.Path("../.github/workflows/backend-ci.yml").read_text())
+          shards = workflow["jobs"]["test"]["strategy"]["matrix"]["include"]
+          sharded = {path for shard in shards for path in shard["paths"].split()}
+          missing = sorted({str(p) for p in pathlib.Path("tests").rglob("test_*.py")} - sharded)
+          if missing:
+              print("Not in any test shard in .github/workflows/backend-ci.yml:", *missing, sep="\n  ")
+              sys.exit(1)
+          PY
         working-directory: backend
 
   migration:
@@ -103,6 +119,12 @@ jobs:
         run: alembic upgrade head
         working-directory: backend
 
+      # Tests build tables from the models, so only this catches a model
+      # column that no migration creates.
+      - name: Check migrated schema matches the models
+        run: python scripts/check_schema_drift.py
+        working-directory: backend
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -120,16 +142,20 @@ jobs:
               tests/integration/test_posts.py
               tests/integration/test_feed.py
               tests/integration/test_comments.py
+              tests/integration/test_public.py
           - shard: cases-messages
             paths: >-
               tests/test_health.py
               tests/integration/test_cases.py
               tests/integration/test_messages.py
+              tests/integration/test_schema_drift.py
           - shard: moderation-verification
             paths: >-
               tests/integration/test_moderation.py
               tests/integration/test_reports.py
               tests/integration/test_verification.py
+              tests/integration/test_ai_triage.py
+              tests/test_triage_unit.py
 
     services:
       postgres:
