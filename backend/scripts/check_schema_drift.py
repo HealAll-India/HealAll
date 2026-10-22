@@ -9,8 +9,8 @@ queries (migration 008 shipped ``post_verification_votes`` without
 Only drift that breaks queries is reported: a model table or column the
 database lacks, a NOT NULL column whose server default the model relies on but
 the database lacks, or a NOT NULL database column without a default that the
-model never writes. Index names, constraint styles, equivalent types and
-differently-written defaults are ignored.
+model never writes or lets be empty. Index names, constraint styles,
+equivalent types and differently-written defaults are ignored.
 
 Usage: DATABASE_URL=postgresql+asyncpg://... python scripts/check_schema_drift.py
 """
@@ -26,6 +26,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import app.models
@@ -47,6 +48,13 @@ def _breaking(diff: tuple) -> str | None:
         if db_default is None and model_default is not None and existing.get("existing_nullable") is False:
             return f"column {table}.{column} has no server default, but the model relies on one"
         return None
+    if kind == "modify_nullable":
+        # (op, schema, table, column, existing, db_nullable, model_nullable);
+        # Alembic reports "no database default" as False, not None.
+        _, _, table, column, existing, db_nullable, model_nullable = diff
+        if db_nullable is False and model_nullable and not existing.get("existing_server_default"):
+            return f"column {table}.{column} is NOT NULL without a default, but the model lets it be empty"
+        return None
     if kind == "add_table":
         return f"table {diff[1].name} is missing"
     if kind == "add_column":
@@ -58,10 +66,10 @@ def _breaking(diff: tuple) -> str | None:
     return None
 
 
-def _compare(connection) -> list[str]:
+def _compare(connection, metadata: MetaData = Base.metadata) -> list[str]:
     """Return the breaking drift between the connected database and the models."""
     context = MigrationContext.configure(connection, opts={"compare_server_default": True})
-    diffs = compare_metadata(context, Base.metadata)
+    diffs = compare_metadata(context, metadata)
     # Table-level ops are tuples; column modifications come grouped in lists of tuples.
     flat = [op for diff in diffs for op in (diff if isinstance(diff, list) else [diff])]
     return [problem for op in flat if (problem := _breaking(op))]
