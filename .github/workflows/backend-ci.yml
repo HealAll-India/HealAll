@@ -103,6 +103,12 @@ jobs:
         run: alembic upgrade head
         working-directory: backend
 
+      # Tests build tables from the models, so only this catches a model
+      # column that no migration creates.
+      - name: Check migrated schema matches the models
+        run: python scripts/check_schema_drift.py
+        working-directory: backend
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
