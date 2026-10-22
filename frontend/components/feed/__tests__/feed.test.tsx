@@ -18,6 +18,7 @@ vi.mock("@/lib/api/community-verification", () => ({ getCommunityQueue: vi.fn() 
 vi.mock("@/lib/api/public", () => ({ getLandingStats: vi.fn(() => new Promise(() => {})) }));
 
 import { FeedControls } from "@/components/feed/feed-controls";
+import { PendingNotice, WaitingRow } from "@/components/feed/feed-notices";
 import { FeedSidebar } from "@/components/feed/feed-sidebar";
 import { EMPTY_FILTERS, appendUnique, hasActiveFilters, toFeedQuery, unionCities } from "@/components/feed/feed-query";
 import { RequestCard } from "@/components/feed/request-card";
@@ -159,6 +160,27 @@ describe("FeedSidebar", () => {
 
     rerender(<FeedSidebar {...props} voteCount={0} status={{ pending: "failed", queue: "ready" }} />);
     expect(screen.getByRole("status").textContent).toBe("Couldn't check your requests right now.");
+
+    // Votes to show and a failed own-requests load: both appear.
+    rerender(<FeedSidebar {...props} voteCount={2} status={{ pending: "failed", queue: "ready" }} />);
+    expect(screen.getByRole("link", { name: /2 requests need your vote/ })).toBeTruthy();
+    expect(screen.getByText("Couldn't check your requests right now.")).toBeTruthy();
+  });
+});
+
+describe("compact waiting rows (below 1024px)", () => {
+  it("report failed loads instead of disappearing", () => {
+    const { rerender } = render(<WaitingRow voteCount={null} failed={false} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    rerender(<WaitingRow voteCount={null} failed />);
+    expect(screen.getByRole("link", { name: /Couldn.t check requests waiting for your vote/ }).getAttribute("href")).toBe(
+      "/verify",
+    );
+
+    rerender(<PendingNotice pending={[]} failed={false} />);
+    expect(screen.queryByRole("status")).toBeNull();
+    rerender(<PendingNotice pending={[]} failed />);
+    expect(screen.getByRole("status").textContent).toMatch(/Couldn.t check whether your requests are awaiting approval/);
   });
 });
 

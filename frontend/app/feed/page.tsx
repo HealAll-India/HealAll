@@ -57,8 +57,8 @@ function MemberFeed({ token, viewerId, verificationLevel }: MemberFeedProps) {
             onSearchSubmit={feed.submitSearch}
             onChange={feed.setFilter}
           />
-          <PendingNotice pending={pending} />
-          <WaitingRow voteCount={voteCount} />
+          <PendingNotice pending={pending} failed={status.pending === "failed"} />
+          <WaitingRow voteCount={voteCount} failed={status.queue === "failed"} />
           <FeedResults
             items={feed.items}
             hasNext={feed.hasNext}

@@ -238,6 +238,7 @@ main.feed-page { padding: 20px 16px 32px; }
   font-size: var(--fs-small);
 }
 .feed-waiting-item:hover { background: var(--surface-sunken); }
+.feed-waiting-note { padding: 4px 6px; font-size: var(--fs-small); color: var(--text-2); }
 .feed-waiting-item__text { flex: 1; min-width: 0; }
 
 .feed-stats {

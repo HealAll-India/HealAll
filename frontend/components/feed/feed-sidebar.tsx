@@ -31,6 +31,7 @@ export function FeedSidebar({ pending, voteCount, status, stats, openTotal }: Pr
 function WaitingCard({ pending, voteCount, status }: Pick<Props, "pending" | "voteCount" | "status">) {
   const votes = voteCount ?? 0;
   const queueFailed = status.queue === "failed";
+  const pendingFailed = status.pending === "failed";
   const hasItems = queueFailed || votes > 0 || pending.length > 0;
   const loading = status.pending === "loading" || status.queue === "loading";
   return (
@@ -40,7 +41,7 @@ function WaitingCard({ pending, voteCount, status }: Pick<Props, "pending" | "vo
         <p className="feed-side-card__muted" role="status">
           {loading
             ? "Checking what needs you…"
-            : status.pending === "failed"
+            : pendingFailed
               ? "Couldn't check your requests right now."
               : "You're all caught up."}
         </p>
@@ -92,6 +93,7 @@ function WaitingCard({ pending, voteCount, status }: Pick<Props, "pending" | "vo
               </Link>
             </li>
           ) : null}
+          {pendingFailed ? <li className="feed-waiting-note">Couldn&apos;t check your requests right now.</li> : null}
         </ul>
       )}
     </section>
