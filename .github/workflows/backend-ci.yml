@@ -49,6 +49,20 @@ jobs:
         run: ruff format --check app/ tests/
         working-directory: backend
 
+      # The test job runs an explicit list of files per shard, so a new test
+      # file is silently skipped unless it is added to one.
+      - name: Every test file is in a test shard
+        run: |
+          missing=$(comm -23 \
+            <(find tests -name 'test_*.py' | sort) \
+            <(grep -oE 'tests/[A-Za-z0-9_/]+\.py' ../.github/workflows/backend-ci.yml | sort -u))
+          if [ -n "$missing" ]; then
+            echo "Not in any test shard in .github/workflows/backend-ci.yml:"
+            echo "$missing"
+            exit 1
+          fi
+        working-directory: backend
+
   migration:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -126,6 +140,7 @@ jobs:
               tests/integration/test_posts.py
               tests/integration/test_feed.py
               tests/integration/test_comments.py
+              tests/integration/test_public.py
           - shard: cases-messages
             paths: >-
               tests/test_health.py
@@ -136,6 +151,8 @@ jobs:
               tests/integration/test_moderation.py
               tests/integration/test_reports.py
               tests/integration/test_verification.py
+              tests/integration/test_ai_triage.py
+              tests/test_triage_unit.py
 
     services:
       postgres:

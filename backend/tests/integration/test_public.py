@@ -5,10 +5,11 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+import redis.asyncio as redis
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import cache as cache_module
+from app.core.config import get_settings
 from app.models.case import Case, CaseHelper, CaseHelperStatus, CaseStatus
 from app.models.post import Post, PostCategory, PostStatus, PostUrgency
 from app.models.user import User
@@ -17,16 +18,22 @@ from app.models.user import User
 @pytest.fixture(autouse=True)
 async def _flush_public_cache():
     """Drop stats/feed cache entries between tests so each case observes only
-    its own DB fixtures, not stale Redis state from a prior test."""
+    its own DB fixtures, not stale Redis state from a prior test.
+
+    Uses its own client: the shared one keeps connections from the previous
+    test's event loop, so a flush through it fails and the stale feed stays."""
+    client = redis.from_url(get_settings().REDIS_URL)
     try:
-        keys = await cache_module._client.keys("public:*")
+        keys = await client.keys("public:*")
         if keys:
-            await cache_module._client.delete(*keys)
+            await client.delete(*keys)
     except Exception:
         # If Redis isn't reachable in the test env the cache is a no-op
         # anyway (get_or_set falls back to the producer), so silently
         # skip the flush.
         pass
+    finally:
+        await client.aclose()
     yield
 
 
@@ -79,7 +86,7 @@ async def _make_post(
         title=title,
         description=description,
         category=PostCategory.ON_GROUND.value,
-        urgency=PostUrgency.URGENT.value,
+        urgency=PostUrgency.HIGH.value,
         city=city,
         address=address,
         pincode=pincode,
