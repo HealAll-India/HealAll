@@ -31,11 +31,13 @@ from app.models.base import Base
 
 
 def _load_models() -> None:
+    """Import every app.models module so Base.metadata holds all tables."""
     for module in pkgutil.iter_modules(app.models.__path__):
         importlib.import_module(f"app.models.{module.name}")
 
 
 def _breaking(diff: tuple) -> str | None:
+    """Describe a diff that would break queries, or return None for cosmetic drift."""
     kind = diff[0]
     if kind == "add_table":
         return f"table {diff[1].name} is missing"
@@ -49,6 +51,7 @@ def _breaking(diff: tuple) -> str | None:
 
 
 def _compare(connection) -> list[str]:
+    """Return the breaking drift between the connected database and the models."""
     context = MigrationContext.configure(connection)
     diffs = compare_metadata(context, Base.metadata)
     # Column-level changes come back as lists of tuples; only top-level tuples matter here.
@@ -56,6 +59,7 @@ def _compare(connection) -> list[str]:
 
 
 async def main() -> int:
+    """Check DATABASE_URL's schema; exit 0 when it matches, 1 on drift, 2 when unset."""
     raw_url = os.environ.get("DATABASE_URL", "")
     if not raw_url:
         print("DATABASE_URL is not set", file=sys.stderr)
