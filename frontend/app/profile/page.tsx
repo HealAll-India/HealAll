@@ -59,23 +59,33 @@ export default function ProfilePage() {
   const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
   const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-  async function loadProfile() {
+  async function loadProfile(isCurrent: () => boolean = () => true) {
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      setProfile(await getMyProfile(token));
+      const loaded = await getMyProfile(token);
+      if (isCurrent()) setProfile(loaded);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load profile");
+      if (isCurrent()) setError(err instanceof ApiError ? err.message : "Failed to load profile");
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }
 
+  // Load once per member, not per token: a renewal replaces the token every
+  // 15 minutes and must not reload the form over unsaved edits. A load that
+  // finishes after the member changed is dropped.
+  const memberId = sessionUser?.id ?? null;
   useEffect(() => {
-    if (token) void loadProfile();
+    if (!memberId) return;
+    let current = true;
+    void loadProfile(() => current);
+    return () => {
+      current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [memberId]);
 
   async function saveProfile(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -264,6 +264,10 @@ async function request<T>(
     : await response.text();
 
   if (!response.ok) {
+    const typed = payload as ApiErrorEnvelope | null;
+    // Only the API's own error body says anything about the session; a proxy
+    // or host error page (even a 401) is an outage.
+    const fromApi = typeof typed?.error === "object" && typed.error !== null;
     if (response.status === 401 && token) {
       if (!replayed) {
         // Rejected before it ran, so it's safe to send again with a new token.
@@ -271,15 +275,14 @@ async function request<T>(
         if (renewal.kind === "renewed") return request<T>(method, path, { ...options, token: renewal.token }, true);
         if (renewal.kind === "unavailable") throw renewal.error;
         if (renewal.kind === "superseded" || !(await signOutIfCurrent(token))) throw sessionChanged();
-      } else {
+      } else if (fromApi) {
         // The token the renewal just issued was refused too. A late refusal,
         // after a sign-out or a new sign-in, says nothing about the session now.
         await signOutIfCurrent(token);
       }
     }
 
-    const typed = payload as ApiErrorEnvelope | null;
-    if (typeof typed?.error === "object" && typed.error !== null) {
+    if (fromApi && typed?.error) {
       let message = typed.error?.message ?? `HTTP ${response.status}`;
       // Pydantic 422 returns `code: "VALIDATION_ERROR"` plus a `details`
       // array of `{ field, message }`. The top-level message is the

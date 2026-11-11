@@ -363,6 +363,28 @@ describe("API client session renewal", () => {
     expect(useAuthStore.getState().user).toEqual(OTHER);
   });
 
+  it("doesn't sign out when a replayed request meets a host error page 401", async () => {
+    let feedCalls = 0;
+    const renewed = jwt(900, "new");
+    vi.stubGlobal(
+      "fetch",
+      route({
+        "/v1/auth/refresh": () => issued(renewed),
+        "/v1/feed": () =>
+          ++feedCalls === 1
+            ? json(401, { error: { code: "UNAUTHENTICATED", message: "Token expired" } })
+            : json(401, { status: "error", code: 401, message: "Unauthorized" }),
+      }),
+    );
+
+    await expect(apiGet("/v1/feed", { token: signIn(jwt(600)) })).rejects.toMatchObject({
+      code: "SERVICE_UNAVAILABLE",
+    });
+    expect(feedCalls).toBe(2);
+    expect(expired).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe(renewed);
+  });
+
   it("shares one renewal between requests that expire together", async () => {
     const fetchMock = route({
       "/v1/auth/refresh": () => issued(jwt(900, "shared")),
