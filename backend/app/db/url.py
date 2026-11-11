@@ -4,16 +4,14 @@ SQLAlchemy passes each URL query parameter to ``asyncpg.connect()`` as a
 keyword, and asyncpg rejects libpq's (``sslmode``, ``sslrootcert``,
 ``application_name``, …). Those are handed to asyncpg as a ``dsn`` instead,
 which it reads the way libpq does: SSL modes, root and client certificates,
-revocation lists and the PGSSL* variables, with any other parameter sent as a
-server setting. Parameters that are asyncpg or SQLAlchemy keywords stay in the
-URL. ``sslrootcert=system``, which asyncpg lacks, becomes an SSL context.
+revocation lists, service files and the PGSSL* variables, with any other
+parameter sent as a server setting. Parameters that are asyncpg or SQLAlchemy
+keywords stay in the URL. What asyncpg can't honour is refused, never
+emulated: ``channel_binding=require`` and ``sslrootcert=system``.
 """
 
 import inspect
-import os
 import ssl
-from pathlib import Path
-from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import asyncpg
@@ -24,63 +22,42 @@ _KEYWORDS = set(inspect.signature(asyncpg.connect).parameters) | {
     "prepared_statement_cache_size",
     "prepared_statement_name_func",
 }
-
-REQUIRED_BINDING_MESSAGE = (
-    "DATABASE_URL: asyncpg cannot do channel binding, so channel_binding=require can't be honoured. "
-    "Replace it with sslmode=verify-full&sslrootcert=system, which checks the server certificate "
-    "and hostname instead (for Neon: ?sslmode=verify-full&sslrootcert=system)."
-)
-
-
-# What asyncpg reads only when it builds the SSL context itself.
-_NATIVE_TLS_PARAMS = {"sslcert", "sslkey", "sslpassword", "sslcrl", "sslnegotiation"} | {
+_TLS_PARAMS = {
+    "sslmode",
+    "sslrootcert",
+    "sslcert",
+    "sslkey",
+    "sslpassword",
+    "sslcrl",
+    "sslnegotiation",
     "ssl_min_protocol_version",
     "ssl_max_protocol_version",
 }
-_TLS_PARAMS = {"sslmode", "sslrootcert"} | _NATIVE_TLS_PARAMS
-_NATIVE_TLS_ENV = ("PGSSLCERT", "PGSSLKEY", "PGSSLCRL", "PGSSLMINPROTOCOLVERSION", "PGSSLMAXPROTOCOLVERSION")
-_NATIVE_TLS_FILES = ("postgresql.crt", "postgresql.key", "root.crl")
+
+VERIFIED_TLS_HINT = "sslmode=verify-full&sslrootcert=<CA bundle file>, e.g. /etc/ssl/certs/ca-certificates.crt"
+
+REQUIRED_BINDING_MESSAGE = (
+    "DATABASE_URL: asyncpg cannot do channel binding, so channel_binding=require can't be honoured. "
+    f"Replace it with {VERIFIED_TLS_HINT}, which checks the server certificate and hostname instead."
+)
 
 
-def _system_trust_store(libpq: dict[str, str]) -> ssl.SSLContext:
-    """An SSL context for libpq's sslrootcert=system, checking the chain and hostname.
-
-    asyncpg has no "system" and takes a root certificate only as a file, so
-    the context is built here from OpenSSL's default store: its CA file and
-    hashed directory (SSL_CERT_FILE, SSL_CERT_DIR). asyncpg then skips its
-    own TLS set-up, so a client certificate, key, CRL or protocol bound
-    configured anywhere would be ignored; that is refused instead.
-    """
-    configured = sorted(_NATIVE_TLS_PARAMS & libpq.keys())
-    configured += [name for name in _NATIVE_TLS_ENV if os.environ.get(name)]
-    try:
-        dot_postgresql = Path.home() / ".postgresql"
-    except (RuntimeError, KeyError):  # no home directory, as asyncpg handles it
-        dot_postgresql = None
-    if dot_postgresql:
-        configured += [f"~/.postgresql/{name}" for name in _NATIVE_TLS_FILES if (dot_postgresql / name).exists()]
-    if configured:
-        raise ValueError(
-            f"DATABASE_URL: sslrootcert=system can't be combined with {', '.join(configured)}. "
-            "Give sslrootcert a CA file instead (e.g. /etc/ssl/certs/ca-certificates.crt)."
-        )
-
-    paths = ssl.get_default_verify_paths()
-    if not (paths.cafile or paths.capath):
-        raise ValueError(
-            "DATABASE_URL: sslrootcert=system, but no system CA store was found. "
-            "Install ca-certificates or set SSL_CERT_FILE."
-        )
-    return ssl.create_default_context()
+def _system_roots_message() -> str:
+    """Why sslrootcert=system is refused, naming this machine's default CA bundle."""
+    cafile = ssl.get_default_verify_paths().cafile
+    here = f"; this machine's default is sslrootcert={cafile}" if cafile else ""
+    return (
+        "DATABASE_URL: asyncpg has no sslrootcert=system, and loading the system store outside asyncpg "
+        f"would skip its client-certificate and CRL handling. Give the CA bundle file instead{here}."
+    )
 
 
-def asyncpg_url(raw_url: str) -> tuple[str, dict[str, Any]]:
+def asyncpg_url(raw_url: str) -> tuple[str, dict[str, str]]:
     """Return the asyncpg URL for a libpq-style one, and the matching connect_args.
 
     ``postgres://`` and ``postgresql://`` become ``postgresql+asyncpg://``. The
     database name and credentials are kept as written. Raises ValueError for a
-    URL that is not PostgreSQL or asks for something asyncpg cannot honour
-    (such as ``channel_binding=require``).
+    URL that is not PostgreSQL or asks for something asyncpg cannot honour.
     """
     parts = urlsplit(raw_url)
     if parts.scheme not in _SCHEMES:
@@ -104,15 +81,9 @@ def asyncpg_url(raw_url: str) -> tuple[str, dict[str, Any]]:
     if libpq.pop("channel_binding", None) == "require":
         raise ValueError(REQUIRED_BINDING_MESSAGE)
 
-    # libpq reads "system" as OpenSSL's default trust store and verify-full.
-    connect_args: dict[str, Any] = {}
+    # asyncpg would read "system" as a file name and fail to connect.
     if libpq.get("sslrootcert") == "system":
-        if libpq.pop("sslmode", "verify-full") != "verify-full":
-            raise ValueError("DATABASE_URL: sslrootcert=system needs sslmode=verify-full")
-        connect_args["ssl"] = _system_trust_store(libpq)
-        del libpq["sslrootcert"]
+        raise ValueError(_system_roots_message())
 
-    if libpq:
-        connect_args["dsn"] = f"postgresql://?{urlencode(libpq)}"
     url = urlunsplit(("postgresql+asyncpg", parts.netloc, parts.path, urlencode(kept), parts.fragment))
-    return url, connect_args
+    return url, ({"dsn": f"postgresql://?{urlencode(libpq)}"} if libpq else {})
