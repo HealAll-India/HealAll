@@ -2,6 +2,7 @@
 import asyncio
 import os
 from logging.config import fileConfig
+from typing import Any
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -30,7 +31,7 @@ config = context.config
 # Override DB URL from environment so Railway/production credentials work.
 # asyncpg takes sslmode as connect_args ssl= and rejects libpq-only params.
 _raw_db_url = os.environ.get("DATABASE_URL", "")
-_connect_args: dict[str, str] = {}
+_connect_args: dict[str, Any] = {}
 if _raw_db_url:
     _clean_url, _connect_args = asyncpg_url(_raw_db_url)
     # set_main_option goes through configparser, which treats % as interpolation.
