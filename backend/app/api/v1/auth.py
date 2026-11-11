@@ -2,13 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.config import get_settings
-from app.core.exceptions import DuplicateException
+from app.core.exceptions import DuplicateException, UnauthenticatedException
 from app.core.limiter import limiter
+from app.core.security import create_access_token
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import (
@@ -30,6 +31,35 @@ from app.services import auth_service, invite_service, notification_service
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+REFRESH_COOKIE = "healall_refresh"
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    """Keep the refresh token in an httpOnly cookie the page's JavaScript can't read."""
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=refresh_token,
+        httponly=True,
+        secure=not settings.APP_DEBUG,  # True in production
+        samesite="lax",
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+
+
+def _user_info(user: User) -> UserInfo:
+    """The signed-in member as returned with a token."""
+    return UserInfo(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        phone=user.phone,
+        city=user.city,
+        age_range=user.age_range,
+        roles=user.roles,
+        verification_level=user.verification_level,
+        avatar_url=user.avatar_url,
+    )
 
 
 @router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
@@ -110,6 +140,7 @@ async def signup(
 async def verify_otp(
     request: Request,
     verify_data: VerifyOTPRequest,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> VerifyOTPResponse:
     """
@@ -146,20 +177,9 @@ async def verify_otp(
     if access_token:
         resp.access_token = access_token
         resp.expires_in = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
-        resp.user = UserInfo(
-            id=user.id,
-            name=user.name,
-            email=user.email,
-            phone=user.phone,
-            city=user.city,
-            age_range=user.age_range,
-            roles=user.roles,
-            verification_level=user.verification_level,
-            avatar_url=user.avatar_url,
-        )
-        # Set refresh token in httpOnly cookie on the Response object
-        # We need Response injected — handled below via background approach;
-        # for now return token in body (frontend stores it)
+        resp.user = _user_info(user)
+    if refresh_token:
+        _set_refresh_cookie(response, refresh_token)
 
     return resp
 
@@ -213,15 +233,7 @@ async def login(
     # Create tokens
     access_token, refresh_token = await auth_service.create_tokens(db, user)
 
-    # Set refresh token in httpOnly cookie
-    response.set_cookie(
-        key="healall_refresh",
-        value=refresh_token,
-        httponly=True,
-        secure=not settings.APP_DEBUG,  # True in production
-        samesite="lax",
-        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-    )
+    _set_refresh_cookie(response, refresh_token)
 
     await db.commit()
 
@@ -229,17 +241,38 @@ async def login(
         access_token=access_token,
         token_type="bearer",
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserInfo(
-            id=user.id,
-            name=user.name,
-            email=user.email,
-            phone=user.phone,
-            city=user.city,
-            age_range=user.age_range,
+        user=_user_info(user),
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("30/minute")
+async def refresh(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    healall_refresh: Annotated[str | None, Cookie()] = None,
+) -> TokenResponse:
+    """
+    Swap the httpOnly refresh cookie for a new access token.
+
+    The refresh token isn't rotated, so two open tabs can't sign each other
+    out; logout revokes it. The new access token keeps the sign-in's `sid`.
+    """
+    if not healall_refresh:
+        raise UnauthenticatedException("Your session has ended. Please sign in again.")
+    stored = await auth_service.verify_refresh_token(db, healall_refresh)
+    user = await auth_service.get_active_user(db, stored.user_id)
+
+    return TokenResponse(
+        access_token=create_access_token(
+            subject=str(user.id),
             roles=user.roles,
             verification_level=user.verification_level,
-            avatar_url=user.avatar_url,
+            session_id=str(stored.family_id),
         ),
+        token_type="bearer",
+        expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=_user_info(user),
     )
 
 
@@ -258,6 +291,6 @@ async def logout(
     await db.commit()
 
     # Clear refresh token cookie
-    response.delete_cookie(key="healall_refresh")
+    response.delete_cookie(key=REFRESH_COOKIE)
 
     return {"message": "Logged out successfully"}

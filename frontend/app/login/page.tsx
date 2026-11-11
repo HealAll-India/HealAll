@@ -1,33 +1,56 @@
 "use client";
 
 import { GoogleLogin } from "@react-oauth/google";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { CircleAlert, Clock } from "lucide-react";
 
 import { getGoogleNonce, googleLogin, login, resendOtp } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { useAuthStore } from "@/lib/stores/auth-store";
 import { useAuthRedirect } from "@/lib/hooks/use-auth-redirect";
+import { useHydrated } from "@/lib/hooks/use-hydrated";
+import { useAuthStore } from "@/lib/stores/auth-store";
+
+/** Seconds before "Resend code" unlocks; the API allows 5 codes an hour. */
+const RESEND_COOLDOWN_S = 30;
+
+function apiMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
+/** Cheap client check; the API normalises "98765 43210", "+91…", "0…" and emails. */
+function identifierProblem(value: string): string | null {
+  const v = value.trim();
+  if (!v) return "Enter your mobile number or email.";
+  if (!v.includes("@") && v.replace(/\D/g, "").length < 10) return "Enter a 10-digit mobile number or an email address.";
+  return null;
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setSession } = useAuthStore();
-  const [expired, setExpired] = useState(false);
-
+  const setSession = useAuthStore((s) => s.setSession);
+  const hydrated = useHydrated();
   useAuthRedirect();
+  const expired = hydrated && new URLSearchParams(window.location.search).get("reason") === "expired";
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setExpired(new URLSearchParams(window.location.search).get("reason") === "expired");
-    }
-  }, []);
+  const [step, setStep] = useState<"identify" | "code">("identify");
+  const [identifier, setIdentifier] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  /** Codes sent so far; the status line says "new code" after a resend. */
+  const [sends, setSends] = useState(0);
+  const idRef = useRef<HTMLInputElement>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
 
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-  const [googleBtnWidth, setGoogleBtnWidth] = useState<number | null>(null);
   // Server-issued single-use nonce. GIS embeds it in the returned ID token;
-  // the backend verifies + consumes it to block replay. Render the Google
-  // button only once the nonce is available so the token always carries one.
+  // the backend verifies + consumes it to block replay.
   const [googleNonce, setGoogleNonce] = useState<string | null>(null);
+  const googleBoxRef = useRef<HTMLDivElement>(null);
+  const [googleWidth, setGoogleWidth] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -37,7 +60,6 @@ export default function LoginPage() {
       })
       .catch(() => {
         // Non-fatal: backend treats a missing nonce as "verify token only".
-        if (active) setGoogleNonce(null);
       });
     return () => {
       active = false;
@@ -45,149 +67,209 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    const el = googleBtnRef.current;
+    const el = googleBoxRef.current;
     if (!el) return;
     const observer = new ResizeObserver(() => {
-      const width = Math.floor(el.getBoundingClientRect().width);
-      if (width > 0) {
-        setGoogleBtnWidth(width);
-      }
+      // GIS renders at most 400px wide.
+      const width = Math.min(400, Math.floor(el.getBoundingClientRect().width));
+      if (width > 0) setGoogleWidth(width);
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [step]);
 
-  const [phoneOrEmail, setPhoneOrEmail] = useState("");
-  const [otpCode, setOtpCode]           = useState("");
-  const [loading, setLoading]           = useState(false);
-  const [message, setMessage]           = useState<string | null>(null);
-  const [error, setError]               = useState<string | null>(null);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
-  async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  // Move focus with the step so keyboard and screen-reader users land on the
+  // next field. Not on first render: the page shouldn't pop the keyboard.
+  const firstStep = useRef(true);
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+    (step === "code" ? codeRef : idRef).current?.focus();
+  }, [step]);
+
+  async function sendCode() {
+    const problem = identifierProblem(identifier);
+    if (problem) {
+      setError(problem);
+      idRef.current?.focus();
+      return;
+    }
     setError(null);
-    setMessage(null);
-    setLoading(true);
+    setBusy(true);
     try {
-      const response = await login({ phone_or_email: phoneOrEmail, otp_code: otpCode });
-      setSession(response.access_token, response.user);
+      await resendOtp({ phone_or_email: identifier.trim() });
+      // Only the newest code works, so digits from the previous one must go.
+      setCode("");
+      // A resend keeps the step, so the step effect won't move focus.
+      if (step === "code") codeRef.current?.focus();
+      setStep("code");
+      setSends((n) => n + 1);
+      setCooldown(RESEND_COOLDOWN_S);
+    } catch (err) {
+      setError(apiMessage(err, "We couldn't send a code. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function signIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (code.length !== 6) {
+      setError("Enter the 6-digit code.");
+      codeRef.current?.focus();
+      return;
+    }
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await login({ phone_or_email: identifier.trim(), otp_code: code });
+      setSession(res.access_token, res.user);
       router.push("/feed");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
+      // The code was right but no member uses this number/email.
+      const noAccount = err instanceof ApiError && err.status === 404 && err.message === "User not found";
+      setError(
+        noAccount
+          ? `No HealAll account uses ${identifier.trim()}. Check it, or join with an invite.`
+          : apiMessage(err, "Sign-in failed. Please try again."),
+      );
+      setBusy(false);
+      codeRef.current?.select();
     }
   }
 
-  async function handleResendOtp() {
+  async function handleGoogle(credential: string) {
     setError(null);
-    setMessage(null);
-    if (!phoneOrEmail.trim()) { setError("Enter phone or email first"); return; }
-    setLoading(true);
-    try {
-      const response = await resendOtp({ phone_or_email: phoneOrEmail });
-      setMessage(response.message);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not resend OTP");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleGoogleSuccess(credential: string) {
-    setError(null);
-    setLoading(true);
+    setBusy(true);
     try {
       const res = await googleLogin({ id_token: credential, nonce: googleNonce ?? undefined });
       setSession(res.access_token, res.user);
       router.push("/feed");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Google login failed");
-    } finally {
-      setLoading(false);
+      setError(apiMessage(err, "Google sign-in failed. Please try again."));
+      setBusy(false);
     }
   }
 
+  function changeIdentifier() {
+    setStep("identify");
+    setCode("");
+    setSends(0);
+    setError(null);
+  }
+
   return (
-    <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 60px)", padding: "2rem 1rem" }}>
-      <div className="card stack" style={{ width: "100%", maxWidth: "400px", borderRadius: "20px", padding: "36px 32px" }}>
-
-        {/* Logo */}
-        <div className="row" style={{ justifyContent: "center", marginBottom: "28px", gap: "8px" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.jpeg" alt="HealAll" width={38} height={38} style={{ borderRadius: "10px" }} />
-          <span className="logo-text" style={{ fontSize: "22px" }}>HealAll</span>
-        </div>
-
-        <h1 style={{ fontSize: "22px", fontWeight: 800, textAlign: "center", margin: "0 0 6px" }}>Welcome back</h1>
-        <p className="muted" style={{ textAlign: "center", fontSize: "13px", marginBottom: "24px" }}>
-          Sign in to continue
-        </p>
+    <main className="auth-page">
+      <div className="auth-card">
+        <Link href="/" className="auth-brand">
+          <Image src="/heart-mark.png" alt="" width={36} height={36} />
+          HealAll
+        </Link>
+        <h1 className="auth-title">Welcome back</h1>
+        <p className="auth-subtitle">Sign in to help someone, or to ask for help.</p>
 
         {expired ? (
-          <p className="error login-expired-banner" role="alert" aria-live="assertive">
-            Your session expired. Please sign in again.
-          </p>
+          <div className="notice notice--warning" role="status">
+            <Clock size={18} aria-hidden="true" />
+            <p>Your session expired. Please sign in again.</p>
+          </div>
         ) : null}
 
-        {/* ── Google sign-in — primary ── */}
-        <div ref={googleBtnRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", marginBottom: "20px", width: "100%", overflow: "hidden" }}>
-          {googleBtnWidth ? (
-            <GoogleLogin
-              onSuccess={cr => cr.credential && handleGoogleSuccess(cr.credential)}
-              onError={() => setError("Google sign-in failed. Please try again.")}
-              text="signin_with"
-              shape="rectangular"
-              theme="outline"
-              width={googleBtnWidth}
-              nonce={googleNonce ?? undefined}
-            />
-          ) : (
-            <div className="google-btn-placeholder" />
-          )}
-        </div>
+        {step === "identify" ? (
+          <>
+            <div ref={googleBoxRef} className="auth-google">
+              {googleWidth ? (
+                <GoogleLogin
+                  onSuccess={(cr) => cr.credential && handleGoogle(cr.credential)}
+                  onError={() => setError("Google sign-in failed. Please try again.")}
+                  text="signin_with"
+                  shape="rectangular"
+                  theme="outline"
+                  width={googleWidth}
+                  nonce={googleNonce ?? undefined}
+                />
+              ) : (
+                <div className="google-btn-placeholder" />
+              )}
+            </div>
 
-        {/* ── Divider ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#9ca3af", fontSize: "12px", marginBottom: "20px" }}>
-          <div style={{ flex: 1, height: "1px", background: "#e5e7eb" }} />
-          or sign in with OTP
-          <div style={{ flex: 1, height: "1px", background: "#e5e7eb" }} />
-        </div>
+            <p className="auth-divider">or get a one-time code</p>
 
-        {/* ── OTP form ── */}
-        <form className="grid" onSubmit={handleOtpSubmit}>
-          <label>
-            Phone or Email
+            <form
+              className="auth-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                void sendCode();
+              }}
+            >
+              <label htmlFor="login-id">Mobile number or email</label>
+              <input
+                id="login-id"
+                ref={idRef}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="98765 43210 or you@example.com"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-describedby="login-id-hint"
+                aria-invalid={error !== null && identifierProblem(identifier) !== null}
+              />
+              <p id="login-id-hint" className="auth-hint">
+                Indian numbers work with or without +91.
+              </p>
+              <button type="submit" disabled={busy}>
+                {busy ? "Sending code…" : "Send code"}
+              </button>
+            </form>
+          </>
+        ) : (
+          <form className="auth-form" noValidate onSubmit={(e) => void signIn(e)}>
+            <p className="auth-sent" role="status">
+              We sent a {sends > 1 ? "new " : ""}6-digit code to <strong>{identifier.trim()}</strong>.{" "}
+              <button type="button" className="auth-link" onClick={changeIdentifier} disabled={busy}>
+                Change
+              </button>
+            </p>
+            <label htmlFor="login-code">6-digit code</label>
             <input
-              value={phoneOrEmail}
-              onChange={e => setPhoneOrEmail(e.target.value)}
-              placeholder="+91 9999999999 or name@email.com"
-              required
-            />
-          </label>
-          <label>
-            OTP Code
-            <input
-              value={otpCode}
-              onChange={e => setOtpCode(e.target.value)}
-              placeholder="6-digit code"
-              minLength={6}
+              id="login-code"
+              ref={codeRef}
+              className="auth-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={6}
-              required
+              aria-invalid={error !== null}
             />
-          </label>
-          <div className="stack" style={{ gap: "8px", marginTop: "4px" }}>
-            <button disabled={loading} type="submit">{loading ? "Signing in…" : "Sign in with OTP"}</button>
-            <button className="ghost" disabled={loading} type="button" onClick={handleResendOtp}>Send OTP</button>
+            <button type="submit" disabled={busy}>
+              {busy ? "Signing in…" : "Sign in"}
+            </button>
+            <button type="button" className="ghost" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>
+              {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+            </button>
+          </form>
+        )}
+
+        {error ? (
+          <div className="notice notice--error" role="alert">
+            <CircleAlert size={18} aria-hidden="true" />
+            <p>{error}</p>
           </div>
-        </form>
+        ) : null}
 
-        {message ? <p className="success">{message}</p> : null}
-        {error   ? <p className="error">{error}</p>     : null}
-
-        <p style={{ textAlign: "center", fontSize: "12px", color: "#9ca3af", marginTop: "20px" }}>
-          Don&apos;t have an account?{" "}
-          <a href="/signup" style={{ color: "#16a34a", fontWeight: 600 }}>Sign up</a>
+        <p className="auth-footer">
+          New here? HealAll is invite-only. <Link href="/signup">Join with an invite</Link>
         </p>
       </div>
     </main>

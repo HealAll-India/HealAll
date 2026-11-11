@@ -2,12 +2,6 @@
    Auth — /login, /signup, OTP pages
    Owned by app/login, app/signup, app/verify-otp.
    ───────────────────────────────────────────── */
-/* Login expired-session banner */
-.login-expired-banner {
-  text-align: center;
-  font-size: 13px;
-  margin-bottom: 16px;
-}
 .sms-helper-text {
   display: block;
   font-size: 10px;
@@ -19,3 +13,61 @@
   height: 40px;
   width: 100%;
 }
+
+/* ── Sign in (/login) ── */
+main.auth-page {
+  max-width: none;
+  min-height: calc(100vh - 140px);
+  display: grid;
+  place-items: start center;
+  padding: 32px 16px 48px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  gap: 16px;
+  padding: 32px 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.auth-brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  justify-self: center;
+  font-family: var(--font-display, inherit);
+  font-size: 22px; font-weight: 600;
+  color: var(--text); text-decoration: none;
+}
+.auth-title { margin: 4px 0 0; font-size: var(--fs-h2); text-align: center; }
+.auth-subtitle { margin: -8px 0 0; text-align: center; color: var(--text-2); font-size: var(--fs-small); }
+
+.auth-google { display: flex; justify-content: center; min-height: 40px; }
+
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0;
+  color: var(--text-2); font-size: var(--fs-small);
+}
+.auth-divider::before,
+.auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.auth-form { display: grid; gap: 8px; }
+.auth-form label { font-weight: 600; font-size: var(--fs-small); }
+.auth-form button { width: 100%; margin-top: 4px; }
+.auth-hint { margin: -2px 0 4px; color: var(--text-2); font-size: 13px; }
+.auth-sent { margin: 0 0 4px; font-size: var(--fs-small); color: var(--text-2); }
+.auth-code { font-size: 22px; letter-spacing: 0.4em; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* "Change" sits inline in a sentence, so it looks like a link. */
+button.auth-link {
+  display: inline; width: auto; min-height: 0; margin: 0; padding: 0;
+  border: 0; background: none;
+  color: var(--primary-ink); font: inherit; font-weight: 600;
+  text-decoration: underline; cursor: pointer;
+}
+button.auth-link:not(:disabled):hover { background: none; color: var(--primary); }
+
+.auth-footer { margin: 4px 0 0; text-align: center; font-size: var(--fs-small); color: var(--text-2); }
+.auth-footer a { color: var(--primary-ink); font-weight: 600; }

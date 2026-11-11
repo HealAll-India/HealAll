@@ -21,7 +21,7 @@ from app.core.security import (
     create_refresh_token,
     generate_otp,
     hash_otp,
-    hash_password,
+    hash_token,
     verify_otp,
 )
 from app.models.user import OTPAttempt, RefreshToken, User
@@ -191,22 +191,24 @@ async def get_user_by_phone_or_email(db: AsyncSession, phone_or_email: str) -> U
 
 
 async def create_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
-    """Create access and refresh tokens for a user."""
-    # Create access token
+    """Create access and refresh tokens for a new sign-in session."""
+    # The refresh token's family names this sign-in; access tokens carry it as `sid`.
+    session_id = uuid4()
     access_token = create_access_token(
         subject=str(user.id),
         roles=user.roles,
         verification_level=user.verification_level,
+        session_id=str(session_id),
     )
 
     # Create refresh token
     refresh_token_value = create_refresh_token()
-    refresh_token_hash = hash_password(refresh_token_value)
+    refresh_token_hash = hash_token(refresh_token_value)
 
     refresh_token = RefreshToken(
         user_id=user.id,
         token_hash=refresh_token_hash,
-        family_id=uuid4(),
+        family_id=session_id,
         expires_at=datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
     )
 
@@ -218,7 +220,7 @@ async def create_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
 
 async def verify_refresh_token(db: AsyncSession, token: str) -> RefreshToken:
     """Verify a refresh token."""
-    token_hash = hash_password(token)
+    token_hash = hash_token(token)
 
     result = await db.execute(
         select(RefreshToken).where(
@@ -235,6 +237,15 @@ async def verify_refresh_token(db: AsyncSession, token: str) -> RefreshToken:
         raise ExpiredException("Refresh token has expired")
 
     return refresh_token
+
+
+async def get_active_user(db: AsyncSession, user_id: UUID) -> User:
+    """Load a member whose session may continue (same checks as get_current_user)."""
+    result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise UnauthenticatedException("Your session has ended. Please sign in again.")
+    return user
 
 
 async def revoke_refresh_token(db: AsyncSession, refresh_token: RefreshToken) -> None:
