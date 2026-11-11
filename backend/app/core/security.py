@@ -1,5 +1,6 @@
 """Security utilities for authentication and authorization."""
 
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -59,6 +60,15 @@ def create_access_token(
 
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 lookup hash for a high-entropy random token (refresh tokens).
+
+    bcrypt's random salt gives a different hash every time, so a bcrypt-hashed
+    token can never be found again; a 256-bit random value needs no slow hash.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def create_refresh_token() -> str:

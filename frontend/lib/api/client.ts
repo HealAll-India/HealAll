@@ -1,4 +1,4 @@
-import type { ApiErrorEnvelope } from "@/lib/types/api";
+import type { ApiErrorEnvelope, TokenResponse } from "@/lib/types/api";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
@@ -50,6 +50,46 @@ function getJwtExpiryMs(token: string | undefined): number | null {
   }
 }
 
+/** Renew this long before the access token expires, so a slow request doesn't race it. */
+const EXPIRY_SKEW_MS = 30_000;
+
+let refreshing: Promise<string | null> | null = null;
+
+/**
+ * Swap the httpOnly refresh cookie for a new access token and store it.
+ * Requests that expire together share one refresh. Resolves to null when
+ * the session can't be renewed (signed out elsewhere, cookie expired,
+ * account closed).
+ */
+export function refreshAccessToken(): Promise<string | null> {
+  refreshing ??= (async () => {
+    try {
+      const response = await fetch(buildUrl("/v1/auth/refresh"), {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+      if (!response.ok) return null;
+      const session = (await response.json()) as TokenResponse;
+      // Loaded lazily: server-rendered pages import this module too.
+      const { useAuthStore } = await import("@/lib/stores/auth-store");
+      useAuthStore.getState().setSession(session.access_token, session.user);
+      return session.access_token;
+    } catch {
+      return null;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+function signalExpired() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("auth:expired"));
+  }
+}
+
 function buildUrl(path: string, query?: RequestOptions["query"]) {
   const url = new URL(`${API_BASE_URL}${path}`);
   if (!query) {
@@ -66,7 +106,12 @@ function buildUrl(path: string, query?: RequestOptions["query"]) {
   return url.toString();
 }
 
-async function request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  options: RequestOptions = {},
+  replayed = false,
+): Promise<T> {
   const headers: HeadersInit = {
     Accept: "application/json"
   };
@@ -75,19 +120,21 @@ async function request<T>(method: string, path: string, options: RequestOptions 
     headers["Content-Type"] = "application/json";
   }
 
-  if (options.token) {
-    // Short-circuit obviously-expired tokens client-side so the user doesn't
-    // see a wave of 401s in devtools (and we don't burn a request) when the
-    // 15-minute access token has aged out. dispatch `auth:expired` so the
-    // app-shell listener can clear the session and bounce to /login.
-    const expiryMs = getJwtExpiryMs(options.token);
-    if (expiryMs !== null && expiryMs <= Date.now()) {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("auth:expired"));
+  let token = options.token;
+  if (token) {
+    // The access token lasts 15 minutes: renew it just before it runs out
+    // instead of sending a request the API will reject. Only when renewal
+    // fails does the app-shell listener (`auth:expired`) sign the member out.
+    const expiryMs = getJwtExpiryMs(token);
+    if (expiryMs !== null && expiryMs - EXPIRY_SKEW_MS <= Date.now()) {
+      const renewed = await refreshAccessToken();
+      if (!renewed) {
+        signalExpired();
+        throw new ApiError("Session expired", 401, "token_expired");
       }
-      throw new ApiError("Session expired", 401, "token_expired");
+      token = renewed;
     }
-    headers.Authorization = `Bearer ${options.token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(buildUrl(path, options.query), {
@@ -107,8 +154,13 @@ async function request<T>(method: string, path: string, options: RequestOptions 
     : await response.text();
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("auth:expired"));
+    if (response.status === 401 && token && !replayed) {
+      // Rejected before it ran, so it's safe to send again with a new token.
+      const renewed = await refreshAccessToken();
+      if (renewed) return request<T>(method, path, { ...options, token: renewed }, true);
+    }
+    if (response.status === 401) {
+      signalExpired();
     }
 
     if (typeof payload === "object" && payload !== null) {

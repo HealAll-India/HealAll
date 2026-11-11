@@ -139,6 +139,7 @@ jobs:
               tests/test_auth_identifiers.py
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
+              tests/integration/test_session_refresh.py
           - shard: posts-feed
             paths: >-
               tests/integration/test_posts.py
