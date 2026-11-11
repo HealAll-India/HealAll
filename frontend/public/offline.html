@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FAF8F4">
+  <title>You're offline · HealAll</title>
+  <!-- Served by sw.js when a page can't load. Self-contained on purpose:
+       nothing else is cached, so it can't depend on the app's CSS or JS. -->
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #FAF8F4; color: #1C1F1B;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    }
+    main { max-width: 420px; padding: 32px 20px; text-align: center; }
+    svg { color: #15803D; }
+    h1 { margin: 16px 0 8px; font-size: 24px; line-height: 1.25; }
+    p { margin: 0 0 20px; color: #484D45; }
+    button {
+      min-height: 44px; padding: 0 22px; border: 0; border-radius: 12px;
+      background: #15803D; color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    button:hover { background: #166534; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #1D4ED8; outline-offset: 2px; }
+    .urgent { margin: 28px 0 0; padding: 12px 14px; border-radius: 12px; background: #F4F1EA; font-size: 14px; }
+    a { color: #14532D; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/>
+      <path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/>
+      <path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>
+    </svg>
+    <h1>You're offline</h1>
+    <p>HealAll needs an internet connection to show requests and messages. Check your connection, then try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+    <p class="urgent">In an emergency, call <a href="tel:112">112</a>. For mental-health support, call Tele-MANAS on <a href="tel:14416">14416</a>.</p>
+  </main>
+</body>
+</html>

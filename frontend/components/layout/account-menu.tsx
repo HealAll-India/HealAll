@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, User, Users } from "lucide-react";
+import { ChevronDown, LogOut, Smartphone, User, Users } from "lucide-react";
 
+import { useInstallState } from "@/components/pwa/install-state";
 import { Avatar } from "@/components/ui/avatar";
 import type { UserInfo } from "@/lib/types/api";
 
@@ -28,6 +29,7 @@ export function AccountMenu({ user, onSignOut }: Props) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
   const staff = roleLinks(user.roles ?? []);
+  const { standalone } = useInstallState();
 
   useEffect(() => {
     if (!open) return;
@@ -108,6 +110,11 @@ export function AccountMenu({ user, onSignOut }: Props) {
           <Link role="menuitem" href="/cases" className="menu__item">
             <Users size={18} aria-hidden="true" /> Cases
           </Link>
+          {standalone ? null : (
+            <Link role="menuitem" href="/install" className="menu__item">
+              <Smartphone size={18} aria-hidden="true" /> Install app
+            </Link>
+          )}
           {staff.length > 0 ? <div className="menu__sep" role="separator" /> : null}
           {staff.map(({ href, label, Icon }) => (
             <Link key={href} role="menuitem" href={href} className="menu__item">
