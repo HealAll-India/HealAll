@@ -7,7 +7,7 @@ which it reads the way libpq does: SSL modes, root and client certificates,
 revocation lists and the PGSSL* variables, with any other parameter sent as a
 server setting. Parameters that are asyncpg or SQLAlchemy keywords stay in the
 URL. What asyncpg can't honour is refused, never emulated:
-``channel_binding=require``, ``sslrootcert=system`` and service files.
+``channel_binding=require``, ``sslrootcert=system``, service files and a nested ``dsn``.
 """
 
 import inspect
@@ -18,7 +18,9 @@ import asyncpg
 
 _SCHEMES = {"postgres", "postgresql", "postgresql+asyncpg"}
 # Taken from the URL as keywords by asyncpg.connect() or SQLAlchemy's dialect.
-_KEYWORDS = set(inspect.signature(asyncpg.connect).parameters) | {
+# dsn= would let the URL carry a second, unchecked connection string.
+_REFUSED = {"dsn", "service", "servicefile"}
+_KEYWORDS = (set(inspect.signature(asyncpg.connect).parameters) - _REFUSED) | {
     "prepared_statement_cache_size",
     "prepared_statement_name_func",
 }
@@ -65,9 +67,12 @@ def asyncpg_url(raw_url: str) -> tuple[str, dict[str, str]]:
 
     query = parse_qsl(parts.query, keep_blank_values=True)
     # asyncpg reads a service file only while parsing a DSN, and not at all
-    # before 0.31, so its settings (TLS included) could silently not apply.
-    if {"service", "servicefile"} & {key for key, _ in query}:
-        raise ValueError("DATABASE_URL: service files aren't supported; put the connection settings in the URL")
+    # before 0.31, so its settings (TLS included) could silently not apply; a
+    # nested dsn= would bypass every check here.
+    if refused := sorted(_REFUSED & {key for key, _ in query}):
+        raise ValueError(
+            f"DATABASE_URL: {', '.join(refused)} isn't supported; put the connection settings in the URL itself"
+        )
     kept = [(key, value) for key, value in query if key in _KEYWORDS]
     # An empty value means "use the default" in libpq; asyncpg's parser rejects it.
     libpq = {key: value for key, value in query if key not in _KEYWORDS and value}
