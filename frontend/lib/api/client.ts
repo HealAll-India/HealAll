@@ -50,6 +50,12 @@ function getJwtExpiryMs(token: string | undefined): number | null {
   }
 }
 
+/** Shown when no response arrives at all (offline, DNS, CORS, the API host is gone). */
+export const UNREACHABLE_MESSAGE = "We can't reach HealAll right now. Check your connection and try again.";
+
+/** Shown when something other than the API answers (a proxy or host error page). */
+export const UNAVAILABLE_MESSAGE = "HealAll is temporarily unavailable. Please try again in a few minutes.";
+
 /** Renew this long before the access token expires, so a slow request doesn't race it. */
 const EXPIRY_SKEW_MS = 30_000;
 
@@ -137,12 +143,17 @@ async function request<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(buildUrl(path, options.query), {
-    method,
-    headers,
-    credentials: "include",
-    body: options.data !== undefined ? JSON.stringify(options.data) : undefined
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path, options.query), {
+      method,
+      headers,
+      credentials: "include",
+      body: options.data !== undefined ? JSON.stringify(options.data) : undefined
+    });
+  } catch {
+    throw new ApiError(UNREACHABLE_MESSAGE, 0, "NETWORK_ERROR");
+  }
 
   if (response.status === 204) {
     return undefined as T;
@@ -163,8 +174,8 @@ async function request<T>(
       signalExpired();
     }
 
-    if (typeof payload === "object" && payload !== null) {
-      const typed = payload as ApiErrorEnvelope;
+    const typed = payload as ApiErrorEnvelope | null;
+    if (typeof typed?.error === "object" && typed.error !== null) {
       let message = typed.error?.message ?? `HTTP ${response.status}`;
       // Pydantic 422 returns `code: "VALIDATION_ERROR"` plus a `details`
       // array of `{ field, message }`. The top-level message is the
@@ -180,7 +191,9 @@ async function request<T>(
       throw new ApiError(message, response.status, typed.error?.code, typed.error?.details);
     }
 
-    throw new ApiError(String(payload), response.status);
+    // Not the API's error envelope: a proxy or host answered instead
+    // (e.g. a 502 page, or the host's "Application not found").
+    throw new ApiError(UNAVAILABLE_MESSAGE, response.status, "SERVICE_UNAVAILABLE");
   }
 
   return payload as T;

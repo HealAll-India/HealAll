@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { apiGet, ApiError } from "@/lib/api/client";
+import { apiGet, ApiError, UNAVAILABLE_MESSAGE, UNREACHABLE_MESSAGE } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { UserInfo } from "@/lib/types/api";
 
@@ -90,6 +90,28 @@ describe("API client session renewal", () => {
     await Promise.all([apiGet("/v1/feed", { token: stale }), apiGet("/v1/feed", { token: stale })]);
     const refreshes = fetchMock.mock.calls.filter(([url]) => String(url).includes("/v1/auth/refresh"));
     expect(refreshes).toHaveLength(1);
+  });
+
+  it("says the API is unreachable when no response arrives", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    await expect(apiGet("/v1/public/stats")).rejects.toMatchObject({
+      status: 0,
+      code: "NETWORK_ERROR",
+      message: UNREACHABLE_MESSAGE,
+    });
+  });
+
+  it("says the API is unavailable when a host error page answers instead of the API", async () => {
+    // What the host returns while no backend is attached to the domain.
+    vi.stubGlobal(
+      "fetch",
+      route({ "/v1/auth/resend-otp": () => json(404, { status: "error", code: 404, message: "Application not found" }) }),
+    );
+    await expect(apiGet("/v1/auth/resend-otp")).rejects.toMatchObject({
+      status: 404,
+      code: "SERVICE_UNAVAILABLE",
+      message: UNAVAILABLE_MESSAGE,
+    });
   });
 
   it("does not try to renew requests sent without a session", async () => {
