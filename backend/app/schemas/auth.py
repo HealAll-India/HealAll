@@ -1,10 +1,43 @@
 """Authentication schemas."""
 
+import re
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from email_validator import EmailNotValidError, validate_email
+from pydantic import AfterValidator, BaseModel, EmailStr, Field, field_validator
 
 from app.core.constants import AgeRange, UserRole
+
+_PHONE_SEPARATORS = re.compile(r"[\s\-().]")
+
+
+def normalize_phone_or_email(value: str) -> str:
+    """Write a typed identifier the way signup stored it, since lookups are exact.
+
+    Phones become +91XXXXXXXXXX whether typed as "98765 43210", "098765-43210",
+    "91 98765 43210" or "+91 98765 43210". Emails are normalised exactly as
+    signup's EmailStr does.
+    """
+    value = value.strip()
+    if "@" in value:
+        try:
+            return validate_email(value, check_deliverability=False).normalized
+        except EmailNotValidError as exc:
+            raise ValueError("Enter a valid email address") from exc
+    compact = _PHONE_SEPARATORS.sub("", value)
+    if re.fullmatch(r"\+\d{8,15}", compact):
+        return compact
+    if re.fullmatch(r"\d{10}", compact):
+        return f"+91{compact}"
+    if re.fullmatch(r"0\d{10}", compact):
+        return f"+91{compact[1:]}"
+    if re.fullmatch(r"(00)?91\d{10}", compact):
+        return f"+91{compact[-10:]}"
+    raise ValueError("Enter a 10-digit mobile number or an email address")
+
+
+PhoneOrEmail = Annotated[str, AfterValidator(normalize_phone_or_email)]
 
 
 class SignupRequest(BaseModel):
@@ -42,7 +75,7 @@ class SignupResponse(BaseModel):
 class VerifyOTPRequest(BaseModel):
     """OTP verification request."""
 
-    phone_or_email: str
+    phone_or_email: PhoneOrEmail
     otp_code: str = Field(..., min_length=6, max_length=6)
 
 
@@ -67,7 +100,7 @@ class VerifyOTPResponse(BaseModel):
 class ResendOTPRequest(BaseModel):
     """Resend OTP request."""
 
-    phone_or_email: str
+    phone_or_email: PhoneOrEmail
 
 
 class ResendOTPResponse(BaseModel):
@@ -79,7 +112,7 @@ class ResendOTPResponse(BaseModel):
 class LoginRequest(BaseModel):
     """Login request."""
 
-    phone_or_email: str
+    phone_or_email: PhoneOrEmail
     otp_code: str = Field(..., min_length=6, max_length=6)
 
 

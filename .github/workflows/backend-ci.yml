@@ -136,6 +136,7 @@ jobs:
             paths: >-
               tests/test_google_auth.py
               tests/test_rate_limits.py
+              tests/test_auth_identifiers.py
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
           - shard: posts-feed
