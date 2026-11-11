@@ -4,10 +4,10 @@ SQLAlchemy passes each URL query parameter to ``asyncpg.connect()`` as a
 keyword, and asyncpg rejects libpq's (``sslmode``, ``sslrootcert``,
 ``application_name``, …). Those are handed to asyncpg as a ``dsn`` instead,
 which it reads the way libpq does: SSL modes, root and client certificates,
-revocation lists, service files and the PGSSL* variables, with any other
-parameter sent as a server setting. Parameters that are asyncpg or SQLAlchemy
-keywords stay in the URL. What asyncpg can't honour is refused, never
-emulated: ``channel_binding=require`` and ``sslrootcert=system``.
+revocation lists and the PGSSL* variables, with any other parameter sent as a
+server setting. Parameters that are asyncpg or SQLAlchemy keywords stay in the
+URL. What asyncpg can't honour is refused, never emulated:
+``channel_binding=require``, ``sslrootcert=system`` and service files.
 """
 
 import inspect
@@ -64,6 +64,10 @@ def asyncpg_url(raw_url: str) -> tuple[str, dict[str, str]]:
         raise ValueError(f"DATABASE_URL must be a postgresql:// URL, not {parts.scheme or 'no scheme'}")
 
     query = parse_qsl(parts.query, keep_blank_values=True)
+    # asyncpg reads a service file only while parsing a DSN, and not at all
+    # before 0.31, so its settings (TLS included) could silently not apply.
+    if {"service", "servicefile"} & {key for key, _ in query}:
+        raise ValueError("DATABASE_URL: service files aren't supported; put the connection settings in the URL")
     kept = [(key, value) for key, value in query if key in _KEYWORDS]
     # An empty value means "use the default" in libpq; asyncpg's parser rejects it.
     libpq = {key: value for key, value in query if key not in _KEYWORDS and value}

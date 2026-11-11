@@ -49,11 +49,11 @@ def test_system_roots_are_refused_with_the_bundle_to_use(tmp_path, monkeypatch):
         asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert=system")
 
 
-def test_service_file_reaches_asyncpg():
-    # service= is an asyncpg keyword: it reads the service file, TLS settings included, itself.
-    url, connect_args = asyncpg_url(f"{NEON}?service=healall&application_name=api")
-    assert url == f"{NEON}?service=healall"
-    assert _dsn_params(connect_args) == {"application_name": "api"}
+@pytest.mark.parametrize("setting", ["service=healall", "servicefile=/etc/pg_service.conf"])
+def test_service_files_are_refused(setting):
+    # asyncpg reads them only while parsing a DSN, so their TLS settings could silently not apply.
+    with pytest.raises(ValueError, match="service files aren't supported"):
+        asyncpg_url(f"{NEON}?{setting}&application_name=api")
 
 
 @pytest.mark.parametrize("tls", ["sslmode=verify-full", "sslrootcert=/ca.pem", "sslcert=/c.crt"])
