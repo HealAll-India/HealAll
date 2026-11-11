@@ -1,0 +1,24 @@
+/* ─────────────────────────────────────────────
+   Install — /install ("Get the HealAll app")
+   Owned by app/install and components/pwa.
+   ───────────────────────────────────────────── */
+main.install-page { max-width: 560px; }
+.install { display: grid; gap: 20px; }
+
+.install-cta { justify-self: start; }
+
+.install-steps {
+  display: grid; gap: 12px;
+  margin: 0; padding: 0;
+  list-style: none;
+}
+.install-steps li {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.install-steps .lucide { flex: none; margin-top: 2px; color: var(--primary); }
+
+.install-note { margin: 0; font-size: var(--fs-small); color: var(--text-2); }

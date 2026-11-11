@@ -3,6 +3,7 @@ import { Fraunces, Noto_Sans } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import GoogleAuthProvider from "@/components/GoogleAuthProvider";
+import { PwaSetup } from "@/components/pwa/pwa-setup";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // Self-hosted at build time (CSP-safe: no request to Google at runtime).
@@ -39,6 +40,9 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon-32.png",
   },
+  applicationName: "HealAll",
+  // Home-screen app on iPhone (the manifest covers Android and desktop).
+  appleWebApp: { capable: true, title: "HealAll", statusBarStyle: "default" },
   metadataBase: new URL("https://healallindia.com"),
   openGraph: {
     title: "HealAll — Helping in Any Way Possible",
@@ -66,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppShell>{children}</AppShell>
         </GoogleAuthProvider>
         <SpeedInsights />
+        <PwaSetup />
       </body>
     </html>
   );

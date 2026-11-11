@@ -18,6 +18,7 @@
 @import "./styles/auth.css";
 @import "./styles/admin.css";
 @import "./styles/legal.css";
+@import "./styles/install.css";
 
 /* Impact strip */
 .impact-strip {

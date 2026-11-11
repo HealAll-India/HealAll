@@ -69,6 +69,27 @@ describe("AccountMenu", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it("links to the app install page in a browser tab, but not inside the app", () => {
+    const { unmount } = render(<AccountMenu user={user(["helper"])} onSignOut={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
+    expect(screen.getByRole("menuitem", { name: /install app/i }).getAttribute("href")).toBe("/install");
+    unmount();
+
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }) as unknown as typeof window.matchMedia;
+    try {
+      render(<AccountMenu user={user(["helper"])} onSignOut={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
+      expect(screen.queryByRole("menuitem", { name: /install app/i })).toBeNull();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("signs out from the menu", () => {
     const onSignOut = vi.fn();
     render(<AccountMenu user={user(["helper"])} onSignOut={onSignOut} />);

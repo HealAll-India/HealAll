@@ -254,6 +254,8 @@ input[type="checkbox"].switch:checked::after { transform: translateX(20px); }
 .notice--warning { background: var(--warning-soft); color: var(--warning-ink); box-shadow: inset 0 0 0 1px var(--warning-line); }
 .notice--warning > .lucide { color: var(--warning); }
 .notice--safety > .lucide { color: var(--primary); }
+.notice--success { background: var(--primary-soft); color: var(--primary-ink); box-shadow: inset 0 0 0 1px var(--primary-line); }
+.notice--success > .lucide { color: var(--primary); }
 .notice--error   { background: var(--danger-soft);  color: #912018; box-shadow: inset 0 0 0 1px var(--danger-line); }
 
 /* ── Meta row — icon + text facts ── */
