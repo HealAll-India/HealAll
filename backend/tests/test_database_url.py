@@ -38,16 +38,19 @@ def test_optional_channel_binding_is_dropped(binding):
     assert _dsn_params(connect_args) == {"sslmode": "require"}
 
 
-def test_neon_with_system_roots_keeps_the_database_name_and_verifies_fully(monkeypatch):
-    monkeypatch.setenv("SSL_CERT_FILE", certifi.where())  # stands in for the OS bundle
+def _verifies_fully(context: object) -> bool:
+    return isinstance(context, ssl.SSLContext) and context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+
+
+def test_neon_with_system_roots_keeps_the_database_name_and_verifies_fully():
     url, connect_args = asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert=system")
     assert url == NEON
-    assert _dsn_params(connect_args) == {"sslmode": "verify-full", "sslrootcert": certifi.where()}
+    assert _verifies_fully(connect_args.pop("ssl"))
+    assert connect_args == {}  # nothing left for asyncpg's own TLS set-up
 
 
-def test_system_roots_imply_verify_full_and_refuse_weaker_modes(monkeypatch):
-    monkeypatch.setenv("SSL_CERT_FILE", certifi.where())
-    assert _dsn_params(asyncpg_url(f"{NEON}?sslrootcert=system")[1])["sslmode"] == "verify-full"
+def test_system_roots_imply_verify_full_and_refuse_weaker_modes():
+    assert _verifies_fully(asyncpg_url(f"{NEON}?sslrootcert=system")[1]["ssl"])
     with pytest.raises(ValueError, match="sslrootcert=system needs sslmode=verify-full"):
         asyncpg_url(f"{NEON}?sslmode=require&sslrootcert=system")
 
@@ -55,7 +58,7 @@ def test_system_roots_imply_verify_full_and_refuse_weaker_modes(monkeypatch):
 def test_system_roots_fail_closed_without_a_store(monkeypatch):
     monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")  # neither resolves
     monkeypatch.setenv("SSL_CERT_DIR", "/nonexistent/certs")
-    with pytest.raises(ValueError, match="no system CA bundle"):
+    with pytest.raises(ValueError, match="no system CA store"):
         asyncpg_url(f"{NEON}?sslrootcert=system")
 
 
@@ -79,9 +82,10 @@ def private_ca(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_system_roots_from_a_ca_directory_verify_the_server(private_ca, monkeypatch):
-    # asyncpg's sslrootcert takes a file, so a directory-only store becomes an SSL context.
-    monkeypatch.setenv("SSL_CERT_FILE", str(private_ca / "missing.pem"))
+@pytest.mark.parametrize("ca_file", ["none", "bundle without the CA"])
+async def test_system_roots_trust_the_ca_directory(private_ca, monkeypatch, ca_file):
+    # libpq's "system" is OpenSSL's whole default store: its CA file and its hashed directory.
+    monkeypatch.setenv("SSL_CERT_FILE", certifi.where() if ca_file != "none" else str(private_ca / "missing.pem"))
     monkeypatch.setenv("SSL_CERT_DIR", str(private_ca / "certs"))
     url, connect_args = asyncpg_url(f"{NEON}?sslrootcert=system&application_name=api")
     assert url == NEON
@@ -102,11 +106,42 @@ async def test_system_roots_from_a_ca_directory_verify_the_server(private_ca, mo
         await server.wait_closed()
 
 
-def test_ca_directory_refuses_client_certificates_it_cannot_load(tmp_path, monkeypatch):
-    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing.pem"))
-    monkeypatch.setenv("SSL_CERT_DIR", str(tmp_path))
-    with pytest.raises(ValueError, match="CA directory"):
-        asyncpg_url(f"{NEON}?sslrootcert=system&sslcert=/c.crt&sslkey=/c.key")
+@pytest.mark.parametrize(
+    ("source", "setting"),
+    [
+        ("url", "sslcert=/c.crt&sslkey=/c.key"),
+        ("url", "sslcrl=/root.crl"),
+        ("url", "ssl_min_protocol_version=TLSv1.3"),
+        ("env", "PGSSLCERT"),
+        ("env", "PGSSLCRL"),
+        ("file", "postgresql.crt"),
+        ("file", "root.crl"),
+    ],
+)
+def test_system_roots_refuse_tls_settings_asyncpg_would_skip(tmp_path, monkeypatch, source, setting):
+    # The SSL context replaces asyncpg's TLS set-up, so these would be ignored.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    query = "sslrootcert=system"
+    if source == "url":
+        query += f"&{setting}"
+    elif source == "env":
+        monkeypatch.setenv(setting, "/certs/x")
+    else:
+        (tmp_path / ".postgresql").mkdir()
+        (tmp_path / ".postgresql" / setting).write_text("")
+    with pytest.raises(ValueError, match="sslrootcert=system can't be combined with"):
+        asyncpg_url(f"{NEON}?{query}")
+
+
+@pytest.mark.parametrize("tls", ["sslmode=verify-full", "sslrootcert=system", "sslcert=/c.crt"])
+def test_asyncpg_ssl_keyword_cannot_override_libpq_tls(tls):
+    # asyncpg's ssl= wins over the DSN, so "ssl=disable" would switch TLS off.
+    with pytest.raises(ValueError, match="not together with ssl="):
+        asyncpg_url(f"{NEON}?{tls}&ssl=disable")
+
+
+def test_asyncpg_ssl_keyword_alone_stays_in_the_url():
+    assert asyncpg_url(f"{NEON}?ssl=require") == (f"{NEON}?ssl=require", {})
 
 
 def test_tls_files_reach_asyncpg_unchanged():
