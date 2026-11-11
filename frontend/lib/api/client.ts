@@ -59,15 +59,13 @@ function claim(token: string, name: "sub" | "sid"): string | null {
 /**
  * Whether two access tokens belong to the same sign-in. The API names each
  * sign-in in the `sid` claim: a renewal keeps it, a new sign-in (even the same
- * member's) gets a new one. Tokens issued before `sid` existed are compared
- * by member (`sub`) until their first renewal.
+ * member's) gets a new one. A token from before `sid` existed can't be placed
+ * in a session, so it only matches itself.
  */
 function sameSession(a: string | null, b: string | null): boolean {
   if (!a || !b) return false;
   const [sidA, sidB] = [claim(a, "sid"), claim(b, "sid")];
-  if (sidA !== null && sidB !== null) return sidA === sidB;
-  const member = claim(a, "sub");
-  return member !== null && member === claim(b, "sub");
+  return sidA !== null && sidB !== null ? sidA === sidB : a === b;
 }
 
 /** Shown when no response arrives at all (offline, DNS, CORS, the API host is gone). */
@@ -82,8 +80,11 @@ const EXPIRY_SKEW_MS = 30_000;
 /** Statuses with which the API refuses to renew: no cookie, an unknown, revoked or expired token, a closed account. */
 const SESSION_ENDED_STATUSES = new Set([401, 410]);
 
-/** What the API said when asked to renew. `stored`: the new token went into the auth store. */
-type RefreshResult = { session: TokenResponse; stored: boolean } | { ended: true } | { error: ApiError };
+/**
+ * What the API said when asked to renew. `replaced`: the token the auth store
+ * held when the new one went in, or null if it didn't go in.
+ */
+type RefreshResult = { session: TokenResponse; replaced: string | null } | { ended: true } | { error: ApiError };
 
 /** What a request should do about the session it was sent with. */
 type Renewal =
@@ -94,15 +95,33 @@ type Renewal =
 
 let refreshing: Promise<RefreshResult> | null = null;
 
-/** Loaded lazily: server-rendered pages import this module too. */
-async function authState() {
-  const { useAuthStore } = await import("@/lib/stores/auth-store");
-  return useAuthStore.getState();
+type AuthStore = (typeof import("@/lib/stores/auth-store"))["useAuthStore"];
+let authStore: AuthStore | null = null;
+
+/**
+ * Loaded lazily: server-rendered pages import this module too. Kept once
+ * loaded, so a check of the session and the action it guards can run in one
+ * synchronous step, with no sign-in able to land between them.
+ */
+async function loadAuthStore(): Promise<AuthStore> {
+  authStore ??= (await import("@/lib/stores/auth-store")).useAuthStore;
+  return authStore;
 }
 
-/** Whether the session `token` belongs to is the one signed in here now. */
-async function isCurrentSession(token: string): Promise<boolean> {
-  return sameSession((await authState().catch(() => null))?.accessToken ?? null, token);
+/** Whether `store` holds the session `token` belongs to, right now. */
+function holdsSession(store: AuthStore, token: string): boolean {
+  return sameSession(store.getState().accessToken, token);
+}
+
+/**
+ * Ask the app shell to sign out, if `token`'s session is still the one here.
+ * The check and the event are one synchronous step. Returns whether it did.
+ */
+async function signOutIfCurrent(token: string): Promise<boolean> {
+  const store = await loadAuthStore().catch(() => null);
+  if (!store || !holdsSession(store, token) || typeof window === "undefined") return false;
+  window.dispatchEvent(new CustomEvent("auth:expired"));
+  return true;
 }
 
 async function runRefresh(): Promise<RefreshResult> {
@@ -132,11 +151,16 @@ async function runRefresh(): Promise<RefreshResult> {
 
   // The cookie belongs to whichever sign-in set it last. Store the new token
   // only into that same session: never after a sign-out, never over a newer
-  // sign-in (the same member's included).
-  const current = await authState();
-  const stored = sameSession(current.accessToken, session.access_token);
-  if (stored) current.updateSession(session.user, session.access_token);
-  return { session, stored };
+  // sign-in (the same member's included). A token from before `sid` can be
+  // upgraded only while the store still holds it, i.e. while no sign-in has
+  // replaced it here.
+  const store = await loadAuthStore();
+  const held = store.getState().accessToken;
+  const legacy = held !== null && claim(held, "sid") === null;
+  const stored =
+    sameSession(held, session.access_token) || (legacy && claim(held, "sub") === claim(session.access_token, "sub"));
+  if (stored) store.getState().updateSession(session.user, session.access_token);
+  return { session, replaced: stored ? held : null };
 }
 
 /**
@@ -154,18 +178,12 @@ async function renew(token: string): Promise<Renewal> {
     });
   const result = await refreshing;
   if ("error" in result) return { kind: "unavailable", error: result.error };
-  // A refusal only ends the session here if it is still this request's session.
-  if ("ended" in result) return (await isCurrentSession(token)) ? { kind: "ended" } : { kind: "superseded" };
-  // Resend only within the request's own session, never under a later one.
-  if (!result.stored || !sameSession(token, result.session.access_token)) return { kind: "superseded" };
+  if ("ended" in result) return { kind: "ended" };
+  // Resend only within the request's own session: the renewal replaced this
+  // request's very token, or names the same session. Never under a later one.
+  const own = token === result.replaced || sameSession(token, result.session.access_token);
+  if (result.replaced === null || !own) return { kind: "superseded" };
   return { kind: "renewed", token: result.session.access_token };
-}
-
-/** Ask the app shell to sign out. Only for a session the API has confirmed is over. */
-function signalExpired() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("auth:expired"));
-  }
 }
 
 function sessionChanged() {
@@ -203,6 +221,9 @@ async function request<T>(
   }
 
   let token = options.token;
+  // A token from a renewal (here, or before a replay) is checked against the
+  // store right before sending, in the same synchronous step as the send.
+  let renewed = replayed;
   if (token) {
     // The access token lasts 15 minutes: renew it just before it runs out
     // instead of sending a request the API will reject. Only when the API
@@ -213,19 +234,20 @@ async function request<T>(
       const renewal = await renew(token);
       if (renewal.kind === "renewed") {
         token = renewal.token;
+        renewed = true;
       } else if (renewal.kind === "unavailable") {
         // The session may well be fine: use the old token while it lasts.
         if (expiryMs <= Date.now()) throw renewal.error;
-      } else if (renewal.kind === "superseded") {
+      } else if (renewal.kind === "superseded" || !(await signOutIfCurrent(token))) {
         throw sessionChanged();
       } else {
-        signalExpired();
         throw new ApiError("Session expired", 401, "token_expired");
       }
     }
     headers.Authorization = `Bearer ${token}`;
   }
 
+  if (renewed && token && authStore && !holdsSession(authStore, token)) throw sessionChanged();
   let response: Response;
   try {
     response = await fetch(buildUrl(path, options.query), {
@@ -254,12 +276,11 @@ async function request<T>(
         const renewal = await renew(token);
         if (renewal.kind === "renewed") return request<T>(method, path, { ...options, token: renewal.token }, true);
         if (renewal.kind === "unavailable") throw renewal.error;
-        if (renewal.kind === "superseded") throw sessionChanged();
-        signalExpired();
-      } else if (await isCurrentSession(token)) {
+        if (renewal.kind === "superseded" || !(await signOutIfCurrent(token))) throw sessionChanged();
+      } else {
         // The token the renewal just issued was refused too. A late refusal,
         // after a sign-out or a new sign-in, says nothing about the session now.
-        signalExpired();
+        await signOutIfCurrent(token);
       }
     }
 

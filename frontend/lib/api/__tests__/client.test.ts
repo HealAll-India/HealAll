@@ -283,6 +283,56 @@ describe("API client session renewal", () => {
     expect(useAuthStore.getState().accessToken).toBe(fresh);
   });
 
+  it("doesn't let a token from before session ids pass for the same member's new session", async () => {
+    const refresh = held();
+    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response, "/v1/feed": () => json(200, { items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = apiGet("/v1/feed", { token: signIn(jwt(-60, "legacy", USER, null)) });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const again = signIn(jwt(900, "again", USER, "s2"));
+    // The cookie now belongs to the new sign-in.
+    const renewedAgain = jwt(900, "renewed", USER, "s2");
+    refresh.release(issued(renewedAgain));
+
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(useAuthStore.getState().accessToken).toBe(renewedAgain);
+    expect(again).not.toBe(renewedAgain);
+  });
+
+  it("doesn't sign out the same member's new session over a refusal for a token from before session ids", async () => {
+    const refresh = held();
+    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = apiGet("/v1/feed", { token: signIn(jwt(-60, "legacy", USER, null)) });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const again = signIn(jwt(900, "again", USER, "s2"));
+    refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
+
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(expired).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe(again);
+  });
+
+  it("doesn't send a renewed request if a sign-in lands right after the renewal is stored", async () => {
+    const renewed = jwt(900, "renewed");
+    const fetchMock = route({ "/v1/auth/refresh": () => issued(renewed), "/v1/feed": () => json(200, { items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    // Runs synchronously inside the store update, i.e. between storing and sending.
+    const stop = useAuthStore.subscribe((state) => {
+      if (state.accessToken === renewed) signIn(jwt(900, "again", USER, "s2"));
+    });
+
+    try {
+      await expect(apiGet("/v1/feed", { token: signIn(jwt(-60)) })).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/v1/feed"))).toBe(false);
+    } finally {
+      stop();
+    }
+  });
+
   it("keeps a renewal when the member only edits their profile meanwhile", async () => {
     const refresh = held();
     const fetchMock = route({ "/v1/auth/refresh": () => refresh.response, "/v1/feed": () => json(200, { items: [] }) });
