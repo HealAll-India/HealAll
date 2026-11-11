@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.main import app
 from app.models.base import Base
@@ -39,6 +40,12 @@ async def ensure_test_database_exists(database_url: str) -> None:
             await admin_conn.execute(f'CREATE DATABASE "{db_name}"')
     finally:
         await admin_conn.close()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """Each test starts with empty rate-limit buckets (all test requests share one IP)."""
+    limiter.reset()
 
 
 @pytest.fixture(scope="function")

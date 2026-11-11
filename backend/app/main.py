@@ -8,7 +8,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -58,7 +57,19 @@ def create_app() -> FastAPI:
     # Rate limiter state and middleware
     app.state.limiter = limiter
     app.add_middleware(SlowAPIMiddleware)
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+    @app.exception_handler(RateLimitExceeded)
+    def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+        """Answer 429 in the API's error envelope, so the app can show the message."""
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content=ErrorResponse(
+                error=ErrorInfo(
+                    code="RATE_LIMITED",
+                    message="Too many attempts. Please wait a few minutes and try again.",
+                )
+            ).model_dump(),
+        )
 
     # CORS middleware
     app.add_middleware(

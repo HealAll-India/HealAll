@@ -32,8 +32,8 @@ settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@limiter.limit("5/hour")
 @router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/hour")
 async def signup(
     request: Request,
     signup_data: SignupRequest,
@@ -105,8 +105,8 @@ async def signup(
     )
 
 
-@limiter.limit("10/minute")
 @router.post("/verify-otp", response_model=VerifyOTPResponse)
+@limiter.limit("10/minute")
 async def verify_otp(
     request: Request,
     verify_data: VerifyOTPRequest,
@@ -164,8 +164,8 @@ async def verify_otp(
     return resp
 
 
-@limiter.limit("5/hour")
 @router.post("/resend-otp", response_model=ResendOTPResponse)
+@limiter.limit("5/hour")
 async def resend_otp(
     request: Request,
     resend_data: ResendOTPRequest,
@@ -191,8 +191,8 @@ async def resend_otp(
     return ResendOTPResponse(message=f"OTP sent to {medium}")
 
 
-@limiter.limit("10/minute")
 @router.post("/token", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
     request: Request,
     login_data: LoginRequest,

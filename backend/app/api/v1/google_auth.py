@@ -59,8 +59,8 @@ async def _verify_with_nonce(id_token: str, nonce: str | None) -> dict:
     return await google_auth_service.verify_google_token(id_token, expected_nonce=nonce)
 
 
-@limiter.limit("30/hour")
 @router.get("/nonce", response_model=GoogleNonceResponse)
+@limiter.limit("30/hour")
 async def google_nonce(request: Request) -> GoogleNonceResponse:
     """Issue a single-use nonce for the Google Sign-In flow.
 
@@ -73,8 +73,8 @@ async def google_nonce(request: Request) -> GoogleNonceResponse:
     return GoogleNonceResponse(nonce=nonce)
 
 
-@limiter.limit("10/hour")
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 async def google_signup(
     request: Request,
     signup_data: GoogleSignupRequest,
@@ -139,8 +139,8 @@ async def google_signup(
     )
 
 
-@limiter.limit("20/minute")
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("20/minute")
 async def google_login(
     request: Request,
     login_data: GoogleLoginRequest,

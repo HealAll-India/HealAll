@@ -51,8 +51,8 @@ def _post_to_response(post, author: User) -> PostResponse:
     )
 
 
-@limiter.limit("30/hour")
 @router.post("", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/hour")
 async def create_post(
     request: Request,
     post_data: CreatePostRequest,
@@ -127,8 +127,8 @@ async def delete_post(
         raise DuplicateException("Resource already exists or constraint violated") from None
 
 
-@limiter.limit("10/hour")
 @router.post("/{post_id}/submit", response_model=PostResponse)
+@limiter.limit("10/hour")
 async def submit_post(
     request: Request,
     post_id: UUID,

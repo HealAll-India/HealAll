@@ -19,12 +19,12 @@ from app.services import comment_service
 router = APIRouter(tags=["comments"])
 
 
-@limiter.limit("60/minute")
 @router.post(
     "/posts/{post_id}/comments",
     response_model=CommentResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("60/minute")
 async def create_comment(
     request: Request,
     post_id: UUID,
