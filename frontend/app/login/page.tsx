@@ -106,6 +106,10 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await resendOtp({ phone_or_email: identifier.trim() });
+      // Only the newest code works, so digits from the previous one must go.
+      setCode("");
+      // A resend keeps the step, so the step effect won't move focus.
+      if (step === "code") codeRef.current?.focus();
       setStep("code");
       setSends((n) => n + 1);
       setCooldown(RESEND_COOLDOWN_S);

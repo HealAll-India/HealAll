@@ -35,8 +35,8 @@ export function AppShell({ children, messagesCount = null }: Props) {
   const badges: Partial<Record<NavBadgeKey, number | null>> = { verify: verifyCount, messages: messagesCount };
   const showTabBar = isAuthed && !isTabBarHidden(pathname);
 
-  // Auto-recover from expired/invalid tokens: any 401 from the API client
-  // dispatches `auth:expired` — clear session and bounce to /login.
+  // The API client dispatches `auth:expired` once the API confirms this
+  // member's session is over and can't be renewed: clear it and go to /login.
   useEffect(() => {
     function onExpired() {
       if (!useAuthStore.getState().accessToken) return;

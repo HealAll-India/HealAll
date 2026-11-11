@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError, UNREACHABLE_MESSAGE } from "@/lib/api/client";
@@ -79,6 +79,30 @@ describe("LoginPage", () => {
     typeIdentifier("98765 43210");
     expect((await screen.findByRole("alert")).textContent).toBe(UNREACHABLE_MESSAGE);
     expect(screen.getByLabelText(/mobile number or email/i)).toBeTruthy();
+  });
+
+  it("clears the old code and refocuses the code field after a resend", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      auth.resendOtp.mockResolvedValue({ message: "sent" });
+      render(<LoginPage />);
+
+      typeIdentifier("98765 43210");
+      const codeField = (await screen.findByLabelText(/6-digit code/i)) as HTMLInputElement;
+      fireEvent.change(codeField, { target: { value: "111111" } });
+      expect(screen.getByRole("button", { name: /resend code in/i })).toHaveProperty("disabled", true);
+
+      // The countdown re-arms a 1s timer after each render, so step through it.
+      for (let s = 0; s < 30; s++) await act(() => vi.advanceTimersByTimeAsync(1_000));
+      fireEvent.click(screen.getByRole("button", { name: /^resend code$/i }));
+
+      expect(await screen.findByText(/we sent a new 6-digit code/i)).toBeTruthy();
+      expect(auth.resendOtp).toHaveBeenCalledTimes(2);
+      expect(codeField.value).toBe("");
+      expect(document.activeElement).toBe(codeField);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("lets the member change the number", async () => {
