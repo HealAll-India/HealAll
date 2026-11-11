@@ -60,7 +60,7 @@ function claim(token: string, name: "sub" | "sid"): string | null {
  * Whether two access tokens belong to the same sign-in. The API names each
  * sign-in in the `sid` claim: a renewal keeps it, a new sign-in (even the same
  * member's) gets a new one. A token from before `sid` existed can't be placed
- * in a session, so it only matches itself.
+ * in a session, so it only matches itself, and it is never renewed.
  */
 function sameSession(a: string | null, b: string | null): boolean {
   if (!a || !b) return false;
@@ -80,11 +80,8 @@ const EXPIRY_SKEW_MS = 30_000;
 /** Statuses with which the API refuses to renew: no cookie, an unknown, revoked or expired token, a closed account. */
 const SESSION_ENDED_STATUSES = new Set([401, 410]);
 
-/**
- * What the API said when asked to renew. `replaced`: the token the auth store
- * held when the new one went in, or null if it didn't go in.
- */
-type RefreshResult = { session: TokenResponse; replaced: string | null } | { ended: true } | { error: ApiError };
+/** What the API said when asked to renew. `stored`: the new token went into the auth store. */
+type RefreshResult = { session: TokenResponse; stored: boolean } | { ended: true } | { error: ApiError };
 
 /** What a request should do about the session it was sent with. */
 type Renewal =
@@ -149,18 +146,13 @@ async function runRefresh(): Promise<RefreshResult> {
   const session = payload as TokenResponse | null;
   if (!session?.access_token || !session.user?.id) return unavailable;
 
-  // The cookie belongs to whichever sign-in set it last. Store the new token
-  // only into that same session: never after a sign-out, never over a newer
-  // sign-in (the same member's included). A token from before `sid` can be
-  // upgraded only while the store still holds it, i.e. while no sign-in has
-  // replaced it here.
+  // The cookie belongs to whichever sign-in set it last, in any tab. Store the
+  // new token only into that same session: never after a sign-out, never over
+  // a newer sign-in (the same member's included).
   const store = await loadAuthStore();
-  const held = store.getState().accessToken;
-  const legacy = held !== null && claim(held, "sid") === null;
-  const stored =
-    sameSession(held, session.access_token) || (legacy && claim(held, "sub") === claim(session.access_token, "sub"));
+  const stored = sameSession(store.getState().accessToken, session.access_token);
   if (stored) store.getState().updateSession(session.user, session.access_token);
-  return { session, replaced: stored ? held : null };
+  return { session, stored };
 }
 
 /**
@@ -170,6 +162,10 @@ async function runRefresh(): Promise<RefreshResult> {
  * sign-out happened relative to the request or the refresh.
  */
 async function renew(token: string): Promise<Renewal> {
+  // A token from before `sid` can't be tied to the session the cookie now
+  // names (another tab may have signed in), so its session ends instead: the
+  // member signs in once more, as they had to every 15 minutes before.
+  if (claim(token, "sid") === null) return { kind: "ended" };
   refreshing ??= runRefresh()
     // Only the store's lazy import can throw here, e.g. a chunk that failed to load.
     .catch((): RefreshResult => ({ error: new ApiError(UNREACHABLE_MESSAGE, 0, "NETWORK_ERROR") }))
@@ -179,10 +175,8 @@ async function renew(token: string): Promise<Renewal> {
   const result = await refreshing;
   if ("error" in result) return { kind: "unavailable", error: result.error };
   if ("ended" in result) return { kind: "ended" };
-  // Resend only within the request's own session: the renewal replaced this
-  // request's very token, or names the same session. Never under a later one.
-  const own = token === result.replaced || sameSession(token, result.session.access_token);
-  if (result.replaced === null || !own) return { kind: "superseded" };
+  // Resend only within the request's own session, never under a later one.
+  if (!result.stored || !sameSession(token, result.session.access_token)) return { kind: "superseded" };
   return { kind: "renewed", token: result.session.access_token };
 }
 

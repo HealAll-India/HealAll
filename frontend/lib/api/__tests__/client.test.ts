@@ -272,49 +272,8 @@ describe("API client session renewal", () => {
     expect(expired).not.toHaveBeenCalled();
   });
 
-  it("renews a session whose token predates session ids", async () => {
-    const fresh = jwt(900, "fresh");
-    vi.stubGlobal(
-      "fetch",
-      route({ "/v1/auth/refresh": () => issued(fresh), "/v1/feed": () => json(200, { items: [] }) }),
-    );
 
-    await expect(apiGet("/v1/feed", { token: signIn(jwt(-60, "legacy", USER, null)) })).resolves.toEqual({ items: [] });
-    expect(useAuthStore.getState().accessToken).toBe(fresh);
-  });
 
-  it("doesn't let a token from before session ids pass for the same member's new session", async () => {
-    const refresh = held();
-    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response, "/v1/feed": () => json(200, { items: [] }) });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const pending = apiGet("/v1/feed", { token: signIn(jwt(-60, "legacy", USER, null)) });
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const again = signIn(jwt(900, "again", USER, "s2"));
-    // The cookie now belongs to the new sign-in.
-    const renewedAgain = jwt(900, "renewed", USER, "s2");
-    refresh.release(issued(renewedAgain));
-
-    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(useAuthStore.getState().accessToken).toBe(renewedAgain);
-    expect(again).not.toBe(renewedAgain);
-  });
-
-  it("doesn't sign out the same member's new session over a refusal for a token from before session ids", async () => {
-    const refresh = held();
-    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const pending = apiGet("/v1/feed", { token: signIn(jwt(-60, "legacy", USER, null)) });
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const again = signIn(jwt(900, "again", USER, "s2"));
-    refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
-
-    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
-    expect(expired).not.toHaveBeenCalled();
-    expect(useAuthStore.getState().accessToken).toBe(again);
-  });
 
   it("doesn't send a renewed request if a sign-in lands right after the renewal is stored", async () => {
     const renewed = jwt(900, "renewed");
@@ -331,6 +290,45 @@ describe("API client session renewal", () => {
     } finally {
       stop();
     }
+  });
+
+  it("signs out a session from before session ids instead of renewing it into the cookie's session", async () => {
+    // Another tab signed the same member in, so the shared cookie now names its session.
+    const fetchMock = route({
+      "/v1/auth/refresh": () => issued(jwt(900, "other-tab", USER, "s2")),
+      "/v1/feed": () => json(200, { items: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const legacy = signIn(jwt(-60, "legacy", USER, null));
+
+    await expect(apiGet("/v1/feed", { token: legacy })).rejects.toMatchObject({ status: 401, code: "token_expired" });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe(legacy);
+    expect(expired).toHaveBeenCalledOnce();
+  });
+
+  it("ends a session from before session ids on a 401 without renewing or replaying", async () => {
+    const fetchMock = route({
+      "/v1/auth/refresh": () => issued(jwt(900, "other-tab", USER, "s2")),
+      "/v1/feed": () => json(401, { error: { code: "UNAUTHENTICATED", message: "Token expired" } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(apiGet("/v1/feed", { token: signIn(jwt(600, "legacy", USER, null)) })).rejects.toMatchObject({
+      status: 401,
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(expired).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't sign out a newer session over an old screen's token from before session ids", async () => {
+    vi.stubGlobal("fetch", route({}));
+    const legacy = jwt(-60, "legacy", USER, null);
+    const again = signIn(jwt(900, "again", USER, "s2"));
+
+    await expect(apiGet("/v1/feed", { token: legacy })).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(expired).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe(again);
   });
 
   it("keeps a renewal when the member only edits their profile meanwhile", async () => {
