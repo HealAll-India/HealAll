@@ -25,12 +25,12 @@ from app.services import message_service
 router = APIRouter(prefix="/messages", tags=["messages"])
 
 
-@limiter.limit("20/hour")
 @router.post(
     "/request-consent",
     response_model=ConsentRequestResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("20/hour")
 async def request_consent(
     request: Request,
     payload: RequestConsentRequest,
@@ -182,8 +182,8 @@ async def get_conversation(
     )
 
 
-@limiter.limit("60/minute")
 @router.post("/conversations/{conversation_id}", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute")
 async def send_message(
     request: Request,
     conversation_id: UUID,

@@ -20,8 +20,8 @@ MODERATION_ROLES = [UserRole.MODERATOR, UserRole.ADMIN, UserRole.HEAD_ADMIN]
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@limiter.limit("10/hour")
 @router.post("", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 async def create_report(
     request: Request,
     payload: CreateReportRequest,
