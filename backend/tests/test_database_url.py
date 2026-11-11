@@ -1,6 +1,6 @@
 """DATABASE_URL parsing for asyncpg (app, migrations and the schema drift check)."""
 
-import ssl
+from urllib.parse import parse_qsl, urlsplit
 
 import certifi
 import pytest
@@ -13,53 +13,65 @@ from tests.conftest import TEST_DATABASE_URL, ensure_test_database_exists
 NEON = "postgresql+asyncpg://user:pw@ep-x.ap-southeast-1.aws.neon.tech/neondb"
 
 
-def _verified(arg: object, *, hostname: bool) -> bool:
-    return isinstance(arg, ssl.SSLContext) and arg.verify_mode == ssl.CERT_REQUIRED and arg.check_hostname is hostname
+def _dsn_params(connect_args: dict[str, str]) -> dict[str, str]:
+    """The libpq parameters handed to asyncpg as its dsn."""
+    dsn = urlsplit(connect_args["dsn"])
+    assert (dsn.scheme, dsn.netloc, dsn.path) == ("postgresql", "", "")
+    return dict(parse_qsl(dsn.query))
 
 
 @pytest.mark.parametrize("mode", ["disable", "require", "verify-ca", "verify-full"])
 def test_required_channel_binding_is_refused_whatever_the_ssl_mode(mode):
     # asyncpg can't do channel binding, and a certificate check is no substitute.
     with pytest.raises(ValueError, match="sslmode=verify-full&sslrootcert=system"):
-        asyncpg_url(f"{NEON}?sslmode={mode}&sslrootcert={certifi.where()}&channel_binding=require")
-
-
-def test_neon_with_verified_tls_keeps_the_database_name_and_checks_the_hostname():
-    url, connect_args = asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert=system")
-    assert url == NEON
-    assert _verified(connect_args["ssl"], hostname=True)
+        asyncpg_url(f"{NEON}?sslmode={mode}&sslrootcert=/ca.pem&channel_binding=require")
 
 
 @pytest.mark.parametrize("binding", ["prefer", "disable"])
 def test_optional_channel_binding_is_dropped(binding):
-    assert asyncpg_url(f"{NEON}?sslmode=require&channel_binding={binding}") == (NEON, {"ssl": "require"})
-
-
-@pytest.mark.parametrize("mode", ["disable", "require", "verify-ca", "verify-full"])
-def test_ssl_mode_is_passed_through(mode):
-    assert asyncpg_url(f"{NEON}?sslmode={mode}") == (NEON, {"ssl": mode})
-
-
-def test_root_certificate_is_loaded_and_keeps_the_mode():
-    ca = certifi.where()  # any readable PEM bundle
-    url, full = asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert={ca}")
+    url, connect_args = asyncpg_url(f"{NEON}?sslmode=require&channel_binding={binding}")
     assert url == NEON
-    assert _verified(full["ssl"], hostname=True)
-    # verify-ca, and require with a root certificate (as in libpq), skip the hostname check.
-    for mode in ("verify-ca", "require"):
-        assert _verified(asyncpg_url(f"{NEON}?sslmode={mode}&sslrootcert={ca}")[1]["ssl"], hostname=False)
+    assert _dsn_params(connect_args) == {"sslmode": "require"}
 
 
-def test_system_root_certificates_mean_verify_full():
-    assert _verified(asyncpg_url(f"{NEON}?sslrootcert=system")[1]["ssl"], hostname=True)
+def test_neon_with_system_roots_keeps_the_database_name_and_verifies_fully(monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", certifi.where())  # stands in for the OS bundle
+    url, connect_args = asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert=system")
+    assert url == NEON
+    assert _dsn_params(connect_args) == {"sslmode": "verify-full", "sslrootcert": certifi.where()}
+
+
+def test_system_roots_imply_verify_full_and_refuse_weaker_modes(monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", certifi.where())
+    assert _dsn_params(asyncpg_url(f"{NEON}?sslrootcert=system")[1])["sslmode"] == "verify-full"
     with pytest.raises(ValueError, match="sslrootcert=system needs sslmode=verify-full"):
         asyncpg_url(f"{NEON}?sslmode=require&sslrootcert=system")
 
 
-def test_application_name_becomes_a_server_setting_and_other_parameters_stay():
-    url, connect_args = asyncpg_url(f"{NEON}?application_name=api&prepared_statement_cache_size=0")
-    assert url == f"{NEON}?prepared_statement_cache_size=0"
-    assert connect_args == {"server_settings": {"application_name": "api"}}
+def test_system_roots_fail_closed_without_a_bundle(monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")  # resolves to no bundle
+    with pytest.raises(ValueError, match="no system CA bundle"):
+        asyncpg_url(f"{NEON}?sslrootcert=system")
+
+
+def test_tls_files_reach_asyncpg_unchanged():
+    # asyncpg loads root and client certificates, keys and CRLs itself, as libpq does.
+    tls = {
+        "sslmode": "verify-ca",
+        "sslrootcert": "/certs/ca.pem",
+        "sslcert": "/certs/client.crt",
+        "sslkey": "/certs/client.key",
+        "sslcrl": "/certs/root.crl",
+    }
+    url, connect_args = asyncpg_url(f"{NEON}?" + "&".join(f"{k}={v}" for k, v in tls.items()))
+    assert url == NEON
+    assert _dsn_params(connect_args) == tls
+
+
+def test_application_name_goes_to_asyncpg_and_driver_keywords_stay_in_the_url():
+    url, connect_args = asyncpg_url(f"{NEON}?application_name=api&prepared_statement_cache_size=0&command_timeout=30")
+    assert url == f"{NEON}?prepared_statement_cache_size=0&command_timeout=30"
+    assert _dsn_params(connect_args) == {"application_name": "api"}
 
 
 @pytest.mark.parametrize("scheme", ["postgres", "postgresql", "postgresql+asyncpg"])
@@ -77,15 +89,17 @@ def test_url_without_parameters_is_unchanged():
 
 
 def test_percent_encoded_password_is_untouched():
-    raw = "postgresql+asyncpg://user:p%40ss@db.example.com:5432/app?sslmode=require"
-    assert asyncpg_url(raw) == ("postgresql+asyncpg://user:p%40ss@db.example.com:5432/app", {"ssl": "require"})
+    url, connect_args = asyncpg_url("postgresql+asyncpg://user:p%40ss@db.example.com:5432/app?sslmode=require")
+    assert url == "postgresql+asyncpg://user:p%40ss@db.example.com:5432/app"
+    assert _dsn_params(connect_args) == {"sslmode": "require"}
 
 
 @pytest.mark.asyncio
 async def test_libpq_style_url_connects():
     await ensure_test_database_exists(TEST_DATABASE_URL)
     libpq_url = TEST_DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
-    url, connect_args = asyncpg_url(f"{libpq_url}?sslmode=disable&channel_binding=prefer&application_name=healall-test")
+    query = "sslmode=disable&channel_binding=prefer&application_name=healall-test&prepared_statement_cache_size=0"
+    url, connect_args = asyncpg_url(f"{libpq_url}?{query}")
     engine = create_async_engine(url, connect_args=connect_args)
     try:
         async with engine.connect() as conn:
