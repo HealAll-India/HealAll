@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
-import { apiGet, ApiError, UNAVAILABLE_MESSAGE, UNREACHABLE_MESSAGE } from "@/lib/api/client";
+import { apiGet, UNAVAILABLE_MESSAGE, UNREACHABLE_MESSAGE } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { UserInfo } from "@/lib/types/api";
 
@@ -184,13 +184,61 @@ describe("API client session renewal", () => {
 
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    signIn(jwt(900, "theirs", OTHER), OTHER);
-    const renewedTheirs = jwt(900, "renewed", OTHER);
-    refresh.release(issued(renewedTheirs, OTHER));
+    const theirs = signIn(jwt(900, "theirs", OTHER), OTHER);
+    refresh.release(issued(jwt(900, "renewed", OTHER), OTHER));
 
     await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
-    expect(useAuthStore.getState().accessToken).toBe(renewedTheirs);
+    expect(useAuthStore.getState().accessToken).toBe(theirs);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("drops a renewal that finishes after the same member signed out and back in", async () => {
+    const refresh = held();
+    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response, "/v1/feed": () => json(200, { items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    useAuthStore.getState().clearSession();
+    const again = signIn(jwt(900, "again"));
+    refresh.release(issued(jwt(900, "late")));
+
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(useAuthStore.getState().accessToken).toBe(again);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't sign out a new session when the earlier one's renewal is refused late", async () => {
+    const refresh = held();
+    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    useAuthStore.getState().clearSession();
+    const again = signIn(jwt(900, "again"));
+    refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
+
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(expired).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe(again);
+  });
+
+  it("keeps a renewal when the member only edits their profile meanwhile", async () => {
+    const refresh = held();
+    const fetchMock = route({ "/v1/auth/refresh": () => refresh.response, "/v1/feed": () => json(200, { items: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const stale = signIn(jwt(-60));
+
+    const pending = apiGet("/v1/feed", { token: stale });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    // What the profile page does after a save.
+    useAuthStore.getState().setSession(stale, { ...USER, name: "Priya S." });
+    const fresh = jwt(900, "fresh");
+    refresh.release(issued(fresh));
+
+    await expect(pending).resolves.toEqual({ items: [] });
+    expect(useAuthStore.getState().accessToken).toBe(fresh);
   });
 
   it("doesn't sign out the next member when an earlier session's renewal is refused", async () => {
@@ -203,7 +251,7 @@ describe("API client session renewal", () => {
     signIn(jwt(900, "theirs", OTHER), OTHER);
     refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
 
-    await expect(pending).rejects.toMatchObject({ status: 401 });
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
     expect(expired).not.toHaveBeenCalled();
     expect(useAuthStore.getState().user).toEqual(OTHER);
   });

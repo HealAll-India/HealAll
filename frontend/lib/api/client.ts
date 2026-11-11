@@ -68,8 +68,15 @@ const EXPIRY_SKEW_MS = 30_000;
 /** Statuses with which the API refuses to renew: no cookie, an unknown, revoked or expired token, a closed account. */
 const SESSION_ENDED_STATUSES = new Set([401, 410]);
 
-/** What the API said when asked to renew. `stored`: the new token went into the auth store. */
-type RefreshResult = { session: TokenResponse; stored: boolean } | { ended: true } | { error: ApiError };
+/**
+ * What the API said when asked to renew. `stored`: the new token went into the
+ * auth store. `current`: no sign-in or sign-out happened while it ran, so the
+ * refusal is about the session signed in now.
+ */
+type RefreshResult =
+  | { session: TokenResponse; stored: boolean }
+  | { ended: true; current: boolean }
+  | { error: ApiError };
 
 /** What a request should do about the session it was sent with. */
 type Renewal =
@@ -86,13 +93,10 @@ async function authState() {
   return useAuthStore.getState();
 }
 
-/** Whether the member `token` was issued to is the one signed in here now. */
-async function isSignedIn(token: string): Promise<boolean> {
-  const { accessToken, user } = await authState();
-  return accessToken !== null && user !== null && user.id === jwtSubject(token);
-}
-
 async function runRefresh(): Promise<RefreshResult> {
+  // The session this renewal is for. A sign-out, or a new sign-in, while it
+  // runs makes its result belong to an earlier session.
+  const { generation } = await authState();
   let response: Response;
   try {
     response = await fetch(buildUrl("/v1/auth/refresh"), {
@@ -112,16 +116,17 @@ async function runRefresh(): Promise<RefreshResult> {
     // signed in and the next request tries again.
     const envelope = (payload as ApiErrorEnvelope | null)?.error;
     const refused = SESSION_ENDED_STATUSES.has(response.status) && typeof envelope === "object" && envelope !== null;
-    return refused ? { ended: true } : unavailable;
+    return refused ? { ended: true, current: (await authState()).generation === generation } : unavailable;
   }
   const session = payload as TokenResponse | null;
   if (!session?.access_token || !session.user?.id) return unavailable;
 
-  // Store it only for the member still signed in here: a renewal that
-  // finishes after a sign-out, or after someone else signed in, must not
-  // bring the old session back or replace theirs.
+  // Store it only into the session that asked: a renewal that finishes after
+  // a sign-out, or after a new sign-in (by anyone, the same member included),
+  // must not bring the old session back or replace the new one.
   const current = await authState();
-  const stored = current.accessToken !== null && current.user?.id === session.user.id;
+  const stored =
+    current.generation === generation && current.accessToken !== null && current.user?.id === session.user.id;
   if (stored) current.setSession(session.access_token, session.user);
   return { session, stored };
 }
@@ -139,18 +144,22 @@ async function renew(token: string): Promise<Renewal> {
     });
   const result = await refreshing;
   if ("error" in result) return { kind: "unavailable", error: result.error };
-  if ("ended" in result) return { kind: "ended" };
+  if ("ended" in result) return result.current ? { kind: "ended" } : { kind: "superseded" };
   // Never resend one member's request with another member's token.
   if (!result.stored || result.session.user.id !== jwtSubject(token)) return { kind: "superseded" };
   return { kind: "renewed", token: result.session.access_token };
 }
 
-/** Ask the app shell to sign out, unless `token`'s member has already left. */
-async function signalExpired(token: string) {
-  if (typeof window === "undefined") return;
-  // A late 401 for an earlier session must not sign out the one now here.
-  if (!(await isSignedIn(token).catch(() => false))) return;
-  window.dispatchEvent(new CustomEvent("auth:expired"));
+/** Ask the app shell to sign out. Only for a session the API has confirmed is over. */
+function signalExpired() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("auth:expired"));
+  }
+}
+
+/** Whether `token` is still the session's token here, i.e. nothing replaced it since. */
+async function isCurrentToken(token: string): Promise<boolean> {
+  return (await authState().catch(() => null))?.accessToken === token;
 }
 
 function sessionChanged() {
@@ -204,7 +213,7 @@ async function request<T>(
       } else if (renewal.kind === "superseded") {
         throw sessionChanged();
       } else {
-        await signalExpired(token);
+        signalExpired();
         throw new ApiError("Session expired", 401, "token_expired");
       }
     }
@@ -240,8 +249,12 @@ async function request<T>(
         if (renewal.kind === "renewed") return request<T>(method, path, { ...options, token: renewal.token }, true);
         if (renewal.kind === "unavailable") throw renewal.error;
         if (renewal.kind === "superseded") throw sessionChanged();
+        signalExpired();
+      } else if (await isCurrentToken(token)) {
+        // The token the renewal just issued was refused too. A late refusal,
+        // after a sign-out or another renewal, says nothing about the session now.
+        signalExpired();
       }
-      await signalExpired(token);
     }
 
     const typed = payload as ApiErrorEnvelope | null;
