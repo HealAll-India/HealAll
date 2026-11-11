@@ -2,6 +2,7 @@
 import asyncio
 import os
 from logging.config import fileConfig
+from typing import Any
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -21,19 +22,20 @@ from app.models.comment import Comment
 from app.models.message import DMConsentRequest, Conversation, Message
 from app.models.report import Report, ModerationAction
 from app.models.report_triage import ReportTriage
+from app.db.url import asyncpg_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Override DB URL from environment so Railway/production credentials work.
-# Strip sslmode= (psycopg2 syntax); asyncpg uses connect_args ssl= instead.
-import re as _re
+# asyncpg takes sslmode as connect_args ssl= and rejects libpq-only params.
 _raw_db_url = os.environ.get("DATABASE_URL", "")
-_use_ssl = "sslmode=" in _raw_db_url
+_connect_args: dict[str, Any] = {}
 if _raw_db_url:
-    _clean_url = _re.sub(r"[?&]sslmode=\w+", "", _raw_db_url).rstrip("?&")
-    config.set_main_option("sqlalchemy.url", _clean_url)
+    _clean_url, _connect_args = asyncpg_url(_raw_db_url)
+    # set_main_option goes through configparser, which treats % as interpolation.
+    config.set_main_option("sqlalchemy.url", _clean_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -87,12 +89,11 @@ async def run_async_migrations() -> None:
 
     """
 
-    connect_args = {"ssl": "require"} if _use_ssl else {}
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args=connect_args,
+        connect_args=_connect_args,
     )
 
     async with connectable.connect() as connection:

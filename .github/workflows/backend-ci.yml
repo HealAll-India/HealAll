@@ -150,6 +150,7 @@ jobs:
               tests/integration/test_cases.py
               tests/integration/test_messages.py
               tests/integration/test_schema_drift.py
+              tests/test_database_url.py
           - shard: moderation-verification
             paths: >-
               tests/integration/test_moderation.py

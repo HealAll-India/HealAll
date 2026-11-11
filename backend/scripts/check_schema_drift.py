@@ -23,7 +23,6 @@ import importlib
 import os
 import pkgutil
 import sys
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
@@ -31,6 +30,7 @@ from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import app.models
+from app.db.url import asyncpg_url
 from app.models.base import Base
 
 
@@ -77,28 +77,13 @@ def _compare(connection, metadata: MetaData = Base.metadata) -> list[str]:
     return [problem for op in flat if (problem := _breaking(op))]
 
 
-def _asyncpg_url(raw_url: str) -> tuple[str, dict[str, str]]:
-    """Move libpq's sslmode=... out of the URL into asyncpg's ssl= connect arg.
-
-    Only that one query parameter changes: the database path and any other
-    parameters are kept, and the mode (require, verify-ca, verify-full, …) is
-    passed through rather than weakened.
-    """
-    parts = urlsplit(raw_url)
-    query = parse_qsl(parts.query, keep_blank_values=True)
-    sslmode = next((value for key, value in query if key == "sslmode"), None)
-    kept = urlencode([(key, value) for key, value in query if key != "sslmode"])
-    url = urlunsplit((parts.scheme, parts.netloc, parts.path, kept, parts.fragment))
-    return url, ({"ssl": sslmode} if sslmode else {})
-
-
 async def main() -> int:
     """Check DATABASE_URL's schema; exit 0 when it matches, 1 on drift, 2 when unset."""
     raw_url = os.environ.get("DATABASE_URL", "")
     if not raw_url:
         print("DATABASE_URL is not set", file=sys.stderr)
         return 2
-    url, connect_args = _asyncpg_url(raw_url)
+    url, connect_args = asyncpg_url(raw_url)
 
     _load_models()
     engine = create_async_engine(url, connect_args=connect_args)

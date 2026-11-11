@@ -6,6 +6,9 @@ python-dotenv>=1.0.0
 # Database
 sqlalchemy[asyncio]>=2.0.35
 asyncpg>=0.30.0
+# CA bundle for outbound HTTPS (httpx, requests); 2026.10.19+ drops the
+# emSign intermediates with compromised keys (GHSA-6q48-6c7w-9gw2).
+certifi>=2026.10.19
 alembic>=1.14.0
 
 # Validation & Config
