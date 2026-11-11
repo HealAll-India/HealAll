@@ -3,7 +3,8 @@
 SQLAlchemy hands every query parameter to ``asyncpg.connect()``, which rejects
 libpq-only ones (``sslmode``, ``sslrootcert``, ``channel_binding``,
 ``application_name``). They are translated into asyncpg's ``ssl=`` and
-``server_settings=`` arguments here; any other parameter is kept in the URL.
+``server_settings=`` arguments here, except ``channel_binding=require``, which
+asyncpg cannot honour and is refused. Any other parameter is kept in the URL.
 """
 
 import ssl
@@ -17,23 +18,20 @@ _TRANSLATED = {"sslmode", "sslrootcert", "channel_binding", "application_name"}
 _VERIFIED = {"verify-ca", "verify-full"}
 
 
-def _ssl_argument(mode: str | None, rootcert: str | None, binding: str | None) -> str | ssl.SSLContext | None:
-    """asyncpg's ``ssl=`` value for libpq's sslmode, sslrootcert and channel_binding."""
+REQUIRED_BINDING_MESSAGE = (
+    "DATABASE_URL: asyncpg cannot do channel binding, so channel_binding=require can't be honoured. "
+    "Replace it with sslmode=verify-full&sslrootcert=system, which checks the server certificate "
+    "and hostname instead (for Neon: ?sslmode=verify-full&sslrootcert=system)."
+)
+
+
+def _ssl_argument(mode: str | None, rootcert: str | None) -> str | ssl.SSLContext | None:
+    """asyncpg's ``ssl=`` value for libpq's sslmode and sslrootcert."""
     if rootcert == "system":
         # libpq: the system roots imply verify-full, and weaker modes are an error.
         if mode not in (None, "verify-full"):
             raise ValueError("DATABASE_URL: sslrootcert=system needs sslmode=verify-full")
         mode = "verify-full"
-
-    if binding == "require":
-        # asyncpg cannot do channel binding (SCRAM-SHA-256-PLUS). It guards
-        # against a man in the middle on a TLS link whose certificate is not
-        # checked, so the server certificate is checked instead: the
-        # connection fails rather than going ahead with neither protection.
-        if mode == "disable":
-            raise ValueError("DATABASE_URL: channel_binding=require needs TLS, but sslmode=disable turns it off")
-        if mode not in _VERIFIED:
-            mode, rootcert = "verify-full", rootcert or "system"
 
     # libpq ignores the root certificate below require, and require with one
     # behaves like verify-ca.
@@ -50,7 +48,8 @@ def asyncpg_url(raw_url: str) -> tuple[str, dict[str, Any]]:
     ``postgres://`` and ``postgresql://`` become ``postgresql+asyncpg://``. The
     database name and the remaining parameters are kept as written, and the SSL
     mode is passed through, never weakened. Raises ValueError for a URL that is
-    not PostgreSQL or asks for something asyncpg cannot honour.
+    not PostgreSQL or asks for something asyncpg cannot honour (such as
+    ``channel_binding=require``).
     """
     parts = urlsplit(raw_url)
     if parts.scheme not in _SCHEMES:
@@ -60,8 +59,15 @@ def asyncpg_url(raw_url: str) -> tuple[str, dict[str, Any]]:
     libpq = {key: value for key, value in query if key in _TRANSLATED}
     kept = urlencode([(key, value) for key, value in query if key not in _TRANSLATED])
 
+    # asyncpg has no SCRAM-SHA-256-PLUS. A verified certificate is not a
+    # substitute (a mis-issued one for the host passes it), so a URL that
+    # requires channel binding is refused rather than quietly downgraded.
+    # "prefer" and "disable" accept a login without it, so they are dropped.
+    if libpq.get("channel_binding") == "require":
+        raise ValueError(REQUIRED_BINDING_MESSAGE)
+
     connect_args: dict[str, Any] = {}
-    ssl_arg = _ssl_argument(libpq.get("sslmode"), libpq.get("sslrootcert"), libpq.get("channel_binding"))
+    ssl_arg = _ssl_argument(libpq.get("sslmode"), libpq.get("sslrootcert"))
     if ssl_arg is not None:
         connect_args["ssl"] = ssl_arg
     if libpq.get("application_name"):

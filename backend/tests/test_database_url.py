@@ -17,9 +17,15 @@ def _verified(arg: object, *, hostname: bool) -> bool:
     return isinstance(arg, ssl.SSLContext) and arg.verify_mode == ssl.CERT_REQUIRED and arg.check_hostname is hostname
 
 
-def test_neon_connection_string_keeps_the_database_name_and_verifies_the_server():
-    # asyncpg can't do channel binding, so the certificate check stands in for it.
-    url, connect_args = asyncpg_url(f"{NEON}?sslmode=require&channel_binding=require")
+@pytest.mark.parametrize("mode", ["disable", "require", "verify-ca", "verify-full"])
+def test_required_channel_binding_is_refused_whatever_the_ssl_mode(mode):
+    # asyncpg can't do channel binding, and a certificate check is no substitute.
+    with pytest.raises(ValueError, match="sslmode=verify-full&sslrootcert=system"):
+        asyncpg_url(f"{NEON}?sslmode={mode}&sslrootcert={certifi.where()}&channel_binding=require")
+
+
+def test_neon_with_verified_tls_keeps_the_database_name_and_checks_the_hostname():
+    url, connect_args = asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert=system")
     assert url == NEON
     assert _verified(connect_args["ssl"], hostname=True)
 
@@ -27,11 +33,6 @@ def test_neon_connection_string_keeps_the_database_name_and_verifies_the_server(
 @pytest.mark.parametrize("binding", ["prefer", "disable"])
 def test_optional_channel_binding_is_dropped(binding):
     assert asyncpg_url(f"{NEON}?sslmode=require&channel_binding={binding}") == (NEON, {"ssl": "require"})
-
-
-def test_required_channel_binding_without_tls_is_rejected():
-    with pytest.raises(ValueError, match="channel_binding=require needs TLS"):
-        asyncpg_url(f"{NEON}?sslmode=disable&channel_binding=require")
 
 
 @pytest.mark.parametrize("mode", ["disable", "require", "verify-ca", "verify-full"])
