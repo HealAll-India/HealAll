@@ -1,5 +1,9 @@
 """DATABASE_URL parsing for asyncpg (app, migrations and the schema drift check)."""
 
+import asyncio
+import shutil
+import ssl
+import subprocess
 from urllib.parse import parse_qsl, urlsplit
 
 import certifi
@@ -48,10 +52,61 @@ def test_system_roots_imply_verify_full_and_refuse_weaker_modes(monkeypatch):
         asyncpg_url(f"{NEON}?sslmode=require&sslrootcert=system")
 
 
-def test_system_roots_fail_closed_without_a_bundle(monkeypatch):
-    monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")  # resolves to no bundle
+def test_system_roots_fail_closed_without_a_store(monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")  # neither resolves
+    monkeypatch.setenv("SSL_CERT_DIR", "/nonexistent/certs")
     with pytest.raises(ValueError, match="no system CA bundle"):
         asyncpg_url(f"{NEON}?sslrootcert=system")
+
+
+@pytest.fixture
+def private_ca(tmp_path):
+    """A CA in a hashed certificate directory, and a certificate it signed for localhost."""
+
+    def openssl(command: str) -> None:
+        subprocess.run(["openssl", *command.split()], cwd=tmp_path, check=True, capture_output=True)
+
+    (tmp_path / "san.ext").write_text("subjectAltName=DNS:localhost\n")
+    openssl("req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=Test-CA -keyout ca.key -out ca.pem")
+    openssl("req -newkey rsa:2048 -nodes -subj /CN=localhost -keyout server.key -out server.csr")
+    openssl(
+        "x509 -req -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial -days 1 -extfile san.ext -out server.crt"
+    )
+    (tmp_path / "certs").mkdir()
+    shutil.copy(tmp_path / "ca.pem", tmp_path / "certs" / "ca.pem")
+    openssl("rehash certs")
+    return tmp_path
+
+
+@pytest.mark.asyncio
+async def test_system_roots_from_a_ca_directory_verify_the_server(private_ca, monkeypatch):
+    # asyncpg's sslrootcert takes a file, so a directory-only store becomes an SSL context.
+    monkeypatch.setenv("SSL_CERT_FILE", str(private_ca / "missing.pem"))
+    monkeypatch.setenv("SSL_CERT_DIR", str(private_ca / "certs"))
+    url, connect_args = asyncpg_url(f"{NEON}?sslrootcert=system&application_name=api")
+    assert url == NEON
+    assert _dsn_params(connect_args) == {"application_name": "api"}
+    client = connect_args["ssl"]
+
+    server_tls = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    server_tls.load_cert_chain(private_ca / "server.crt", private_ca / "server.key")
+    server = await asyncio.start_server(lambda _reader, writer: writer.close(), "127.0.0.1", 0, ssl=server_tls)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        _, writer = await asyncio.open_connection("127.0.0.1", port, ssl=client, server_hostname="localhost")
+        writer.close()
+        with pytest.raises(ssl.SSLCertVerificationError):
+            await asyncio.open_connection("127.0.0.1", port, ssl=client, server_hostname="db.example.com")
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+def test_ca_directory_refuses_client_certificates_it_cannot_load(tmp_path, monkeypatch):
+    monkeypatch.setenv("SSL_CERT_FILE", str(tmp_path / "missing.pem"))
+    monkeypatch.setenv("SSL_CERT_DIR", str(tmp_path))
+    with pytest.raises(ValueError, match="CA directory"):
+        asyncpg_url(f"{NEON}?sslrootcert=system&sslcert=/c.crt&sslkey=/c.key")
 
 
 def test_tls_files_reach_asyncpg_unchanged():
