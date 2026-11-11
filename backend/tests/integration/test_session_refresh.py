@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import hash_token
+from app.core.security import decode_access_token, hash_token
 from app.models.user import RefreshToken, User
 from app.services.auth_service import create_otp
 
@@ -32,13 +32,18 @@ async def member(db_session: AsyncSession) -> User:
 
 async def _sign_in(client: AsyncClient, db_session: AsyncSession, user: User) -> str:
     """Sign in with a one-time code and return the refresh cookie's value."""
+    return (await _sign_in_with_token(client, db_session, user))[0]
+
+
+async def _sign_in_with_token(client: AsyncClient, db_session: AsyncSession, user: User) -> tuple[str, str]:
+    """Sign in with a one-time code; return the refresh cookie and the access token."""
     otp, _ = await create_otp(db_session, user.phone, "login")
     await db_session.commit()
     response = await client.post("/v1/auth/token", json={"phone_or_email": user.phone, "otp_code": otp})
     assert response.status_code == 200, response.text
     cookie = response.cookies.get("healall_refresh")
     assert cookie
-    return cookie
+    return cookie, response.json()["access_token"]
 
 
 async def _refresh(client: AsyncClient, cookie: str | None):
@@ -112,3 +117,20 @@ async def test_refresh_ends_for_a_deactivated_member(client: AsyncClient, db_ses
     member.is_active = False
     await db_session.commit()
     assert (await _refresh(client, cookie)).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_access_tokens_name_their_sign_in_session(client: AsyncClient, db_session: AsyncSession, member: User):
+    # The frontend binds renewals to `sid`: kept by a renewal, new for every sign-in.
+    cookie, first = await _sign_in_with_token(client, db_session, member)
+    sid = decode_access_token(first)["sid"]
+    row = (
+        await db_session.execute(select(RefreshToken).where(RefreshToken.token_hash == hash_token(cookie)))
+    ).scalar_one()
+    assert sid == str(row.family_id)
+
+    renewed = (await _refresh(client, cookie)).json()["access_token"]
+    assert decode_access_token(renewed)["sid"] == sid
+
+    _, again = await _sign_in_with_token(client, db_session, member)
+    assert decode_access_token(again)["sid"] != sid

@@ -7,9 +7,13 @@ import type { UserInfo } from "@/lib/types/api";
 const USER = { id: "u1", name: "Priya Sharma" } as UserInfo;
 const OTHER = { id: "u2", name: "Arjun Rao" } as UserInfo;
 
-/** An unsigned JWT for `user` whose `exp` is `secondsFromNow` away; the client only reads `exp` and `sub`. */
-function jwt(secondsFromNow: number, id = "t", user: UserInfo = USER): string {
-  const claims = { sub: user.id, exp: Math.floor(Date.now() / 1000) + secondsFromNow, jti: id };
+/**
+ * An unsigned JWT for `user` in sign-in session `sid`, whose `exp` is
+ * `secondsFromNow` away; the client only reads `exp`, `sub` and `sid`.
+ * `sid: null` is a token from before the API named sessions.
+ */
+function jwt(secondsFromNow: number, id = "t", user: UserInfo = USER, sid: string | null = "s1"): string {
+  const claims = { sub: user.id, exp: Math.floor(Date.now() / 1000) + secondsFromNow, jti: id, ...(sid ? { sid } : {}) };
   return `h.${btoa(JSON.stringify(claims)).replace(/=+$/, "")}.s`;
 }
 
@@ -168,7 +172,7 @@ describe("API client session renewal", () => {
 
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const theirs = signIn(jwt(900, "theirs", OTHER), OTHER);
+    const theirs = signIn(jwt(900, "theirs", OTHER, "s9"), OTHER);
     refresh.release(issued(jwt(900, "late")));
 
     await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
@@ -184,11 +188,13 @@ describe("API client session renewal", () => {
 
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const theirs = signIn(jwt(900, "theirs", OTHER), OTHER);
-    refresh.release(issued(jwt(900, "renewed", OTHER), OTHER));
+    signIn(jwt(900, "theirs", OTHER, "s9"), OTHER);
+    const renewedTheirs = jwt(900, "renewed", OTHER, "s9");
+    refresh.release(issued(renewedTheirs, OTHER));
 
     await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
-    expect(useAuthStore.getState().accessToken).toBe(theirs);
+    // The renewal was for their session, so it is theirs to keep.
+    expect(useAuthStore.getState().accessToken).toBe(renewedTheirs);
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
@@ -205,7 +211,7 @@ describe("API client session renewal", () => {
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
     if (signOut) useAuthStore.getState().clearSession();
-    const again = signIn(jwt(900, "again"));
+    const again = signIn(jwt(900, "again", USER, "s2"));
     refresh.release(issued(jwt(900, "late")));
 
     await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
@@ -224,12 +230,57 @@ describe("API client session renewal", () => {
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
     if (signOut) useAuthStore.getState().clearSession();
-    const again = signIn(jwt(900, "again"));
+    const again = signIn(jwt(900, "again", USER, "s2"));
     refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
 
     await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
     expect(expired).not.toHaveBeenCalled();
     expect(useAuthStore.getState().accessToken).toBe(again);
+  });
+
+  it("doesn't renew a request from an old session into a newer sign-in", async () => {
+    // The same member signed in again before an old screen sent its request.
+    const old = jwt(-60, "old");
+    const fetchMock = route({
+      "/v1/auth/refresh": () => issued(jwt(900, "renewed", USER, "s2")),
+      "/v1/feed": () => json(200, { items: [] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    signIn(jwt(5, "again", USER, "s2"));
+
+    await expect(apiGet("/v1/feed", { token: old })).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/v1/feed"))).toBe(false);
+    expect(expired).not.toHaveBeenCalled();
+  });
+
+  it("doesn't replay a delayed 401 from the previous session under the new one", async () => {
+    const feed = held();
+    const fetchMock = route({
+      "/v1/feed": () => feed.response,
+      "/v1/auth/refresh": () => issued(jwt(900, "renewed", USER, "s2")),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = apiGet("/v1/feed", { token: signIn(jwt(600)) });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    useAuthStore.getState().clearSession();
+    signIn(jwt(900, "again", USER, "s2"));
+    feed.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token expired" } }));
+
+    await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/v1/feed"))).toHaveLength(1);
+    expect(expired).not.toHaveBeenCalled();
+  });
+
+  it("renews a session whose token predates session ids", async () => {
+    const fresh = jwt(900, "fresh");
+    vi.stubGlobal(
+      "fetch",
+      route({ "/v1/auth/refresh": () => issued(fresh), "/v1/feed": () => json(200, { items: [] }) }),
+    );
+
+    await expect(apiGet("/v1/feed", { token: signIn(jwt(-60, "legacy", USER, null)) })).resolves.toEqual({ items: [] });
+    expect(useAuthStore.getState().accessToken).toBe(fresh);
   });
 
   it("keeps a renewal when the member only edits their profile meanwhile", async () => {
@@ -256,7 +307,7 @@ describe("API client session renewal", () => {
 
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    signIn(jwt(900, "theirs", OTHER), OTHER);
+    signIn(jwt(900, "theirs", OTHER, "s9"), OTHER);
     refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
 
     await expect(pending).rejects.toMatchObject({ code: "SESSION_CHANGED" });

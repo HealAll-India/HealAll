@@ -23,7 +23,7 @@ export class ApiError extends Error {
 }
 
 /** The claims of a JWT, read without verifying its signature; null if malformed. */
-function jwtClaims(token: string): { exp?: unknown; sub?: unknown } | null {
+function jwtClaims(token: string): { exp?: unknown; sub?: unknown; sid?: unknown } | null {
   const parts = token.split(".");
   if (parts.length < 2) return null;
   try {
@@ -34,7 +34,7 @@ function jwtClaims(token: string): { exp?: unknown; sub?: unknown } | null {
       typeof atob === "function"
         ? atob(padded)
         : Buffer.from(padded, "base64").toString("utf-8");
-    return JSON.parse(json) as { exp?: unknown; sub?: unknown };
+    return JSON.parse(json) as { exp?: unknown; sub?: unknown; sid?: unknown };
   } catch {
     return null;
   }
@@ -50,10 +50,24 @@ function getJwtExpiryMs(token: string): number | null {
   return typeof exp === "number" ? exp * 1000 : null;
 }
 
-/** The member a token was issued to (its `sub` claim). */
-function jwtSubject(token: string): string | null {
-  const sub = jwtClaims(token)?.sub;
-  return typeof sub === "string" ? sub : null;
+/** A JWT string claim, or null. */
+function claim(token: string, name: "sub" | "sid"): string | null {
+  const value = jwtClaims(token)?.[name];
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Whether two access tokens belong to the same sign-in. The API names each
+ * sign-in in the `sid` claim: a renewal keeps it, a new sign-in (even the same
+ * member's) gets a new one. Tokens issued before `sid` existed are compared
+ * by member (`sub`) until their first renewal.
+ */
+function sameSession(a: string | null, b: string | null): boolean {
+  if (!a || !b) return false;
+  const [sidA, sidB] = [claim(a, "sid"), claim(b, "sid")];
+  if (sidA !== null && sidB !== null) return sidA === sidB;
+  const member = claim(a, "sub");
+  return member !== null && member === claim(b, "sub");
 }
 
 /** Shown when no response arrives at all (offline, DNS, CORS, the API host is gone). */
@@ -68,15 +82,8 @@ const EXPIRY_SKEW_MS = 30_000;
 /** Statuses with which the API refuses to renew: no cookie, an unknown, revoked or expired token, a closed account. */
 const SESSION_ENDED_STATUSES = new Set([401, 410]);
 
-/**
- * What the API said when asked to renew. `stored`: the new token went into the
- * auth store. `current`: no sign-in or sign-out happened while it ran, so the
- * refusal is about the session signed in now.
- */
-type RefreshResult =
-  | { session: TokenResponse; stored: boolean }
-  | { ended: true; current: boolean }
-  | { error: ApiError };
+/** What the API said when asked to renew. `stored`: the new token went into the auth store. */
+type RefreshResult = { session: TokenResponse; stored: boolean } | { ended: true } | { error: ApiError };
 
 /** What a request should do about the session it was sent with. */
 type Renewal =
@@ -93,10 +100,12 @@ async function authState() {
   return useAuthStore.getState();
 }
 
+/** Whether the session `token` belongs to is the one signed in here now. */
+async function isCurrentSession(token: string): Promise<boolean> {
+  return sameSession((await authState().catch(() => null))?.accessToken ?? null, token);
+}
+
 async function runRefresh(): Promise<RefreshResult> {
-  // The session this renewal is for. A sign-out, or a new sign-in, while it
-  // runs makes its result belong to an earlier session.
-  const { generation } = await authState();
   let response: Response;
   try {
     response = await fetch(buildUrl("/v1/auth/refresh"), {
@@ -116,24 +125,25 @@ async function runRefresh(): Promise<RefreshResult> {
     // signed in and the next request tries again.
     const envelope = (payload as ApiErrorEnvelope | null)?.error;
     const refused = SESSION_ENDED_STATUSES.has(response.status) && typeof envelope === "object" && envelope !== null;
-    return refused ? { ended: true, current: (await authState()).generation === generation } : unavailable;
+    return refused ? { ended: true } : unavailable;
   }
   const session = payload as TokenResponse | null;
   if (!session?.access_token || !session.user?.id) return unavailable;
 
-  // Store it only into the session that asked: a renewal that finishes after
-  // a sign-out, or after any new sign-in (the same member's included), must
-  // not bring the old session back or replace the new one.
+  // The cookie belongs to whichever sign-in set it last. Store the new token
+  // only into that same session: never after a sign-out, never over a newer
+  // sign-in (the same member's included).
   const current = await authState();
-  const stored =
-    current.generation === generation && current.accessToken !== null && current.user?.id === session.user.id;
+  const stored = sameSession(current.accessToken, session.access_token);
   if (stored) current.updateSession(session.user, session.access_token);
   return { session, stored };
 }
 
 /**
  * Renew the session `token` belongs to with the httpOnly refresh cookie.
- * Requests that expire together share one refresh.
+ * Requests that expire together share one refresh. Every decision compares
+ * the sessions named in the tokens, so it doesn't matter when a sign-in or
+ * sign-out happened relative to the request or the refresh.
  */
 async function renew(token: string): Promise<Renewal> {
   refreshing ??= runRefresh()
@@ -144,9 +154,10 @@ async function renew(token: string): Promise<Renewal> {
     });
   const result = await refreshing;
   if ("error" in result) return { kind: "unavailable", error: result.error };
-  if ("ended" in result) return result.current ? { kind: "ended" } : { kind: "superseded" };
-  // Never resend one member's request with another member's token.
-  if (!result.stored || result.session.user.id !== jwtSubject(token)) return { kind: "superseded" };
+  // A refusal only ends the session here if it is still this request's session.
+  if ("ended" in result) return (await isCurrentSession(token)) ? { kind: "ended" } : { kind: "superseded" };
+  // Resend only within the request's own session, never under a later one.
+  if (!result.stored || !sameSession(token, result.session.access_token)) return { kind: "superseded" };
   return { kind: "renewed", token: result.session.access_token };
 }
 
@@ -155,11 +166,6 @@ function signalExpired() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("auth:expired"));
   }
-}
-
-/** Whether `token` is still the session's token here, i.e. nothing replaced it since. */
-async function isCurrentToken(token: string): Promise<boolean> {
-  return (await authState().catch(() => null))?.accessToken === token;
 }
 
 function sessionChanged() {
@@ -250,9 +256,9 @@ async function request<T>(
         if (renewal.kind === "unavailable") throw renewal.error;
         if (renewal.kind === "superseded") throw sessionChanged();
         signalExpired();
-      } else if (await isCurrentToken(token)) {
+      } else if (await isCurrentSession(token)) {
         // The token the renewal just issued was refused too. A late refusal,
-        // after a sign-out or another renewal, says nothing about the session now.
+        // after a sign-out or a new sign-in, says nothing about the session now.
         signalExpired();
       }
     }

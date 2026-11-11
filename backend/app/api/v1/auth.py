@@ -256,7 +256,7 @@ async def refresh(
     Swap the httpOnly refresh cookie for a new access token.
 
     The refresh token isn't rotated, so two open tabs can't sign each other
-    out; logout revokes it.
+    out; logout revokes it. The new access token keeps the sign-in's `sid`.
     """
     if not healall_refresh:
         raise UnauthenticatedException("Your session has ended. Please sign in again.")
@@ -268,6 +268,7 @@ async def refresh(
             subject=str(user.id),
             roles=user.roles,
             verification_level=user.verification_level,
+            session_id=str(stored.family_id),
         ),
         token_type="bearer",
         expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,

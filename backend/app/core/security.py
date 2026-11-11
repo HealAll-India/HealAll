@@ -43,8 +43,15 @@ def create_access_token(
     roles: list[str],
     verification_level: int,
     expires_delta: timedelta | None = None,
+    session_id: str | None = None,
 ) -> str:
-    """Create a JWT access token."""
+    """Create a JWT access token.
+
+    ``session_id`` names the sign-in the token belongs to (its refresh
+    token's family) as the ``sid`` claim. A renewal keeps it and a new sign-in
+    gets a new one, so the frontend can tell a late renewal for an earlier
+    session from one for the session it has now.
+    """
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
@@ -57,6 +64,8 @@ def create_access_token(
         "exp": expire,
         "iat": datetime.now(UTC),
     }
+    if session_id is not None:
+        to_encode["sid"] = session_id
 
     encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return encoded_jwt

@@ -191,12 +191,14 @@ async def get_user_by_phone_or_email(db: AsyncSession, phone_or_email: str) -> U
 
 
 async def create_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
-    """Create access and refresh tokens for a user."""
-    # Create access token
+    """Create access and refresh tokens for a new sign-in session."""
+    # The refresh token's family names this sign-in; access tokens carry it as `sid`.
+    session_id = uuid4()
     access_token = create_access_token(
         subject=str(user.id),
         roles=user.roles,
         verification_level=user.verification_level,
+        session_id=str(session_id),
     )
 
     # Create refresh token
@@ -206,7 +208,7 @@ async def create_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
     refresh_token = RefreshToken(
         user_id=user.id,
         token_hash=refresh_token_hash,
-        family_id=uuid4(),
+        family_id=session_id,
         expires_at=datetime.now(UTC) + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
     )
 

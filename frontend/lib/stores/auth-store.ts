@@ -8,12 +8,6 @@ import type { UserInfo } from "@/lib/types/api";
 interface AuthState {
   accessToken: string | null;
   user: UserInfo | null;
-  /**
-   * Changes on every sign-in and sign-out, and nowhere else, so the API
-   * client can tell a late renewal for an earlier session from one for this
-   * session, even when the same member signed in again.
-   */
-  generation: number;
   /** Start a session: after a sign-in, signup or Google sign-in. */
   setSession: (accessToken: string, user: UserInfo) => void;
   /**
@@ -30,14 +24,13 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       accessToken: null,
       user: null,
-      generation: 0,
-      setSession: (accessToken, user) => set((s) => ({ accessToken, user, generation: s.generation + 1 })),
+      setSession: (accessToken, user) => set({ accessToken, user }),
       updateSession: (user, accessToken) => {
         const current = get();
         if (current.accessToken === null || current.user?.id !== user.id) return;
         set({ user, accessToken: accessToken ?? current.accessToken });
       },
-      clearSession: () => set((s) => ({ accessToken: null, user: null, generation: s.generation + 1 }))
+      clearSession: () => set({ accessToken: null, user: null })
     }),
     {
       name: "healall-auth",
