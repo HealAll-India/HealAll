@@ -192,14 +192,19 @@ describe("API client session renewal", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it("drops a renewal that finishes after the same member signed out and back in", async () => {
+
+
+  it.each([
+    ["after signing out and back in", true],
+    ["after signing in again without signing out", false],
+  ])("drops a renewal that finishes after the same member starts a new session (%s)", async (_, signOut) => {
     const refresh = held();
     const fetchMock = route({ "/v1/auth/refresh": () => refresh.response, "/v1/feed": () => json(200, { items: [] }) });
     vi.stubGlobal("fetch", fetchMock);
 
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    useAuthStore.getState().clearSession();
+    if (signOut) useAuthStore.getState().clearSession();
     const again = signIn(jwt(900, "again"));
     refresh.release(issued(jwt(900, "late")));
 
@@ -208,14 +213,17 @@ describe("API client session renewal", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it("doesn't sign out a new session when the earlier one's renewal is refused late", async () => {
+  it.each([
+    ["after signing out and back in", true],
+    ["after signing in again without signing out", false],
+  ])("doesn't sign out the same member's new session when the old renewal is refused late (%s)", async (_, signOut) => {
     const refresh = held();
     const fetchMock = route({ "/v1/auth/refresh": () => refresh.response });
     vi.stubGlobal("fetch", fetchMock);
 
     const pending = apiGet("/v1/feed", { token: signIn(jwt(-60)) });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    useAuthStore.getState().clearSession();
+    if (signOut) useAuthStore.getState().clearSession();
     const again = signIn(jwt(900, "again"));
     refresh.release(json(401, { error: { code: "UNAUTHENTICATED", message: "Token revoked" } }));
 
@@ -233,7 +241,7 @@ describe("API client session renewal", () => {
     const pending = apiGet("/v1/feed", { token: stale });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
     // What the profile page does after a save.
-    useAuthStore.getState().setSession(stale, { ...USER, name: "Priya S." });
+    useAuthStore.getState().updateSession({ ...USER, name: "Priya S." });
     const fresh = jwt(900, "fresh");
     refresh.release(issued(fresh));
 

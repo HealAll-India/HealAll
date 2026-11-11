@@ -122,12 +122,12 @@ async function runRefresh(): Promise<RefreshResult> {
   if (!session?.access_token || !session.user?.id) return unavailable;
 
   // Store it only into the session that asked: a renewal that finishes after
-  // a sign-out, or after a new sign-in (by anyone, the same member included),
-  // must not bring the old session back or replace the new one.
+  // a sign-out, or after any new sign-in (the same member's included), must
+  // not bring the old session back or replace the new one.
   const current = await authState();
   const stored =
     current.generation === generation && current.accessToken !== null && current.user?.id === session.user.id;
-  if (stored) current.setSession(session.access_token, session.user);
+  if (stored) current.updateSession(session.user, session.access_token);
   return { session, stored };
 }
 

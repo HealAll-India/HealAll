@@ -39,7 +39,7 @@ function RolePill({ role }: { role: string }) {
 export default function ProfilePage() {
   const hydrated = useHydrated();
   const token = useAuthStore((s) => s.accessToken);
-  const setSession = useAuthStore((s) => s.setSession);
+  const updateSession = useAuthStore((s) => s.updateSession);
   const sessionUser = useAuthStore((s) => s.user);
 
   const [profile, setProfile] = useState<MyUserProfile | null>(null);
@@ -92,7 +92,7 @@ export default function ProfilePage() {
       });
       setProfile(updated);
       if (sessionUser) {
-        setSession(token, { ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
+        updateSession({ ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
       }
       setSuccess("Profile updated.");
     } catch (err) {
@@ -154,7 +154,7 @@ export default function ProfilePage() {
       });
       setProfile(updated);
       if (sessionUser) {
-        setSession(token, { ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
+        updateSession({ ...sessionUser, name: updated.name, city: updated.city, avatar_url: updated.avatar_url });
       }
       setSuccess("Profile photo updated.");
     } catch (err) {
