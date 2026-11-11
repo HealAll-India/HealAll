@@ -1,18 +1,15 @@
 """Database session management."""
 
-import re
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import get_settings
+from app.db.url import asyncpg_url
 
 settings = get_settings()
 
-# asyncpg uses connect_args ssl=, not URL sslmode= (psycopg2 syntax).
-_raw_url = str(settings.DATABASE_URL)
-_db_url = re.sub(r"[?&]sslmode=\w+", "", _raw_url).rstrip("?&")
-_connect_args = {"ssl": "require"} if "sslmode=" in _raw_url else {}
+_db_url, _connect_args = asyncpg_url(str(settings.DATABASE_URL))
 
 # Create async engine
 engine = create_async_engine(
