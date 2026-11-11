@@ -45,7 +45,8 @@ def _verifies_fully(context: object) -> bool:
 def test_neon_with_system_roots_keeps_the_database_name_and_verifies_fully():
     url, connect_args = asyncpg_url(f"{NEON}?sslmode=verify-full&sslrootcert=system")
     assert url == NEON
-    assert _verifies_fully(connect_args.pop("ssl"))
+    context = connect_args.pop("ssl")
+    assert _verifies_fully(context)
     assert connect_args == {}  # nothing left for asyncpg's own TLS set-up
 
 
