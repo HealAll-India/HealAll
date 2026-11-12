@@ -141,6 +141,26 @@ async def test_get_verification_queue(
 
 
 @pytest.mark.asyncio
+async def test_verification_queue_includes_post_text(
+    client: AsyncClient,
+    verifier_user: User,
+    submitted_post: Post,
+):
+    """Verifiers read the request in the queue: a submitted post is hidden from GET /v1/posts/{id}."""
+    response = await client.get(
+        "/v1/verification/queue",
+        headers=_auth_headers(verifier_user),
+    )
+
+    assert response.status_code == 200, response.text
+    item = next(i for i in response.json()["items"] if i["post_id"] == str(submitted_post.id))
+    assert item["description"] == submitted_post.description
+
+    hidden = await client.get(f"/v1/posts/{submitted_post.id}", headers=_auth_headers(verifier_user))
+    assert hidden.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_get_verification_queue_admin(
     client: AsyncClient,
     admin_user: User,

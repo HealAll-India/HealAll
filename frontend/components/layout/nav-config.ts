@@ -65,6 +65,15 @@ export function roleLinks(roles: readonly string[]): NavLink[] {
 }
 
 /**
+ * Whether these roles may open the staff page at `href`. Mirrors the API's
+ * role checks, which stay the real guard; this only decides what to render.
+ */
+export function canOpenStaffPage(href: string, roles: readonly string[]): boolean {
+  const link = ROLE_LINKS.find((l) => l.href === href);
+  return link ? link.roles.some((r) => roles.includes(r)) : false;
+}
+
+/**
  * Full-screen flows with their own sticky action bar — the tab bar would
  * cover it, so it's hidden there.
  */

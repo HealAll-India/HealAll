@@ -16,10 +16,15 @@ class VerificationActionRequest(BaseModel):
 
 
 class VerificationQueueItem(BaseModel):
-    """Pending post item visible to verifiers."""
+    """Pending post item visible to verifiers.
+
+    Carries the full description because a submitted post is not readable
+    through ``GET /v1/posts/{id}`` by anyone but its author.
+    """
 
     post_id: UUID
     title: str
+    description: str
     category: str
     urgency: str
     city: str
