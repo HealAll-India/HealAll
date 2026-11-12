@@ -110,6 +110,51 @@ describe("ConversationPage", () => {
 
     expect((await screen.findByRole("alert")).textContent).toContain("Rate limit exceeded");
     expect(input.value).toBe("Hello");
+
+    // Editing the draft clears the error that belonged to the failed send.
+    fireEvent.change(input, { target: { value: "Hello again" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the field read-only while a message is sending, so a failure can't overwrite new typing", async () => {
+    api.getConversation.mockResolvedValue(detail([]));
+    let fail: (err: unknown) => void = () => {};
+    api.sendMessage.mockReturnValue(new Promise((_resolve, reject) => (fail = reject)));
+    render(<ConversationPage />);
+
+    const input = (await screen.findByLabelText(/message arjun rao/i)) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(input.readOnly).toBe(true));
+    fail(new ApiError("Rate limit exceeded", 429));
+    await waitFor(() => expect(input.readOnly).toBe(false));
+    expect(input.value).toBe("Hello");
+  });
+
+  it("clears an earlier-messages error when the retry works", async () => {
+    api.getConversation
+      .mockResolvedValueOnce(detail([message("m3", "Third")], { has_more: true }))
+      .mockRejectedValueOnce(new ApiError("Service unavailable", 503))
+      .mockResolvedValueOnce(detail([message("m1", "First")]));
+    render(<ConversationPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /load earlier messages/i }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Service unavailable");
+
+    fireEvent.click(screen.getByRole("button", { name: /load earlier messages/i }));
+    await waitFor(() => expect(bodies().join(" ")).toContain("First"));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("doesn't invite a hello in a conversation that ended before anyone wrote", async () => {
+    const ended = detail([]);
+    ended.conversation.ended_at = new Date().toISOString();
+    api.getConversation.mockResolvedValue(ended);
+    render(<ConversationPage />);
+
+    expect(await screen.findByText("No messages were sent before this conversation ended.")).toBeTruthy();
+    expect(screen.queryByText(/say hello/i)).toBeNull();
   });
 
   it("lets the member read an ended conversation but not write in it", async () => {

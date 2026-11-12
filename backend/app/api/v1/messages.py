@@ -32,6 +32,7 @@ def _conversation_response(
     conversation: Conversation,
     other_member: ConversationMember | None = None,
     last_message: LastMessage | None = None,
+    blocked: bool = False,
 ) -> ConversationResponse:
     return ConversationResponse(
         id=conversation.id,
@@ -42,6 +43,7 @@ def _conversation_response(
         created_at=conversation.created_at,
         other_member=other_member,
         last_message=last_message,
+        blocked=blocked,
     )
 
 
@@ -163,6 +165,7 @@ async def list_conversations(
                 if summary.last_message
                 else None
             ),
+            blocked=summary.blocked,
         )
         for summary in summaries
     ]

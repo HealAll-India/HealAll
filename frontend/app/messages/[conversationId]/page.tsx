@@ -85,6 +85,8 @@ function Thread({ token, conversationId, myId }: ThreadProps) {
   async function loadEarlier() {
     if (loadingEarlier) return;
     setLoadingEarlier(true);
+    // A retry starts clean; a failure sets the notice again below.
+    setLoadError(null);
     try {
       const detail = await getConversation(token, conversationId, page + 1, PAGE_SIZE);
       const el = scrollRef.current;
@@ -178,7 +180,9 @@ function Thread({ token, conversationId, myId }: ThreadProps) {
         ) : null}
 
         {conversation && messages.length === 0 ? (
-          <p className="thread__status">No messages yet. Say hello to {name}.</p>
+          <p className="thread__status">
+            {ended ? "No messages were sent before this conversation ended." : `No messages yet. Say hello to ${name}.`}
+          </p>
         ) : null}
 
         {messages.length > 0 ? <MessageList messages={messages} myId={myId} otherName={name} /> : null}
@@ -204,7 +208,13 @@ function Thread({ token, conversationId, myId }: ThreadProps) {
             ref={inputRef}
             className="thread__input"
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            // Read-only while sending, so a failed send can restore its text
+            // without overwriting anything typed in the meantime.
+            readOnly={sending}
+            onChange={(e) => {
+              setBody(e.target.value);
+              if (sendError) setSendError(null);
+            }}
             placeholder="Write a message…"
             maxLength={MAX_LENGTH}
             autoComplete="off"

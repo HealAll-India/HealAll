@@ -1,34 +1,64 @@
 """What members see of their conversations: who it's with, the latest message, newest page first."""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import UserRole
+from app.core.security import create_access_token
 from app.models.privacy import UserBlock
 from app.models.user import User
 from app.services.message_service import FORMER_MEMBER_NAME, PREVIEW_CHARS
-from tests.integration.test_messages import (  # noqa: F401  (fixtures are used by name)
-    _create_authenticated_user,
-    _setup_accepted_conversation,
-    invite_code,
-    user_a,
-    user_b,
-)
+
+Member = tuple[dict[str, str], str]
+
+
+async def _member(db_session: AsyncSession, name: str, phone: str, email: str) -> Member:
+    """A verified member seeded directly in the DB, with a bearer token (no signup API)."""
+    user = User(
+        name=name,
+        phone=phone,
+        email=email,
+        city="Delhi",
+        age_range="25-34",
+        roles=[UserRole.HELPER.value],
+        phone_verified=True,
+        email_verified=True,
+        verification_level=1,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    token = create_access_token(subject=str(user.id), roles=user.roles, verification_level=user.verification_level)
+    return {"Authorization": f"Bearer {token}"}, str(user.id)
 
 
 @pytest.fixture
-async def user_c(client: AsyncClient, db_session: AsyncSession, invite_code) -> tuple[dict[str, str], str]:  # noqa: F811
-    return await _create_authenticated_user(
-        client,
-        db_session,
-        invite_code.code,
-        name="Third Member",
-        phone="+918000000003",
-        email="third@example.com",
-    )
+async def user_a(db_session: AsyncSession) -> Member:
+    return await _member(db_session, "Sender User", "+918000000001", "sender@example.com")
+
+
+@pytest.fixture
+async def user_b(db_session: AsyncSession) -> Member:
+    return await _member(db_session, "Recipient User", "+918000000002", "recipient@example.com")
+
+
+@pytest.fixture
+async def user_c(db_session: AsyncSession) -> Member:
+    return await _member(db_session, "Third Member", "+918000000003", "third@example.com")
+
+
+async def _setup_accepted_conversation(client: AsyncClient, headers_from: dict, headers_to: dict, id_to: str) -> str:
+    """The real consent flow: one member asks, the other accepts. Returns the conversation id."""
+    asked = await client.post("/v1/messages/request-consent", json={"to_user_id": id_to}, headers=headers_from)
+    assert asked.status_code == 201, asked.text
+    accepted = await client.post(f"/v1/messages/consent/{asked.json()['id']}/accept", headers=headers_to)
+    assert accepted.status_code == 200, accepted.text
+    return accepted.json()["id"]
 
 
 async def _send(client: AsyncClient, conversation_id: str, headers: dict, body: str) -> None:
@@ -45,13 +75,12 @@ async def _list(client: AsyncClient, headers: dict) -> list[dict]:
 @pytest.mark.asyncio
 async def test_list_names_the_other_member_and_previews_the_latest_message(
     client: AsyncClient,
-    db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
 ):
     headers_a, id_a = user_a
     headers_b, id_b = user_b
-    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
+    conversation_id = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
     await _send(client, conversation_id, headers_a, "Hello, I can help.")
     await _send(client, conversation_id, headers_b, "Thank you, that would mean a lot.")
 
@@ -67,13 +96,12 @@ async def test_list_names_the_other_member_and_previews_the_latest_message(
 @pytest.mark.asyncio
 async def test_a_conversation_without_messages_has_no_preview(
     client: AsyncClient,
-    db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
 ):
     headers_a, id_a = user_a
     headers_b, id_b = user_b
-    await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
+    await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
 
     [conversation] = await _list(client, headers_a)
     assert conversation["last_message"] is None
@@ -83,16 +111,15 @@ async def test_a_conversation_without_messages_has_no_preview(
 @pytest.mark.asyncio
 async def test_list_puts_the_most_recent_activity_first(
     client: AsyncClient,
-    db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
     user_c: tuple,
 ):
     headers_a, id_a = user_a
     headers_b, id_b = user_b
     headers_c, id_c = user_c
-    with_b = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
-    with_c = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_c, id_c)
+    with_b = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
+    with_c = await _setup_accepted_conversation(client, headers_a, headers_c, id_c)
 
     await _send(client, with_b, headers_a, "Older message")
     await _send(client, with_c, headers_a, "Newer message")
@@ -105,13 +132,12 @@ async def test_list_puts_the_most_recent_activity_first(
 @pytest.mark.asyncio
 async def test_long_messages_are_shortened_for_the_preview(
     client: AsyncClient,
-    db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
 ):
     headers_a, id_a = user_a
     headers_b, id_b = user_b
-    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
+    conversation_id = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
     await _send(client, conversation_id, headers_a, "word " * 100)
 
     [conversation] = await _list(client, headers_a)
@@ -125,34 +151,62 @@ async def test_long_messages_are_shortened_for_the_preview(
 async def test_no_preview_across_a_block(
     client: AsyncClient,
     db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
 ):
     # Opening the thread is refused across a block, so the list mustn't show its latest message either.
     headers_a, id_a = user_a
     headers_b, id_b = user_b
-    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
+    conversation_id = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
     await _send(client, conversation_id, headers_b, "Something private")
-    db_session.add(UserBlock(blocker_id=id_b, blocked_id=id_a))
+    db_session.add(UserBlock(blocker_id=UUID(id_b), blocked_id=UUID(id_a)))
     await db_session.commit()
 
     for headers in (headers_a, headers_b):
         [conversation] = await _list(client, headers)
         assert conversation["last_message"] is None
+        # The thread is refused, so clients show it as unavailable rather than inviting a hello.
+        assert conversation["blocked"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_blocked_conversation_keeps_its_place_by_latest_activity(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    user_a: tuple,
+    user_b: tuple,
+    user_c: tuple,
+):
+    # Hiding the preview must not drop the conversation to its creation date in the order.
+    headers_a, id_a = user_a
+    headers_b, id_b = user_b
+    headers_c, id_c = user_c
+    with_b = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
+    with_c = await _setup_accepted_conversation(client, headers_a, headers_c, id_c)
+    await _send(client, with_c, headers_a, "Older message")
+    await _send(client, with_b, headers_a, "Newer message")
+    db_session.add(UserBlock(blocker_id=UUID(id_b), blocked_id=UUID(id_a)))
+    await db_session.commit()
+
+    listed = await _list(client, headers_a)
+    assert [c["id"] for c in listed] == [with_b, with_c]
+    assert [c["blocked"] for c in listed] == [True, False]
 
 
 @pytest.mark.asyncio
 async def test_a_deleted_member_shows_as_a_former_member(
     client: AsyncClient,
     db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
 ):
     headers_a, id_a = user_a
     headers_b, id_b = user_b
-    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
+    conversation_id = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
     await db_session.execute(
-        update(User).where(User.id == id_b).values(deleted_at=datetime.now(UTC), avatar_url="https://x.test/p.jpg")
+        update(User)
+        .where(User.id == UUID(id_b))
+        .values(deleted_at=datetime.now(UTC), avatar_url="https://x.test/p.jpg")
     )
     await db_session.commit()
 
@@ -166,14 +220,13 @@ async def test_a_deleted_member_shows_as_a_former_member(
 @pytest.mark.asyncio
 async def test_thread_page_one_holds_the_newest_messages(
     client: AsyncClient,
-    db_session: AsyncSession,
-    user_a: tuple,  # noqa: F811
-    user_b: tuple,  # noqa: F811
+    user_a: tuple,
+    user_b: tuple,
 ):
     # It used to return the oldest page, so a thread over 50 messages never showed its latest ones.
     headers_a, id_a = user_a
     headers_b, id_b = user_b
-    conversation_id = await _setup_accepted_conversation(client, db_session, headers_a, id_a, headers_b, id_b)
+    conversation_id = await _setup_accepted_conversation(client, headers_a, headers_b, id_b)
     for n in range(1, 6):
         await _send(client, conversation_id, headers_a, f"message {n}")
 

@@ -324,6 +324,8 @@ export interface ConversationResponse {
   other_member?: ConversationMember | null;
   /** Null with no messages yet, or across a block. */
   last_message?: LastMessage | null;
+  /** Either member has blocked the other; the thread can't be opened. */
+  blocked?: boolean;
 }
 
 export interface MessageResponse {

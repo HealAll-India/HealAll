@@ -54,6 +54,9 @@ class ConversationResponse(BaseModel):
     # None when there are no messages yet, or when either member has blocked
     # the other (the thread itself is refused then, so no preview either).
     last_message: LastMessage | None = None
+    # Either member has blocked the other: opening the thread is refused (403),
+    # which already tells both members as much, so clients show it as unavailable.
+    blocked: bool = False
 
 
 class SendMessageRequest(BaseModel):

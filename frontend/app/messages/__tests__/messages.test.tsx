@@ -73,6 +73,15 @@ describe("MessagesPage", () => {
     expect(await screen.findByText(/no messages yet/i)).toBeTruthy();
   });
 
+  it("shows a blocked conversation as unavailable instead of linking to a thread the API refuses", async () => {
+    api.listConversations.mockResolvedValue([conversation({ blocked: true, last_message: null })]);
+    render(<MessagesPage />);
+
+    expect(await screen.findByText("This conversation is no longer available.")).toBeTruthy();
+    expect(screen.queryByText(/say hello/i)).toBeNull();
+    expect(within(screen.getByRole("list", { name: "Conversations" })).queryByRole("link")).toBeNull();
+  });
+
   it("explains what will appear when there are no conversations", async () => {
     api.listConversations.mockResolvedValue([]);
     render(<MessagesPage />);

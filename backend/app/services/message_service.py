@@ -34,11 +34,16 @@ class ConversationSummary:
     other_member_id: UUID
     other_member_name: str
     other_member_avatar_url: str | None
+    # None when there are no messages, or when either member has blocked the other.
     last_message: Message | None
+    # When the newest message was sent, even if its preview is withheld.
+    latest_message_at: datetime | None
+    # Either member has blocked the other, so the thread is refused.
+    blocked: bool
 
     @property
     def last_activity(self) -> datetime:
-        return self.last_message.created_at if self.last_message else self.conversation.created_at
+        return self.latest_message_at or self.conversation.created_at
 
 
 def preview(body: str) -> str:
@@ -234,13 +239,17 @@ async def list_conversations(db: AsyncSession, current_user: User) -> list[Conve
         other_id = _other_participant_id(conversation, current_user.id)
         other = users.get(other_id)
         gone = other is None or other.deleted_at is not None
+        newest_message = last_by_conversation.get(conversation.id)
+        is_blocked = other_id in blocked
         summaries.append(
             ConversationSummary(
                 conversation=conversation,
                 other_member_id=other_id,
                 other_member_name=FORMER_MEMBER_NAME if gone else other.name,
                 other_member_avatar_url=None if gone else other.avatar_url,
-                last_message=None if other_id in blocked else last_by_conversation.get(conversation.id),
+                last_message=None if is_blocked else newest_message,
+                latest_message_at=newest_message.created_at if newest_message else None,
+                blocked=is_blocked,
             )
         )
     summaries.sort(key=lambda summary: summary.last_activity, reverse=True)
