@@ -1,11 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CircleAlert, CircleCheck, Inbox, RefreshCw } from "lucide-react";
 
-import { AiTriagePanel } from "@/components/moderation/ai-triage-panel";
-import { InlineActionForm } from "@/components/moderation/inline-action-form";
+import { StaffOnly } from "@/components/admin/staff-only";
+import { canOpenStaffPage } from "@/components/layout/nav-config";
+import { ActionHistory } from "@/components/moderation/action-history";
+import { ReportCard } from "@/components/moderation/report-card";
 import { AuthRequired } from "@/components/ui/auth-required";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import {
   createModerationAction,
@@ -22,55 +27,82 @@ import type {
   ReportResponse,
   ReportStatus,
 } from "@/lib/types/api";
+import { actionMeta } from "@/lib/ui/moderation-meta";
 
-const ACTION_COLORS: Record<string, { bg: string; color: string }> = {
-  warn:     { bg: "#fef3c7", color: "#92400e" },
-  restrict: { bg: "#ede9fe", color: "#5b21b6" },
-  suspend:  { bg: "#ffedd5", color: "#9a3412" },
-  ban:      { bg: "#fee2e2", color: "#dc2626" },
-  dismiss:  { bg: "#f3f4f6", color: "#6b7280" },
-};
+const NO_ROLES: readonly string[] = [];
+const PAGE_SIZE = 30;
 
-const REASON_COLORS: Record<string, string> = {
-  spam: "#9ca3af",
-  harassment: "#dc2626",
-  fraud: "#d97706",
-  solicitation: "#7c3aed",
-  crisis: "#16a34a",
-  other: "#6b7280",
-};
+const STATUSES: readonly { value: ReportStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "reviewing", label: "In review" },
+  { value: "resolved", label: "Resolved" },
+  { value: "dismissed", label: "Dismissed" },
+];
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+function messageOf(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
+function ReportsSkeleton() {
+  return (
+    <div className="report-list" role="status" aria-live="polite">
+      <span className="sr-only">Loading reports…</span>
+      {[0, 1].map((i) => (
+        <div key={i} className="report-card" aria-hidden="true">
+          <div className="row">
+            <Skeleton className="skeleton--pill" />
+            <Skeleton width="120px" />
+          </div>
+          <Skeleton width="100%" />
+          <Skeleton width="60%" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function ModerationAdminPage() {
   const hydrated = useHydrated();
   const token = useAuthStore((s) => s.accessToken);
+  const roles = useAuthStore((s) => s.user?.roles) ?? NO_ROLES;
+  const allowed = canOpenStaffPage("/admin/moderation", roles);
 
   const [reportStatus, setReportStatus] = useState<ReportStatus>("pending");
+  // null while the current filter loads.
   const [reports, setReports] = useState<ReportListResponse | null>(null);
   const [actions, setActions] = useState<ModerationActionListResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloads, setReloads] = useState(0);
   const [actingOn, setActingOn] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
   const [triageEnabled, setTriageEnabled] = useState(false);
   const [aiUrgentIds, setAiUrgentIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !allowed) return;
     // Any failure (flag off, older backend) means no panel at all.
     getTriageConfig(token)
       .then((res) => setTriageEnabled(res.enabled))
       .catch(() => setTriageEnabled(false));
-  }, [token]);
+  }, [token, allowed]);
+
+  useEffect(() => {
+    if (!token || !allowed) return;
+    let current = true;
+    Promise.all([listReports(token, reportStatus, 1, PAGE_SIZE), listModerationActions(token, 1, PAGE_SIZE)])
+      .then(([reportRes, actionRes]) => {
+        if (!current) return;
+        setReports(reportRes);
+        setActions(actionRes);
+      })
+      .catch((err) => {
+        if (current) setLoadError(messageOf(err, "We couldn't load reports."));
+      });
+    return () => {
+      current = false;
+    };
+  }, [token, allowed, reportStatus, reloads]);
 
   function markUrgent(reportId: string) {
     setAiUrgentIds((prev) => (prev.has(reportId) ? prev : new Set(prev).add(reportId)));
@@ -84,28 +116,17 @@ export default function ModerationAdminPage() {
       : reports.items
     : [];
 
-  async function loadData() {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [reportRes, actionRes] = await Promise.all([
-        listReports(token, reportStatus, 1, 30),
-        listModerationActions(token, 1, 30),
-      ]);
-      setReports(reportRes);
-      setActions(actionRes);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load moderation data");
-    } finally {
-      setLoading(false);
-    }
+  function chooseStatus(next: ReportStatus) {
+    if (next === reportStatus) return;
+    setReports(null);
+    setLoadError(null);
+    setReportStatus(next);
   }
 
-  useEffect(() => {
-    if (token) void loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, reportStatus]);
+  function reload() {
+    setLoadError(null);
+    setReloads((n) => n + 1);
+  }
 
   // An empty targetUserId lets the API resolve the reported member from the report.
   async function handleAction(
@@ -117,8 +138,8 @@ export default function ModerationAdminPage() {
   ) {
     if (!token) return;
     setActingOn(reportId);
-    setError(null);
-    setSuccess(null);
+    setActionError(null);
+    setDone(null);
     try {
       await createModerationAction(token, {
         report_id: reportId,
@@ -127,10 +148,16 @@ export default function ModerationAdminPage() {
         reason,
         duration_hours: durationHours,
       });
-      setSuccess(`Action "${action}" applied.`);
-      await loadData();
+      setDone(actionMeta(action).done);
+      // The action resolves or dismisses the report, so it leaves this list now.
+      setReports((prev) =>
+        prev && reportStatus === "pending"
+          ? { ...prev, items: prev.items.filter((r) => r.id !== reportId), total: Math.max(0, prev.total - 1) }
+          : prev,
+      );
+      reload();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Action failed");
+      setActionError(messageOf(err, "That action didn't go through. Try again."));
     } finally {
       setActingOn(null);
     }
@@ -139,175 +166,106 @@ export default function ModerationAdminPage() {
   if (!hydrated) return null;
   if (!token) return <AuthRequired />;
 
+  const statusLabel = STATUSES.find((s) => s.value === reportStatus)?.label ?? reportStatus;
+
   return (
-    <main className="page">
-      <section className="card stack" style={{ marginBottom: "16px" }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h1 style={{ margin: 0 }}>Moderation</h1>
-            <p className="muted" style={{ margin: "4px 0 0", fontSize: "13px" }}>
-              Review reports and enforce actions
-            </p>
-          </div>
-          <div className="row" style={{ gap: "8px" }}>
-            <button className="ghost" onClick={() => void loadData()} type="button" style={{ fontSize: "13px" }}>
+    <main className="page admin-page">
+      <PageHeader
+        title="Moderation"
+        subtitle="Reports from members. Actions land on the reported member, never the reporter."
+        actions={
+          allowed ? (
+            <button type="button" className="ghost btn-sm" onClick={reload} disabled={reports === null && !loadError}>
+              <RefreshCw size={16} aria-hidden="true" />
               Refresh
             </button>
-            <Link href="/admin/dashboard" className="ghost" style={{ padding: "8px 14px", fontSize: "13px" }}>
-              ← Dashboard
-            </Link>
-          </div>
-        </div>
-      </section>
+          ) : null
+        }
+      />
 
-      {success && <p className="success" style={{ marginBottom: "12px" }}>{success}</p>}
-      {error && <p className="error" style={{ marginBottom: "12px" }}>{error}</p>}
+      {!allowed ? (
+        <StaffOnly who="moderators" />
+      ) : (
+        <div className="admin-sections">
+          {done ? (
+            <div className="notice notice--success" role="status">
+              <CircleCheck size={18} aria-hidden="true" />
+              <p>{done}</p>
+            </div>
+          ) : null}
+          {actionError ? (
+            <div className="notice notice--error" role="alert">
+              <CircleAlert size={18} aria-hidden="true" />
+              <p>{actionError}</p>
+            </div>
+          ) : null}
 
-      {/* Report status filter */}
-      <div className="row" style={{ gap: "8px", marginBottom: "16px", flexWrap: "wrap" }}>
-        {(["pending", "reviewing", "resolved", "dismissed"] as ReportStatus[]).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setReportStatus(s)}
-            style={{
-              fontSize: "12px",
-              padding: "5px 14px",
-              borderRadius: "999px",
-              border: "none",
-              cursor: "pointer",
-              background: reportStatus === s ? "#111827" : "#f3f4f6",
-              color: reportStatus === s ? "#fff" : "#374151",
-              fontWeight: reportStatus === s ? 700 : 400,
-            }}
-          >
-            {s}
-            {s === "pending" && reports && reports.total > 0 && reportStatus !== "pending" && (
-              <span style={{ marginLeft: "4px", color: "#dc2626" }}>({reports.total})</span>
-            )}
-          </button>
-        ))}
-      </div>
+          <section className="admin-section" aria-labelledby="reports-title">
+            <div className="admin-section__head">
+              <h2 id="reports-title" className="section-title">
+                Reports
+              </h2>
+              {reports ? <span className="admin-count">{reports.total.toLocaleString("en-IN")}</span> : null}
+            </div>
+            <div className="chip-rail" role="group" aria-label="Show reports that are">
+              {STATUSES.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  className="chip-toggle"
+                  aria-pressed={reportStatus === s.value}
+                  onClick={() => chooseStatus(s.value)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
 
-      {/* Reports */}
-      <section style={{ marginBottom: "24px" }}>
-        <h2 style={{ fontSize: "14px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
-          Reports {reports ? `(${reports.total})` : ""}
-        </h2>
-
-        {loading ? (
-          <div className="card"><p className="muted">Loading…</p></div>
-        ) : !reports || reports.items.length === 0 ? (
-          <div className="card">
-            <p className="muted" style={{ fontSize: "13px" }}>No {reportStatus} reports.</p>
-          </div>
-        ) : (
-          <div className="stack" style={{ gap: "10px" }}>
-            {sortedReports.map((report) => (
-              <div key={report.id} className="card stack" style={{ gap: "10px", padding: "16px 20px" }}>
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                  <div className="row" style={{ gap: "8px", flexWrap: "wrap" }}>
-                    <span
-                      style={{
-                        background: "#f3f4f6",
-                        color: REASON_COLORS[report.reason] ?? "#374151",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        padding: "2px 10px",
-                        borderRadius: "999px",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {report.reason}
-                    </span>
-                    <span style={{ fontSize: "11px", color: "#9ca3af" }}>
-                      {report.target_type} · {timeAgo(report.created_at)}
-                    </span>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: report.status === "pending" ? "#d97706" : "#9ca3af",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {report.status}
-                  </span>
-                </div>
-
-                {report.description && (
-                  <p style={{ margin: 0, fontSize: "13px", color: "#374151" }}>{report.description}</p>
-                )}
-
-                <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>
-                  Target: {report.target_id.slice(0, 12)}… · Reporter: {report.reporter_id.slice(0, 12)}…
-                </p>
-
-                {triageEnabled && (
-                  <AiTriagePanel token={token} report={report} onUrgent={markUrgent} />
-                )}
-
-                {report.status === "pending" && (
-                  <InlineActionForm
-                    report={report}
-                    onSubmit={handleAction}
-                    acting={actingOn === report.id}
-                  />
-                )}
+            {loadError ? (
+              <div className="notice notice--error" role="alert">
+                <CircleAlert size={18} aria-hidden="true" />
+                <p>{loadError}</p>
+                <button type="button" className="ghost btn-sm" onClick={reload}>
+                  Try again
+                </button>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : reports === null ? (
+              <ReportsSkeleton />
+            ) : sortedReports.length === 0 ? (
+              <EmptyState Icon={Inbox} title={`No ${statusLabel.toLowerCase()} reports`}>
+                {reportStatus === "pending" ? "You're all caught up. New reports from members appear here." : null}
+              </EmptyState>
+            ) : (
+              <ul className="report-list">
+                {sortedReports.map((report) => (
+                  <li key={report.id}>
+                    <ReportCard
+                      token={token}
+                      report={report}
+                      triageEnabled={triageEnabled}
+                      onUrgent={markUrgent}
+                      onAct={handleAction}
+                      acting={actingOn === report.id}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-      {/* Action history */}
-      <section>
-        <h2 style={{ fontSize: "14px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
-          Recent actions {actions ? `(${actions.total})` : ""}
-        </h2>
-
-        {!actions || actions.items.length === 0 ? (
-          <div className="card">
-            <p className="muted" style={{ fontSize: "13px" }}>No moderation actions yet.</p>
-          </div>
-        ) : (
-          <div className="stack" style={{ gap: "8px" }}>
-            {actions.items.map((item) => {
-              const ac = ACTION_COLORS[item.action] ?? { bg: "#f3f4f6", color: "#374151" };
-              return (
-                <div key={item.id} className="card" style={{ padding: "12px 16px" }}>
-                  <div className="row" style={{ gap: "10px", alignItems: "center" }}>
-                    <span
-                      style={{
-                        background: ac.bg,
-                        color: ac.color,
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        padding: "2px 10px",
-                        borderRadius: "999px",
-                        textTransform: "uppercase",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {item.action}
-                    </span>
-                    <span style={{ fontSize: "13px", color: "#374151", flex: 1 }}>{item.reason}</span>
-                    <span style={{ fontSize: "11px", color: "#9ca3af", flexShrink: 0 }}>
-                      {timeAgo(item.created_at)}
-                    </span>
-                  </div>
-                  {item.duration_hours && (
-                    <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#9ca3af" }}>
-                      Duration: {item.duration_hours}h
-                      {item.expires_at ? ` · expires ${timeAgo(item.expires_at)}` : ""}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+          {actions ? (
+            <section className="admin-section" aria-labelledby="history-title">
+              <div className="admin-section__head">
+                <h2 id="history-title" className="section-title">
+                  Recent actions
+                </h2>
+                <span className="admin-count">{actions.total.toLocaleString("en-IN")}</span>
+              </div>
+              <ActionHistory actions={actions.items} />
+            </section>
+          ) : null}
+        </div>
+      )}
     </main>
   );
 }
