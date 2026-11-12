@@ -151,6 +151,7 @@ jobs:
               tests/test_health.py
               tests/integration/test_cases.py
               tests/integration/test_messages.py
+              tests/integration/test_conversation_views.py
               tests/integration/test_schema_drift.py
               tests/test_database_url.py
           - shard: moderation-verification
