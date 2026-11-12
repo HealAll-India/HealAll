@@ -1,240 +1,230 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ChevronLeft, CircleAlert, Lock, SendHorizontal } from "lucide-react";
 
+import { MessageList } from "@/components/messages/message-list";
 import { AuthRequired } from "@/components/ui/auth-required";
+import { Avatar } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api/client";
 import { getConversation, sendMessage } from "@/lib/api/messages";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import type { ConversationDetailResponse, MessageResponse } from "@/lib/types/api";
+import type { ConversationResponse, MessageResponse } from "@/lib/types/api";
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const isSameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
+/** Messages per page; page 1 is the newest. */
+const PAGE_SIZE = 50;
+/** The API's limit on a message body. */
+const MAX_LENGTH = 2000;
 
-  if (isSameDay) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" }) +
-    " · " +
-    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-interface BubbleProps {
-  msg: MessageResponse;
-  isMine: boolean;
-}
-
-function Bubble({ msg, isMine }: BubbleProps) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: isMine ? "flex-end" : "flex-start",
-        marginBottom: "8px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "72%",
-          background: isMine ? "#16a34a" : "#f3f4f6",
-          color: isMine ? "#fff" : "#111827",
-          borderRadius: isMine ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-          padding: "10px 14px",
-        }}
-      >
-        <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.5, wordBreak: "break-word" }}>
-          {msg.body}
-        </p>
-        <p
-          style={{
-            margin: "4px 0 0",
-            fontSize: "10px",
-            color: isMine ? "rgba(255,255,255,0.7)" : "#9ca3af",
-            textAlign: isMine ? "right" : "left",
-          }}
-        >
-          {formatTime(msg.created_at)}
-          {msg.read_at && isMine ? " · Read" : ""}
-        </p>
-      </div>
-    </div>
-  );
+function errorText(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
 }
 
 export default function ConversationPage() {
-  const params = useParams<{ conversationId: string }>();
-  const conversationId = params.conversationId;
+  const { conversationId } = useParams<{ conversationId: string }>();
   const hydrated = useHydrated();
   const token = useAuthStore((s) => s.accessToken);
   const myId = useAuthStore((s) => s.user?.id ?? "");
 
-  const [detail, setDetail] = useState<ConversationDetailResponse | null>(null);
+  if (!hydrated) return null;
+  if (!token) return <AuthRequired />;
+  // Keyed so moving to another conversation starts from a clean slate.
+  return <Thread key={conversationId} token={token} conversationId={conversationId} myId={myId} />;
+}
+
+interface ThreadProps {
+  token: string;
+  conversationId: string;
+  myId: string;
+}
+
+function Thread({ token, conversationId, myId }: ThreadProps) {
+  const [conversation, setConversation] = useState<ConversationResponse | null>(null);
+  const [messages, setMessages] = useState<MessageResponse[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [body, setBody] = useState("");
-  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // After the first load or a send, show the newest message. After loading
+  // earlier ones, keep what the member was reading in place instead.
+  const scrollIntent = useRef<{ kind: "bottom" } | { kind: "keep"; fromBottom: number }>({ kind: "bottom" });
 
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    getConversation(token, conversationId)
-      .then(setDetail)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load conversation"))
-      .finally(() => setLoading(false));
+  const loadLatest = useCallback(() => {
+    getConversation(token, conversationId, 1, PAGE_SIZE)
+      .then((detail) => {
+        scrollIntent.current = { kind: "bottom" };
+        setConversation(detail.conversation);
+        setMessages(detail.messages);
+        setHasMore(Boolean(detail.has_more));
+        setPage(1);
+      })
+      .catch((err) => setLoadError(errorText(err, "We couldn't load this conversation.")));
   }, [token, conversationId]);
 
-  // Scroll to bottom when messages load or new message arrives
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [detail?.messages.length]);
+    loadLatest();
+  }, [loadLatest]);
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!token || !body.trim() || sending) return;
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const intent = scrollIntent.current;
+    el.scrollTop = intent.kind === "bottom" ? el.scrollHeight : el.scrollHeight - intent.fromBottom;
+  }, [messages]);
 
-    setSending(true);
-    setError(null);
-    const text = body.trim();
-    setBody("");
-
+  async function loadEarlier() {
+    if (loadingEarlier) return;
+    setLoadingEarlier(true);
+    // A retry starts clean; a failure sets the notice again below.
+    setLoadError(null);
     try {
-      const message = await sendMessage(token, conversationId, text);
-      setDetail((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, message] } : prev
-      );
-      inputRef.current?.focus();
+      const detail = await getConversation(token, conversationId, page + 1, PAGE_SIZE);
+      const el = scrollRef.current;
+      scrollIntent.current = { kind: "keep", fromBottom: el ? el.scrollHeight - el.scrollTop : 0 };
+      // A message sent since page 1 loaded shifts the pages by one; drop any repeat.
+      setMessages((current) => {
+        const known = new Set(current.map((m) => m.id));
+        return [...detail.messages.filter((m) => !known.has(m.id)), ...current];
+      });
+      setHasMore(Boolean(detail.has_more));
+      setPage((p) => p + 1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to send message");
-      setBody(text); // restore text on failure
+      setLoadError(errorText(err, "We couldn't load earlier messages."));
     } finally {
-      setSending(false);
+      setLoadingEarlier(false);
     }
   }
 
-  if (!hydrated) return null;
-  if (!token) return <AuthRequired />;
+  async function send(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = body.trim();
+    if (!text || sending) return;
+    setSending(true);
+    setSendError(null);
+    setBody("");
+    try {
+      const message = await sendMessage(token, conversationId, text);
+      scrollIntent.current = { kind: "bottom" };
+      setMessages((current) => [...current, message]);
+    } catch (err) {
+      setSendError(errorText(err, "Your message wasn't sent. Please try again."));
+      setBody(text);
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
+  }
 
-  const otherId = detail
-    ? detail.conversation.user_a === myId
-      ? detail.conversation.user_b
-      : detail.conversation.user_a
-    : null;
+  const name = conversation?.other_member?.name ?? "HealAll member";
+  const ended = Boolean(conversation?.ended_at);
 
   return (
-    <main className="page" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)", padding: 0 }}>
-      {/* Header */}
-      <div
-        className="card"
-        style={{
-          borderRadius: 0,
-          borderLeft: "none",
-          borderRight: "none",
-          borderTop: "none",
-          padding: "12px 20px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          flexShrink: 0,
-        }}
-      >
-        <Link href="/messages" style={{ color: "#16a34a", fontSize: "18px", lineHeight: 1 }}>
-          ←
+    <main className="thread">
+      <header className="thread__head">
+        <Link href="/messages" className="thread__back" aria-label="All messages">
+          <ChevronLeft size={22} aria-hidden="true" />
         </Link>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            background: "#e5e7eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "16px",
-          }}
-        >
-          💬
-        </div>
-        <div>
-          <p style={{ margin: 0, fontWeight: 600, fontSize: "14px" }}>
-            {otherId ? `User ${otherId.slice(0, 8)}…` : "Conversation"}
-          </p>
-          {loading && (
-            <p style={{ margin: 0, fontSize: "11px", color: "#9ca3af" }}>Loading…</p>
-          )}
-        </div>
-      </div>
-
-      {/* Message area */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
-        {error && <p className="error">{error}</p>}
-
-        {!loading && detail && detail.messages.length === 0 && (
-          <div style={{ textAlign: "center", paddingTop: "40px" }}>
-            <p style={{ fontSize: "28px", margin: 0 }}>👋</p>
-            <p className="muted" style={{ fontSize: "13px", marginTop: "8px" }}>
-              No messages yet — say hello!
-            </p>
-          </div>
-        )}
-
-        {detail?.messages.map((msg) => (
-          <Bubble key={msg.id} msg={msg} isMine={msg.sender_id === myId} />
-        ))}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input bar */}
-      <div
-        className="card"
-        style={{
-          borderRadius: 0,
-          borderLeft: "none",
-          borderRight: "none",
-          borderBottom: "none",
-          padding: "12px 16px",
-          flexShrink: 0,
-        }}
-      >
-        {detail?.conversation.ended_at ? (
-          <p className="muted" style={{ textAlign: "center", margin: 0, fontSize: "13px" }}>
-            This conversation has ended.
-          </p>
+        {conversation ? (
+          <>
+            <Avatar name={name} src={conversation.other_member?.avatar_url} />
+            <div className="thread__who">
+              <h1 className="thread__name">{name}</h1>
+              {ended ? <p className="thread__meta">Conversation ended</p> : null}
+            </div>
+          </>
         ) : (
-          <form
-            onSubmit={handleSend}
-            style={{ display: "flex", gap: "8px", alignItems: "center" }}
-          >
-            <input
-              ref={inputRef}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Type a message…"
-              disabled={sending}
-              style={{ flex: 1 }}
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              disabled={sending || !body.trim()}
-              style={{ flexShrink: 0, padding: "0 18px" }}
-            >
-              {sending ? "…" : "Send"}
-            </button>
-          </form>
+          <span className="thread__who" aria-hidden="true">
+            <Skeleton width="45%" />
+          </span>
         )}
+      </header>
+
+      <div className="thread__body" ref={scrollRef}>
+        {loadError ? (
+          <div className="notice notice--error" role="alert">
+            <CircleAlert size={18} aria-hidden="true" />
+            <p>{loadError}</p>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setLoadError(null);
+                if (!conversation) loadLatest();
+              }}
+            >
+              {conversation ? "Dismiss" : "Try again"}
+            </button>
+          </div>
+        ) : null}
+
+        {!conversation && !loadError ? (
+          <p className="thread__status" role="status">
+            Loading conversation…
+          </p>
+        ) : null}
+
+        {conversation && hasMore ? (
+          <button type="button" className="ghost thread__earlier" onClick={loadEarlier} disabled={loadingEarlier}>
+            {loadingEarlier ? "Loading…" : "Load earlier messages"}
+          </button>
+        ) : null}
+
+        {conversation && messages.length === 0 ? (
+          <p className="thread__status">
+            {ended ? "No messages were sent before this conversation ended." : `No messages yet. Say hello to ${name}.`}
+          </p>
+        ) : null}
+
+        {messages.length > 0 ? <MessageList messages={messages} myId={myId} otherName={name} /> : null}
       </div>
+
+      {conversation && ended ? (
+        <p className="thread__ended">
+          <Lock size={16} aria-hidden="true" />
+          This conversation has ended. You can still read it.
+        </p>
+      ) : conversation ? (
+        <form className="thread__compose" onSubmit={send}>
+          {sendError ? (
+            <p className="thread__send-error" role="alert">
+              {sendError}
+            </p>
+          ) : null}
+          <label htmlFor="thread-input" className="sr-only">
+            Message {name}
+          </label>
+          <input
+            id="thread-input"
+            ref={inputRef}
+            className="thread__input"
+            value={body}
+            // Read-only while sending, so a failed send can restore its text
+            // without overwriting anything typed in the meantime.
+            readOnly={sending}
+            onChange={(e) => {
+              setBody(e.target.value);
+              if (sendError) setSendError(null);
+            }}
+            placeholder="Write a message…"
+            maxLength={MAX_LENGTH}
+            autoComplete="off"
+            enterKeyHint="send"
+          />
+          <button type="submit" className="thread__send" disabled={sending || !body.trim()} aria-label="Send">
+            <SendHorizontal size={20} aria-hidden="true" />
+          </button>
+        </form>
+      ) : null}
     </main>
   );
 }

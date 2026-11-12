@@ -37,6 +37,18 @@ export function clockTime(iso: string): string {
   return d.toLocaleTimeString(LOCALE, { hour: "numeric", minute: "2-digit" });
 }
 
+/** Day heading for a chat thread: "Today", "Yesterday", then "12 Nov" (with the year if not this year). */
+export function dayLabel(iso: string, now: number = Date.now()): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "";
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(new Date(now)) - startOf(then)) / DAY);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  const sameYear = then.getFullYear() === new Date(now).getFullYear();
+  return then.toLocaleDateString(LOCALE, { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+}
+
 /** Compact counts: 950 → "950", 12_400 → "12.4K", 1_20_000 → "1.2L". */
 export function formatCount(n: number): string {
   return new Intl.NumberFormat(LOCALE, { notation: "compact", maximumFractionDigits: 1 }).format(n);
