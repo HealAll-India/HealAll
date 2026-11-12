@@ -300,6 +300,20 @@ export interface ConsentRequestResponse {
   created_at: string;
 }
 
+/** The other participant, as the signed-in member sees them. */
+export interface ConversationMember {
+  id: UUID;
+  name: string;
+  avatar_url: string | null;
+}
+
+/** The latest message, shortened for a list preview. */
+export interface LastMessage {
+  body: string;
+  sender_id: UUID;
+  created_at: string;
+}
+
 export interface ConversationResponse {
   id: UUID;
   consent_id: UUID;
@@ -307,6 +321,9 @@ export interface ConversationResponse {
   user_b: UUID;
   ended_at: string | null;
   created_at: string;
+  other_member?: ConversationMember | null;
+  /** Null with no messages yet, or across a block. */
+  last_message?: LastMessage | null;
 }
 
 export interface MessageResponse {
@@ -318,9 +335,12 @@ export interface MessageResponse {
   created_at: string;
 }
 
+/** Page 1 holds the newest messages; each page is in chronological order. */
 export interface ConversationDetailResponse {
   conversation: ConversationResponse;
   messages: MessageResponse[];
+  /** Whether an older page exists. */
+  has_more?: boolean;
 }
 
 export interface VerificationQueueItem {

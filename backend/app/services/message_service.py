@@ -1,10 +1,12 @@
 """Services for consent-based direct messaging."""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.exceptions import (
     DuplicateException,
@@ -15,10 +17,38 @@ from app.core.exceptions import (
 )
 from app.models.message import Conversation, DMConsentRequest, DMConsentStatus, Message
 from app.models.post import Post
+from app.models.privacy import UserBlock
 from app.models.user import User
 from app.services import user_service
 
 DECLINE_COOLDOWN_DAYS = 7
+PREVIEW_CHARS = 140
+FORMER_MEMBER_NAME = "Former member"
+
+
+@dataclass(frozen=True)
+class ConversationSummary:
+    """A conversation as one participant sees it in their list."""
+
+    conversation: Conversation
+    other_member_id: UUID
+    other_member_name: str
+    other_member_avatar_url: str | None
+    last_message: Message | None
+
+    @property
+    def last_activity(self) -> datetime:
+        return self.last_message.created_at if self.last_message else self.conversation.created_at
+
+
+def preview(body: str) -> str:
+    """A message body shortened for a list, on a word boundary where possible."""
+    text = " ".join(body.split())
+    if len(text) <= PREVIEW_CHARS:
+        return text
+    cut = text[: PREVIEW_CHARS - 1]
+    space = cut.rfind(" ")
+    return (cut[:space] if space > PREVIEW_CHARS // 2 else cut).rstrip() + "…"
 
 
 async def _get_user_or_404(db: AsyncSession, user_id: UUID) -> User:
@@ -159,14 +189,62 @@ async def decline_consent(db: AsyncSession, request_id: UUID, current_user: User
     return consent
 
 
-async def list_conversations(db: AsyncSession, current_user: User) -> list[Conversation]:
-    """List conversations where current user is a participant."""
+async def list_conversations(db: AsyncSession, current_user: User) -> list[ConversationSummary]:
+    """List the current user's conversations, most recent activity first.
+
+    Each comes with the other participant's name and avatar, and its latest
+    message unless either member has blocked the other. A fixed number of
+    queries, however many conversations there are.
+    """
     result = await db.execute(
-        select(Conversation)
-        .where(or_(Conversation.user_a == current_user.id, Conversation.user_b == current_user.id))
-        .order_by(Conversation.created_at.desc())
+        select(Conversation).where(or_(Conversation.user_a == current_user.id, Conversation.user_b == current_user.id))
     )
-    return list(result.scalars().all())
+    conversations = list(result.scalars().all())
+    if not conversations:
+        return []
+
+    other_ids = {_other_participant_id(c, current_user.id) for c in conversations}
+    users = {user.id: user for user in (await db.execute(select(User).where(User.id.in_(other_ids)))).scalars().all()}
+    blocks = await db.execute(
+        select(UserBlock.blocker_id, UserBlock.blocked_id).where(
+            or_(
+                and_(UserBlock.blocker_id == current_user.id, UserBlock.blocked_id.in_(other_ids)),
+                and_(UserBlock.blocked_id == current_user.id, UserBlock.blocker_id.in_(other_ids)),
+            )
+        )
+    )
+    blocked = {blocked_id if blocker_id == current_user.id else blocker_id for blocker_id, blocked_id in blocks.all()}
+    # The newest message of each conversation, in one query.
+    ranked = (
+        select(
+            Message,
+            func.row_number()
+            .over(partition_by=Message.conversation_id, order_by=(Message.created_at.desc(), Message.id.desc()))
+            .label("rank"),
+        )
+        .where(Message.conversation_id.in_([c.id for c in conversations]))
+        .subquery()
+    )
+    newest = aliased(Message, ranked)
+    latest = await db.execute(select(newest).where(ranked.c.rank == 1))
+    last_by_conversation = {message.conversation_id: message for message in latest.scalars().all()}
+
+    summaries = []
+    for conversation in conversations:
+        other_id = _other_participant_id(conversation, current_user.id)
+        other = users.get(other_id)
+        gone = other is None or other.deleted_at is not None
+        summaries.append(
+            ConversationSummary(
+                conversation=conversation,
+                other_member_id=other_id,
+                other_member_name=FORMER_MEMBER_NAME if gone else other.name,
+                other_member_avatar_url=None if gone else other.avatar_url,
+                last_message=None if other_id in blocked else last_by_conversation.get(conversation.id),
+            )
+        )
+    summaries.sort(key=lambda summary: summary.last_activity, reverse=True)
+    return summaries
 
 
 async def _get_conversation_or_404(db: AsyncSession, conversation_id: UUID) -> Conversation:
@@ -222,8 +300,13 @@ async def get_conversation_with_messages(
     current_user: User,
     page: int,
     per_page: int,
-) -> tuple[Conversation, list[Message]]:
-    """Return conversation and paginated messages for participants."""
+) -> tuple[Conversation, User | None, list[Message], bool]:
+    """Return the conversation, the other participant and one page of messages.
+
+    Page 1 holds the newest `per_page` messages, later pages older ones; each
+    page is in chronological order. The last value says whether an older page
+    exists. The other participant is None once their account is deleted.
+    """
     conversation = await _get_conversation_or_404(db, conversation_id)
     _assert_participant(conversation, current_user.id)
     other_user_id = _other_participant_id(conversation, current_user.id)
@@ -234,10 +317,15 @@ async def get_conversation_with_messages(
     result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation.id)
-        .order_by(Message.created_at.asc())
+        .order_by(Message.created_at.desc(), Message.id.desc())
         .offset((page - 1) * per_page)
-        .limit(per_page)
+        .limit(per_page + 1)
     )
-    messages = list(result.scalars().all())
+    newest_first = list(result.scalars().all())
+    has_more = len(newest_first) > per_page
+    messages = list(reversed(newest_first[:per_page]))
 
-    return conversation, messages
+    other = (
+        await db.execute(select(User).where(User.id == other_user_id, User.deleted_at.is_(None)))
+    ).scalar_one_or_none()
+    return conversation, other, messages, has_more

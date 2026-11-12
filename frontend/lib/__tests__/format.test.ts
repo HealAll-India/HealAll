@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCount, plural, relativeTime } from "@/lib/format";
+import { dayLabel, formatCount, plural, relativeTime } from "@/lib/format";
 
 const NOW = new Date("2026-10-02T13:00:00Z").getTime();
 const ago = (ms: number) => new Date(NOW - ms).toISOString();
@@ -32,5 +32,22 @@ describe("formatCount / plural", () => {
   it("pluralises", () => {
     expect(plural(1, "helper")).toBe("1 helper");
     expect(plural(3, "helper")).toBe("3 helpers");
+  });
+});
+
+describe("dayLabel", () => {
+  // Local-time midday, so the test reads the same in any time zone.
+  const at = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).toISOString();
+  const now = new Date(2026, 9, 2, 18).getTime();
+
+  it("names today and yesterday, then shows the date", () => {
+    expect(dayLabel(at(2026, 10, 2), now)).toBe("Today");
+    expect(dayLabel(at(2026, 10, 1), now)).toBe("Yesterday");
+    expect(dayLabel(at(2026, 9, 12), now)).toMatch(/12 Sep/);
+  });
+
+  it("adds the year for another year, and is empty for bad input", () => {
+    expect(dayLabel(at(2025, 12, 30), now)).toMatch(/2025/);
+    expect(dayLabel("not-a-date", now)).toBe("");
   });
 });

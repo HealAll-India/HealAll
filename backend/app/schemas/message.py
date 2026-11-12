@@ -25,6 +25,22 @@ class ConsentRequestResponse(BaseModel):
     created_at: datetime
 
 
+class ConversationMember(BaseModel):
+    """The other participant, as the signed-in member sees them."""
+
+    id: UUID
+    name: str
+    avatar_url: str | None = None
+
+
+class LastMessage(BaseModel):
+    """The latest message in a conversation, shortened for a list preview."""
+
+    body: str
+    sender_id: UUID
+    created_at: datetime
+
+
 class ConversationResponse(BaseModel):
     """Conversation summary response."""
 
@@ -34,6 +50,10 @@ class ConversationResponse(BaseModel):
     user_b: UUID
     ended_at: datetime | None = None
     created_at: datetime
+    other_member: ConversationMember | None = None
+    # None when there are no messages yet, or when either member has blocked
+    # the other (the thread itself is refused then, so no preview either).
+    last_message: LastMessage | None = None
 
 
 class SendMessageRequest(BaseModel):
@@ -54,7 +74,12 @@ class MessageResponse(BaseModel):
 
 
 class ConversationDetailResponse(BaseModel):
-    """Conversation detail with messages."""
+    """Conversation detail with messages.
+
+    Page 1 holds the newest messages; later pages go back in time. Each page
+    is in chronological order. `has_more` says whether an older page exists.
+    """
 
     conversation: ConversationResponse
     messages: list[MessageResponse]
+    has_more: bool = False
