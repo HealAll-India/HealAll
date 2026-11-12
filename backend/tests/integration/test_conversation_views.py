@@ -1,7 +1,7 @@
 """What members see of their conversations: who it's with, the latest message, newest page first."""
 
-from datetime import UTC, datetime
-from uuid import UUID
+from datetime import UTC, datetime, timedelta
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
@@ -9,20 +9,36 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import UserRole
-from app.core.security import create_access_token
+from app.models.invite import InviteCode
 from app.models.privacy import UserBlock
 from app.models.user import User
+from app.services.auth_service import create_otp
 from app.services.message_service import FORMER_MEMBER_NAME, PREVIEW_CHARS
 
 Member = tuple[dict[str, str], str]
 
 
-async def _member(db_session: AsyncSession, name: str, phone: str, email: str) -> Member:
-    """A verified member seeded directly in the DB, with a bearer token (no signup API)."""
+@pytest.fixture
+async def invite(db_session: AsyncSession) -> InviteCode:
+    """The invite the members joined with, seeded directly (no signup API)."""
+    code = InviteCode(
+        code="CONV-INVITE-001",
+        created_by=uuid4(),
+        max_uses=10,
+        use_count=0,
+        expires_at=datetime.now(UTC) + timedelta(days=30),
+    )
+    db_session.add(code)
+    await db_session.commit()
+    return code
+
+
+async def _member(client: AsyncClient, db_session: AsyncSession, invite: InviteCode, name: str, phone: str) -> Member:
+    """A verified member seeded via the ORM, signed in with an OTP from auth_service.create_otp."""
     user = User(
         name=name,
         phone=phone,
-        email=email,
+        email=f"{phone.lstrip('+')}@example.com",
         city="Delhi",
         age_range="25-34",
         roles=[UserRole.HELPER.value],
@@ -30,26 +46,31 @@ async def _member(db_session: AsyncSession, name: str, phone: str, email: str) -
         email_verified=True,
         verification_level=1,
     )
+    invite.use_count += 1
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
-    token = create_access_token(subject=str(user.id), roles=user.roles, verification_level=user.verification_level)
-    return {"Authorization": f"Bearer {token}"}, str(user.id)
+
+    otp, _ = await create_otp(db_session, phone, "login")
+    await db_session.commit()
+    resp = await client.post("/v1/auth/token", json={"phone_or_email": phone, "otp_code": otp})
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}, str(user.id)
 
 
 @pytest.fixture
-async def user_a(db_session: AsyncSession) -> Member:
-    return await _member(db_session, "Sender User", "+918000000001", "sender@example.com")
+async def user_a(client: AsyncClient, db_session: AsyncSession, invite: InviteCode) -> Member:
+    return await _member(client, db_session, invite, "Sender User", "+918000000001")
 
 
 @pytest.fixture
-async def user_b(db_session: AsyncSession) -> Member:
-    return await _member(db_session, "Recipient User", "+918000000002", "recipient@example.com")
+async def user_b(client: AsyncClient, db_session: AsyncSession, invite: InviteCode) -> Member:
+    return await _member(client, db_session, invite, "Recipient User", "+918000000002")
 
 
 @pytest.fixture
-async def user_c(db_session: AsyncSession) -> Member:
-    return await _member(db_session, "Third Member", "+918000000003", "third@example.com")
+async def user_c(client: AsyncClient, db_session: AsyncSession, invite: InviteCode) -> Member:
+    return await _member(client, db_session, invite, "Third Member", "+918000000003")
 
 
 async def _setup_accepted_conversation(client: AsyncClient, headers_from: dict, headers_to: dict, id_to: str) -> str:
