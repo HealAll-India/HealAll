@@ -41,7 +41,8 @@ htmlcov/
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
 
 # Alembic
 alembic/versions/*.pyc
