@@ -138,6 +138,19 @@ describe("ModerationAdminPage", () => {
     expect(screen.queryByText("We couldn't load reports.")).toBeNull();
   });
 
+  it("keeps the old history on screen but says so when a refresh of it fails", async () => {
+    signIn(["moderator"]);
+    api.listReports.mockResolvedValue(page([report()]));
+    api.listModerationActions.mockResolvedValueOnce(page([action()])).mockRejectedValueOnce(new Error("offline"));
+    render(<ModerationAdminPage />);
+    expect(await screen.findByText("Repeated spam")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+    expect(await screen.findByText(/Couldn.t refresh recent actions/)).toBeTruthy();
+    expect(screen.getByText("Repeated spam")).toBeTruthy();
+  });
+
   it("tells members without a moderation role, without asking the API", () => {
     signIn(["case_verifier"]);
     render(<ModerationAdminPage />);

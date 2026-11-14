@@ -272,18 +272,23 @@ export default function ModerationAdminPage() {
             )}
           </section>
 
-          {actions ? (
+          {actions || historyError ? (
             <section className="admin-section" aria-labelledby="history-title">
               <div className="admin-section__head">
                 <h2 id="history-title" className="section-title">
                   Recent actions
                 </h2>
-                <span className="admin-count">{actions.total.toLocaleString("en-IN")}</span>
+                {actions ? <span className="admin-count">{actions.total.toLocaleString("en-IN")}</span> : null}
               </div>
-              <ActionHistory actions={actions.items} />
+              {historyError ? (
+                <p className="admin-footnote" role="status">
+                  {actions
+                    ? "Couldn't refresh recent actions, so these may be out of date. Refresh to try again."
+                    : "Recent actions didn't load. Refresh to try again."}
+                </p>
+              ) : null}
+              {actions ? <ActionHistory actions={actions.items} /> : null}
             </section>
-          ) : historyError ? (
-            <p className="admin-footnote">Recent actions didn&apos;t load. Refresh to try again.</p>
           ) : null}
         </div>
       )}
