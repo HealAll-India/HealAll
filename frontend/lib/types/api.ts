@@ -348,6 +348,8 @@ export interface ConversationDetailResponse {
 export interface VerificationQueueItem {
   post_id: UUID;
   title: string;
+  /** Full request text. Optional until the backend that sends it is deployed. */
+  description?: string;
   category: string;
   urgency: string;
   city: string;
