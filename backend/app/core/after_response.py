@@ -7,6 +7,7 @@ it: an OTP could arrive minutes late, or never. There the work runs before the
 response instead, which costs the provider's round trip but always delivers.
 """
 
+import asyncio
 import logging
 import os
 from collections.abc import Awaitable, Callable
@@ -14,6 +15,11 @@ from collections.abc import Awaitable, Callable
 from fastapi import BackgroundTasks
 
 logger = logging.getLogger(__name__)
+
+# Overall cap on an inline send. HTTP client timeouts apply per phase (connect,
+# read, ...), so a slow provider could otherwise outlast the 29 s Lambda timeout
+# and turn a sent OTP into a gateway error.
+SEND_DEADLINE_SECONDS = 10.0
 
 
 def runs_on_lambda() -> bool:
@@ -36,6 +42,6 @@ async def after_response[**P](
         background_tasks.add_task(func, *args, **kwargs)
         return
     try:
-        await func(*args, **kwargs)
+        await asyncio.wait_for(func(*args, **kwargs), timeout=SEND_DEADLINE_SECONDS)
     except Exception:
         logger.exception("after_response: %s failed", getattr(func, "__name__", func))

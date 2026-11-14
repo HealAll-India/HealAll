@@ -53,7 +53,8 @@ Parameters:
   RedisUrl:
     Type: String
     NoEcho: true
-    Default: ""
+    AllowedPattern: "^rediss?://.+"
+    ConstraintDescription: must be a redis:// or rediss:// URL (the app connects at start-up).
   AllowedOrigins:
     Type: String
     Default: https://healallindia.com,https://www.healallindia.com

@@ -27,7 +27,7 @@ set -a
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 set +a
-for name in APP_SECRET_KEY JWT_SECRET_KEY DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY RESEND_API_KEY; do
+for name in APP_SECRET_KEY JWT_SECRET_KEY DATABASE_URL REDIS_URL S3_ACCESS_KEY S3_SECRET_KEY RESEND_API_KEY; do
   [ -n "${!name:-}" ] || { echo "${name} is empty in ${ENV_FILE}" >&2; exit 1; }
 done
 
@@ -88,7 +88,7 @@ PARAMS=(
   "AppSecretKey=${APP_SECRET_KEY}"
   "JwtSecretKey=${JWT_SECRET_KEY}"
   "DatabaseUrl=${DATABASE_URL}"
-  "RedisUrl=${REDIS_URL:-}"
+  "RedisUrl=${REDIS_URL}"
   "S3AccessKey=${S3_ACCESS_KEY}"
   "S3SecretKey=${S3_SECRET_KEY}"
   "ResendApiKey=${RESEND_API_KEY}"

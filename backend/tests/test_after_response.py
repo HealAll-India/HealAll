@@ -4,12 +4,14 @@ Lambda freezes the process once the response is returned, so a FastAPI
 background task (an OTP email) would wait for the next request to thaw it.
 """
 
+import asyncio
 import logging
 
 import pytest
 from fastapi import BackgroundTasks
 from httpx import AsyncClient
 
+from app.core import after_response as after_response_module
 from app.core.after_response import after_response, runs_on_lambda
 from app.services import notification_service
 
@@ -60,6 +62,20 @@ async def test_on_lambda_a_failed_send_does_not_fail_the_request(
 
     with caplog.at_level(logging.ERROR):
         await after_response(BackgroundTasks(), send, "a@example.com")
+
+    assert "send failed" in caplog.text
+
+
+async def test_on_lambda_a_hung_send_is_cut_off(
+    on_lambda: None, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(after_response_module, "SEND_DEADLINE_SECONDS", 0.05)
+
+    async def send(to: str) -> None:
+        await asyncio.sleep(5)
+
+    with caplog.at_level(logging.ERROR):
+        await asyncio.wait_for(after_response(BackgroundTasks(), send, "a@example.com"), timeout=1)
 
     assert "send failed" in caplog.text
 
