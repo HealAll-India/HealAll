@@ -1,5 +1,7 @@
 """Integration tests for the verification queue API endpoints."""
 
+from datetime import UTC, datetime
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -158,6 +160,46 @@ async def test_verification_queue_includes_post_text(
 
     hidden = await client.get(f"/v1/posts/{submitted_post.id}", headers=_auth_headers(verifier_user))
     assert hidden.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_verification_queue_orders_by_submission_time(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    verifier_user: User,
+    post_author: User,
+):
+    """A post written first but submitted later waits behind one submitted earlier."""
+    written_first = Post(
+        author_id=post_author.id,
+        title="Written in January",
+        description="Drafted early, sent for review in March.",
+        category=PostCategory.URGENT.value,
+        urgency=PostUrgency.HIGH.value,
+        city="Pune",
+        status=PostStatus.SUBMITTED.value,
+        created_at=datetime(2026, 1, 5, tzinfo=UTC),
+        updated_at=datetime(2026, 3, 5, tzinfo=UTC),
+    )
+    submitted_first = Post(
+        author_id=post_author.id,
+        title="Written in February",
+        description="Drafted and sent for review in February.",
+        category=PostCategory.URGENT.value,
+        urgency=PostUrgency.HIGH.value,
+        city="Pune",
+        status=PostStatus.SUBMITTED.value,
+        created_at=datetime(2026, 2, 5, tzinfo=UTC),
+        updated_at=datetime(2026, 2, 5, tzinfo=UTC),
+    )
+    db_session.add_all([written_first, submitted_first])
+    await db_session.commit()
+
+    response = await client.get("/v1/verification/queue", headers=_auth_headers(verifier_user))
+
+    assert response.status_code == 200, response.text
+    ids = [i["post_id"] for i in response.json()["items"]]
+    assert ids.index(str(submitted_first.id)) < ids.index(str(written_first.id))
 
 
 @pytest.mark.asyncio

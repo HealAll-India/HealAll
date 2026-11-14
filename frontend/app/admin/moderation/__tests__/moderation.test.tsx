@@ -119,12 +119,23 @@ describe("ModerationAdminPage", () => {
     fireEvent.click(await screen.findByRole("button", { name: /take action/i }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-    expect(await screen.findByText("Warning sent.")).toBeTruthy();
+    expect(await screen.findByText("Warning recorded.")).toBeTruthy();
     expect(screen.queryByRole("article", { name: "Reported post" })).toBeNull();
     expect(api.createModerationAction).toHaveBeenCalledWith(
       "t",
       expect.objectContaining({ report_id: "r1", target_user_id: undefined, action: "warn" }),
     );
+  });
+
+  it("keeps the reports when the action history fails to load", async () => {
+    signIn(["moderator"]);
+    api.listReports.mockResolvedValue(page([report()]));
+    api.listModerationActions.mockRejectedValue(new Error("offline"));
+    render(<ModerationAdminPage />);
+
+    expect(await screen.findByRole("article", { name: "Reported post" })).toBeTruthy();
+    expect(await screen.findByText(/Recent actions didn.t load/)).toBeTruthy();
+    expect(screen.queryByText("We couldn't load reports.")).toBeNull();
   });
 
   it("tells members without a moderation role, without asking the API", () => {

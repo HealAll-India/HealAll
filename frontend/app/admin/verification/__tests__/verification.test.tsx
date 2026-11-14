@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAuthStore } from "@/lib/stores/auth-store";
@@ -87,6 +87,45 @@ describe("VerificationAdminPage", () => {
 
     expect(await screen.findByText("42 requests waiting, oldest first.")).toBeTruthy();
     expect(screen.getByText(/Showing the oldest 1\./)).toBeTruthy();
+  });
+
+  it("turns decisions off when the request text is missing, so nobody approves unread", async () => {
+    signIn(["case_verifier"]);
+    api.getVerificationQueue.mockResolvedValue(queue([{ ...ITEM, description: undefined }]));
+    render(<VerificationAdminPage />);
+
+    const card = await screen.findByRole("article", { name: ITEM.title });
+    expect(within(card).getByText(/decisions are off for this one/)).toBeTruthy();
+    fireEvent.change(within(card).getByLabelText("Note for the record"), { target: { value: "Looks fine" } });
+    for (const name of ["Verify", "Ask for more info", "Reject"]) {
+      expect((within(card).getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+
+  it("drops an old load error once a later request succeeds", async () => {
+    signIn(["case_verifier"]);
+    api.getVerificationQueue.mockRejectedValueOnce(new Error("offline")).mockResolvedValue(queue([ITEM]));
+    render(<VerificationAdminPage />);
+    expect(await screen.findByText("We couldn't load the queue.")).toBeTruthy();
+
+    // A renewed session token starts a fresh request without "Try again".
+    act(() => {
+      useAuthStore.getState().setSession("t2", { id: "me", name: "Asha Rao", roles: ["case_verifier"] } as UserInfo);
+    });
+
+    expect(await screen.findByRole("article", { name: ITEM.title })).toBeTruthy();
+    expect(screen.queryByText("We couldn't load the queue.")).toBeNull();
+  });
+
+  it("lets Refresh start over while the first load hangs", async () => {
+    signIn(["case_verifier"]);
+    api.getVerificationQueue.mockReturnValueOnce(new Promise(() => {})).mockResolvedValue(queue([ITEM]));
+    render(<VerificationAdminPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+    expect(await screen.findByRole("article", { name: ITEM.title })).toBeTruthy();
+    expect(api.getVerificationQueue).toHaveBeenCalledTimes(2);
   });
 
   it("tells members without the verifier role, without asking the API", () => {

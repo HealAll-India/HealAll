@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from app.core.exceptions import DuplicateException, NotFoundException, ValidationException
 from app.models.comment import Comment
 from app.models.message import Message
-from app.models.post import Post
+from app.models.post import Post, PostStatus
 from app.models.report import Report, ReportReason, ReportStatus, ReportTargetType
 from app.models.report_triage import ReportTriage, TriageSeverity
 from app.models.user import User
@@ -17,7 +17,15 @@ from app.models.user import User
 
 async def _validate_target_exists(db: AsyncSession, target_type: ReportTargetType, target_id: UUID) -> None:
     if target_type == ReportTargetType.POST:
-        result = await db.execute(select(Post.id).where(Post.id == target_id, Post.deleted_at.is_(None)))
+        # Only public posts: GET /v1/posts/{id} 404s for anything else, so the
+        # moderators handling the report couldn't open it.
+        result = await db.execute(
+            select(Post.id).where(
+                Post.id == target_id,
+                Post.deleted_at.is_(None),
+                Post.status.in_((PostStatus.ACTIVE.value, PostStatus.RESOLVED.value)),
+            )
+        )
     elif target_type == ReportTargetType.COMMENT:
         result = await db.execute(select(Comment.id).where(Comment.id == target_id, Comment.deleted_at.is_(None)))
     elif target_type == ReportTargetType.MESSAGE:

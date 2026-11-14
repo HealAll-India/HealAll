@@ -151,7 +151,7 @@ export default function AdminDashboardPage() {
         subtitle="How HealAll is doing right now."
         actions={
           allowed ? (
-            <button type="button" className="ghost btn-sm" onClick={reload} disabled={!stats && !error}>
+            <button type="button" className="ghost btn-sm" onClick={reload}>
               <RefreshCw size={16} aria-hidden="true" />
               Refresh
             </button>

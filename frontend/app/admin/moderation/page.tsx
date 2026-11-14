@@ -72,6 +72,7 @@ export default function ModerationAdminPage() {
   const [reports, setReports] = useState<ReportListResponse | null>(null);
   const [actions, setActions] = useState<ModerationActionListResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState(false);
   const [reloads, setReloads] = useState(0);
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -90,11 +91,11 @@ export default function ModerationAdminPage() {
   useEffect(() => {
     if (!token || !allowed) return;
     let current = true;
-    Promise.all([listReports(token, reportStatus, 1, PAGE_SIZE), listModerationActions(token, 1, PAGE_SIZE)])
-      .then(([reportRes, actionRes]) => {
+    listReports(token, reportStatus, 1, PAGE_SIZE)
+      .then((res) => {
         if (!current) return;
-        setReports(reportRes);
-        setActions(actionRes);
+        setReports(res);
+        setLoadError(null);
       })
       .catch((err) => {
         if (current) setLoadError(messageOf(err, "We couldn't load reports."));
@@ -103,6 +104,24 @@ export default function ModerationAdminPage() {
       current = false;
     };
   }, [token, allowed, reportStatus, reloads]);
+
+  // History loads on its own, so a failure there never hides the reports.
+  useEffect(() => {
+    if (!token || !allowed) return;
+    let current = true;
+    listModerationActions(token, 1, PAGE_SIZE)
+      .then((res) => {
+        if (!current) return;
+        setActions(res);
+        setHistoryError(false);
+      })
+      .catch(() => {
+        if (current) setHistoryError(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [token, allowed, reloads]);
 
   function markUrgent(reportId: string) {
     setAiUrgentIds((prev) => (prev.has(reportId) ? prev : new Set(prev).add(reportId)));
@@ -175,7 +194,7 @@ export default function ModerationAdminPage() {
         subtitle="Reports from members. Actions land on the reported member, never the reporter."
         actions={
           allowed ? (
-            <button type="button" className="ghost btn-sm" onClick={reload} disabled={reports === null && !loadError}>
+            <button type="button" className="ghost btn-sm" onClick={reload}>
               <RefreshCw size={16} aria-hidden="true" />
               Refresh
             </button>
@@ -263,6 +282,8 @@ export default function ModerationAdminPage() {
               </div>
               <ActionHistory actions={actions.items} />
             </section>
+          ) : historyError ? (
+            <p className="admin-footnote">Recent actions didn&apos;t load. Refresh to try again.</p>
           ) : null}
         </div>
       )}

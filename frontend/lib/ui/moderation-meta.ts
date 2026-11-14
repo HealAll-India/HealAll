@@ -37,7 +37,7 @@ const REASONS: Record<string, ModMeta> = {
 };
 
 const ACTIONS: Record<string, ModMeta & { done: string }> = {
-  warn: { label: "Warning", Icon: TriangleAlert, tone: "warning", done: "Warning sent." },
+  warn: { label: "Warning", Icon: TriangleAlert, tone: "warning", done: "Warning recorded." },
   restrict: { label: "Restricted", Icon: UserLock, tone: "info", done: "Member restricted." },
   suspend: { label: "Suspended", Icon: Timer, tone: "danger", done: "Member suspended." },
   ban: { label: "Banned", Icon: Ban, tone: "danger", done: "Member banned." },

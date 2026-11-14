@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { CircleCheck, CircleX, Clock, MapPin, MessageCircleQuestion } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleX, Clock, MapPin, MessageCircleQuestion } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { CategoryBadge, UrgencyBadge } from "@/components/ui/post-badges";
@@ -28,7 +28,9 @@ export function QueueCard({ item, note, onNoteChange, onDecide, acting }: Props)
   const noteId = useId();
   const hintId = useId();
   const ready = note.trim().length >= MIN_NOTE_LENGTH;
-  const disabled = acting || !ready;
+  // Never decide on a request nobody could read (an older API sends no text).
+  const readable = Boolean(item.description?.trim());
+  const disabled = acting || !ready || !readable;
 
   return (
     <article className="queue-card" aria-labelledby={titleId} aria-busy={acting}>
@@ -53,7 +55,14 @@ export function QueueCard({ item, note, onNoteChange, onDecide, acting }: Props)
         </div>
       </header>
 
-      {item.description ? <p className="queue-card__body">{item.description}</p> : null}
+      {readable ? (
+        <p className="queue-card__body">{item.description}</p>
+      ) : (
+        <div className="notice notice--warning">
+          <CircleAlert size={18} aria-hidden="true" />
+          <p>The request text didn&apos;t come through, so decisions are off for this one. Refresh to try again.</p>
+        </div>
+      )}
 
       <div className="queue-card__author">
         <Avatar name={item.author.name} size="sm" />

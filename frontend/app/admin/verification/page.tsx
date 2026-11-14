@@ -50,7 +50,9 @@ export default function VerificationAdminPage() {
     let current = true;
     getVerificationQueue(token, 1, PAGE_SIZE)
       .then((res) => {
-        if (current) setQueue(res);
+        if (!current) return;
+        setQueue(res);
+        setLoadError(null);
       })
       .catch((err) => {
         if (current) setLoadError(messageOf(err, "We couldn't load the queue."));
@@ -111,7 +113,7 @@ export default function VerificationAdminPage() {
         }
         actions={
           allowed ? (
-            <button type="button" className="ghost btn-sm" onClick={reload} disabled={queue === null && !loadError}>
+            <button type="button" className="ghost btn-sm" onClick={reload}>
               <RefreshCw size={16} aria-hidden="true" />
               Refresh
             </button>
