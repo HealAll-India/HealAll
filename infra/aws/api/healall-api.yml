@@ -1,0 +1,231 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  HealAll API on AWS Lambda behind an API Gateway HTTP API, served at
+  api.healallindia.com. Scales to zero: nothing runs, and nothing is billed
+  beyond storage, while nobody is using the app. Deployed by deploy.sh in
+  this folder, which builds the image, runs migrations and fills these
+  parameters from infra/aws/api/.env.prod.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, dev]
+  ImageUri:
+    Type: String
+    Description: ECR image URI with tag, pushed by deploy.sh.
+  ApiDomainName:
+    Type: String
+    Default: api.healallindia.com
+  CertificateArn:
+    Type: String
+    Description: Issued ACM certificate for ApiDomainName in this region (deploy.sh requests it).
+  MemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 512
+    MaxValue: 3008
+    Description: MB. Lambda's CPU share grows with memory, so 1024 starts noticeably faster than 512.
+  ThrottleRate:
+    Type: Number
+    Default: 25
+    Description: Steady requests per second across the API. Caps cost and database load under abuse.
+  ThrottleBurst:
+    Type: Number
+    Default: 50
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+
+  # App settings. Secret values never appear in the console as parameters.
+  AppSecretKey:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+  JwtSecretKey:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Description: Neon connection string (postgresql://...); the app converts it for asyncpg.
+  RedisUrl:
+    Type: String
+    NoEcho: true
+    Default: ""
+  AllowedOrigins:
+    Type: String
+    Default: https://healallindia.com,https://www.healallindia.com
+  S3AccessKey:
+    Type: String
+    NoEcho: true
+  S3SecretKey:
+    Type: String
+    NoEcho: true
+  S3Region:
+    Type: String
+    Default: ap-south-1
+  S3BucketMedia:
+    Type: String
+    Default: healall-media-prod
+  S3BucketIdentity:
+    Type: String
+    Default: healall-identity-ephemeral-prod
+  ResendApiKey:
+    Type: String
+    NoEcho: true
+    Description: Required in production. Without it OTP emails go to the log instead of the inbox.
+  Msg91ApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  Msg91TemplateIdOtp:
+    Type: String
+    Default: ""
+  GoogleClientId:
+    Type: String
+    Default: ""
+  SentryDsn:
+    Type: String
+    NoEcho: true
+    Default: ""
+  AiTriageEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  GroqApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+
+Resources:
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/healall-api-${Environment}
+      RetentionInDays: !Ref LogRetentionDays
+
+  ApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      # Logs only. S3 access stays with the healall-app-prod keys the app
+      # already uses (S3AccessKey / S3SecretKey).
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  ApiFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: ApiLogGroup
+    Properties:
+      FunctionName: !Sub healall-api-${Environment}
+      PackageType: Image
+      Code:
+        ImageUri: !Ref ImageUri
+      Architectures: [x86_64]
+      MemorySize: !Ref MemorySize
+      # API Gateway gives up at 30 s.
+      Timeout: 29
+      Role: !GetAtt ApiFunctionRole.Arn
+      Environment:
+        Variables:
+          APP_ENV: production
+          APP_DEBUG: "false"
+          APP_SECRET_KEY: !Ref AppSecretKey
+          JWT_SECRET_KEY: !Ref JwtSecretKey
+          APP_ALLOWED_ORIGINS: !Ref AllowedOrigins
+          DATABASE_URL: !Ref DatabaseUrl
+          REDIS_URL: !Ref RedisUrl
+          S3_ACCESS_KEY: !Ref S3AccessKey
+          S3_SECRET_KEY: !Ref S3SecretKey
+          S3_REGION: !Ref S3Region
+          S3_ENDPOINT_URL: !Sub https://s3.${S3Region}.amazonaws.com
+          S3_BUCKET_MEDIA: !Ref S3BucketMedia
+          S3_BUCKET_IDENTITY: !Ref S3BucketIdentity
+          RESEND_API_KEY: !Ref ResendApiKey
+          MSG91_API_KEY: !Ref Msg91ApiKey
+          MSG91_TEMPLATE_ID_OTP: !Ref Msg91TemplateIdOtp
+          GOOGLE_CLIENT_ID: !Ref GoogleClientId
+          SENTRY_DSN: !Ref SentryDsn
+          AI_TRIAGE_ENABLED: !Ref AiTriageEnabled
+          GROQ_API_KEY: !Ref GroqApiKey
+          GEMINI_API_KEY: !Ref GeminiApiKey
+
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub healall-api-${Environment}
+      ProtocolType: HTTP
+      # CORS is the app's job (APP_ALLOWED_ORIGINS); preflights reach it too.
+
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ApiFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 29000
+
+  HttpApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: $default
+      Target: !Sub integrations/${HttpApiIntegration}
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingRateLimit: !Ref ThrottleRate
+        ThrottlingBurstLimit: !Ref ThrottleBurst
+
+  ApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ApiFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*
+
+  ApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref ApiDomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  ApiDomainMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn: HttpApiStage
+    Properties:
+      ApiId: !Ref HttpApi
+      DomainName: !Ref ApiDomain
+      Stage: $default
+
+Outputs:
+  DefaultEndpoint:
+    Description: Test the API here before pointing DNS at it.
+    Value: !GetAtt HttpApi.ApiEndpoint
+  DnsTarget:
+    Description: Point the api CNAME (Cloudflare) at this.
+    Value: !GetAtt ApiDomain.RegionalDomainName
+  FunctionName:
+    Value: !Ref ApiFunction

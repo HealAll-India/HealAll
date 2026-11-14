@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, stat
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import cache
+from app.core.after_response import after_response
 from app.core.config import get_settings
 from app.core.exceptions import DuplicateException, UnauthenticatedException
 from app.core.limiter import limiter
@@ -107,7 +108,7 @@ async def google_signup(
     await db.commit()
 
     if created_user:
-        background_tasks.add_task(notification_service.send_welcome_email, user.email, user.name)
+        await after_response(background_tasks, notification_service.send_welcome_email, user.email, user.name)
     else:
         response.status_code = status.HTTP_200_OK
 

@@ -2,7 +2,7 @@
 
 Invite-only mutual-aid platform, India-first, web-only.
 **Repo:** `https://github.com/HealAll-India/HealAll` · branch `main` (protected) · production live since 2026-04-20.
-**Hosts:** `healallindia.com` (Vercel) · `api.healallindia.com` (Railway) · Neon PostgreSQL · Upstash Redis · S3 (AWS prod / MinIO dev).
+**Hosts:** `healallindia.com` (Vercel) · `api.healallindia.com` (AWS Lambda, `infra/aws/api/`) · Neon PostgreSQL · Upstash Redis · S3 (AWS prod / MinIO dev).
 
 Deep-dive docs (read on demand): `docs/ROADMAP.md`, `docs/CODE_REVIEW.md`, `docs/HealAll_Architecture_README_v1.md`, `infra/aws/cloudformation/README.md`.
 
@@ -123,9 +123,9 @@ gh pr create ...
 
 ---
 
-## Production Config (Railway env vars)
+## Production Config (Lambda env vars)
 
-Set on the backend service:
+Set in `infra/aws/api/.env.prod` (gitignored; template `.env.example`); `infra/aws/api/deploy.sh` passes them to the stack:
 
 | Variable | Value |
 | --- | --- |
@@ -135,7 +135,7 @@ Set on the backend service:
 | `S3_ENDPOINT_URL` | `https://s3.ap-south-1.amazonaws.com` |
 | `S3_BUCKET_MEDIA` | `healall-media-prod` |
 | `S3_BUCKET_IDENTITY` | `healall-identity-ephemeral-prod` |
-| `RESEND_API_KEY` | resend.com domain-verified API key (Railway blocks SMTP ports) |
+| `RESEND_API_KEY` | resend.com domain-verified API key. Required: without it OTP emails go to the log |
 | `SENTRY_DSN` | from sentry.io Python/FastAPI project |
 | `MSG91_API_KEY` + `MSG91_TEMPLATE_ID_OTP` | msg91 dashboard |
 | `AI_TRIAGE_ENABLED` | `true` to turn on AI report triage (default `false`; also needs a key below) |
@@ -156,10 +156,11 @@ Outstanding setup tasks (run by user, not CI): see `HANDOFF.md` in repo root (gi
 
 ## Infrastructure Quirks
 
-- **Railway blocks SMTP ports 25/465/587** — use Resend (HTTPS to api.resend.com:443).
+- **API runs on AWS Lambda** (`infra/aws/api/README.md`): scales to zero, so expect a cold start of a few seconds after quiet spells. Lambda freezes the process once a response is returned: work meant for after the response (OTP/welcome emails) goes through `app.core.after_response`, never `background_tasks.add_task` directly. Migrations run in `deploy.sh`, not at start-up.
+- **Email goes through Resend** (HTTPS to api.resend.com:443), not SMTP.
 - **bcrypt pinned `<4.1`** — passlib 1.7.4 incompatible with bcrypt ≥4.1 (`__about__` attribute removed). `pyproject.toml`: `bcrypt>=4.0.1,<4.1`.
 - **Next.js 16 removed `next lint`.** Use `eslint .` with `eslint.config.mjs`.
-- **Celery worker not deployed on Railway** — code ready in `worker/celery_app.py`; user must add a Railway service with command `celery -A app.worker.celery_app worker --loglevel=info`.
+- **Celery worker not deployed** — code ready in `worker/celery_app.py`; nothing runs it in production.
 - **AWS CFN stack** lives in `infra/aws/cloudformation/healall-media.yml`. `.github/workflows/aws-infra.yml` redeploys it on every push to `main` touching that path. Concurrency-gated so parallel runs queue.
 
 ---
