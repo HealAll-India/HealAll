@@ -40,9 +40,10 @@ htmlcov/
 .tox/
 
 # Environment
-.env
-.env.*
-!.env.example
+# Env files at any depth; only the example is safe to ship.
+**/.env
+**/.env.*
+!**/.env.example
 
 # Alembic
 alembic/versions/*.pyc

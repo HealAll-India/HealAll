@@ -15,11 +15,11 @@ COPY pyproject.toml ./
 COPY app ./app
 RUN pip install --no-cache-dir .
 
-# Runtime: the virtualenv, the adapter and the code. On Lambda the function
-# runs as Lambda's least-privileged default user; USER below keeps local runs
-# (deploy.sh runs migrations with `docker run`) off root too. No HEALTHCHECK:
-# Lambda doesn't use one, and the adapter's readiness probe on /health holds
-# traffic until the app is up.
+# Runtime: the virtualenv, the adapter and the code, run as a non-root user
+# (here and in deploy.sh's `docker run` migration step). The app only reads
+# /app and /opt/venv and writes nothing outside /tmp. No HEALTHCHECK: Lambda
+# doesn't use one, and the adapter's readiness probe on /health holds traffic
+# until the app is up.
 FROM public.ecr.aws/docker/library/python:3.12-slim
 RUN useradd --system --no-create-home --shell /usr/sbin/nologin app
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0 /lambda-adapter /opt/extensions/lambda-adapter
