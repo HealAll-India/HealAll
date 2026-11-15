@@ -72,7 +72,7 @@ async def test_on_lambda_a_hung_send_is_cut_off(
     monkeypatch.setattr(after_response_module, "SEND_DEADLINE_SECONDS", 0.05)
 
     async def send(to: str) -> None:
-        await asyncio.sleep(5)
+        await asyncio.Event().wait()
 
     with caplog.at_level(logging.ERROR):
         await asyncio.wait_for(after_response(BackgroundTasks(), send, "a@example.com"), timeout=1)
