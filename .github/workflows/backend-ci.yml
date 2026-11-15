@@ -137,6 +137,7 @@ jobs:
               tests/test_google_auth.py
               tests/test_rate_limits.py
               tests/test_auth_identifiers.py
+              tests/test_after_response.py
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
               tests/integration/test_session_refresh.py

@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Request, Respon
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.after_response import after_response
 from app.core.config import get_settings
 from app.core.exceptions import DuplicateException, UnauthenticatedException
 from app.core.limiter import limiter
@@ -81,7 +82,9 @@ async def signup(
         email_otp, _ = await auth_service.create_otp(db, existing_user.email, purpose="login")
         await db.commit()
 
-        background_tasks.add_task(notification_service.send_otp_email, existing_user.email, email_otp, "login")
+        await after_response(
+            background_tasks, notification_service.send_otp_email, existing_user.email, email_otp, "login"
+        )
         response.status_code = status.HTTP_200_OK
 
         pending = []
@@ -120,7 +123,7 @@ async def signup(
     await db.commit()
 
     # Send email OTP in background (switch to celery_send_otp_email.delay() when worker deployed)
-    background_tasks.add_task(notification_service.send_otp_email, user.email, email_otp, "signup")
+    await after_response(background_tasks, notification_service.send_otp_email, user.email, email_otp, "signup")
 
     pending = []
     if not user.email_verified:
@@ -202,10 +205,14 @@ async def resend_otp(
     await db.commit()
 
     if resend_data.phone_or_email.startswith("+"):
-        background_tasks.add_task(notification_service.send_otp_sms, resend_data.phone_or_email, otp, "login")
+        await after_response(
+            background_tasks, notification_service.send_otp_sms, resend_data.phone_or_email, otp, "login"
+        )
         medium = "phone"
     else:
-        background_tasks.add_task(notification_service.send_otp_email, resend_data.phone_or_email, otp, "login")
+        await after_response(
+            background_tasks, notification_service.send_otp_email, resend_data.phone_or_email, otp, "login"
+        )
         medium = "email"
 
     return ResendOTPResponse(message=f"OTP sent to {medium}")
