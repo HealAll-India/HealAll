@@ -35,7 +35,11 @@ Parameters:
     Default: 50
   LogRetentionDays:
     Type: Number
-    Default: 14
+    Default: 7
+    Description: >
+      Days CloudWatch keeps the API's logs. Storage is a rounding error; what
+      bills is ingestion past the 5 GB a month free tier, which this API stays
+      far below (INFO level, one access line per request, no bodies).
 
   # App settings. Secret values never appear in the console as parameters.
   AppSecretKey:

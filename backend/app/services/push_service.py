@@ -284,6 +284,12 @@ def _payload(title: str, body: str, url: str, tag: str) -> str:
     )
 
 
+async def notify_users(user_ids: list[UUID], title: str, body: str, url: str, tag: str) -> None:
+    """``notify_user`` for several members at once, in parallel, so a route
+    that runs sends inline (on Lambda) waits for the slowest, not the sum."""
+    await asyncio.gather(*(notify_user(uid, title, body, url, tag) for uid in user_ids))
+
+
 async def notify_user(user_id: UUID, title: str, body: str, url: str, tag: str) -> None:
     """Send a notification to every device ``user_id`` subscribed.
 

@@ -196,8 +196,8 @@ async def offer_help(
 
     notice = push_service.help_offered(current_user, helper.case_id)
     team_ids = await push_service.case_team_ids(db, helper.case_id)
-    for user_id in await push_service.recipients(db, current_user.id, team_ids):
-        await after_response(background_tasks, push_service.notify_user, user_id, **asdict(notice))
+    if user_ids := await push_service.recipients(db, current_user.id, team_ids):
+        await after_response(background_tasks, push_service.notify_users, user_ids, **asdict(notice))
 
     return CaseHelperResponse(
         id=helper.id,

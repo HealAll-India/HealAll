@@ -120,6 +120,7 @@ export function AppShell({ children, messagesCount = null }: Props) {
             <span className="app-footer__copy">© 2026 HealAll</span>
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/child-safety">Child safety</Link>
             <Link href="/#community-guidelines">Community guidelines</Link>
             <Link href="/contributors">Contributors</Link>
             <Link href="/changelog">Changelog</Link>
