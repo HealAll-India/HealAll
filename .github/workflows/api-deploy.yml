@@ -1,0 +1,67 @@
+name: api-deploy
+
+# Ships the API to AWS Lambda (stack healall-api-prod, Mumbai) on every merge
+# to main that touches the backend. Uses a short-lived OIDC role, no AWS keys.
+# Off until the repo variable API_DEPLOY_ENABLED is "true".
+# One-time setup: infra/aws/bootstrap/README.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "infra/aws/api/**"
+      - ".github/workflows/api-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: Skip alembic upgrade head
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write   # OIDC token exchange with AWS
+  contents: read
+
+concurrency:
+  group: api-deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.API_DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_REGION: ap-south-1
+      ENVIRONMENT: prod
+      SKIP_MIGRATIONS: ${{ inputs.skip_migrations && '1' || '0' }}
+      APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
+      S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+      S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      MSG91_API_KEY: ${{ secrets.MSG91_API_KEY }}
+      MSG91_TEMPLATE_ID_OTP: ${{ secrets.MSG91_TEMPLATE_ID_OTP }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      APP_ALLOWED_ORIGIN_REGEX: ${{ vars.APP_ALLOWED_ORIGIN_REGEX }}
+      AI_TRIAGE_ENABLED: ${{ vars.AI_TRIAGE_ENABLED || 'false' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
+        with:
+          role-to-assume: ${{ vars.AWS_API_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Validate template
+        run: aws cloudformation validate-template --template-body file://infra/aws/api/healall-api.yml >/dev/null
+
+      - name: Build, migrate, deploy, smoke test
+        run: ./infra/aws/api/deploy.sh
