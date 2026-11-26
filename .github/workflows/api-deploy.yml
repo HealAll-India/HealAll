@@ -49,6 +49,8 @@ jobs:
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       APP_ALLOWED_ORIGIN_REGEX: ${{ vars.APP_ALLOWED_ORIGIN_REGEX }}
       AI_TRIAGE_ENABLED: ${{ vars.AI_TRIAGE_ENABLED || 'false' }}
     steps:

@@ -36,6 +36,7 @@ export default function PrivacyPolicyPage() {
           <li><strong>Posts &amp; messages:</strong> Help requests, comments, and direct messages you create</li>
           <li><strong>Post location (optional):</strong> The address, pincode or map pin you add to a help request, and your device location if you choose &ldquo;use my location&rdquo; on the map</li>
           <li><strong>Photos (optional):</strong> Images you attach to posts</li>
+          <li><strong>Notifications (optional):</strong> If you turn on notifications, the push address your browser gives us for each device and that device&rsquo;s browser name. Notifications never include message, comment or post text, and turning them off or signing out deletes that device&rsquo;s push address</li>
         </ul>
 
         <h3>Information from Google (if you sign in with Google)</h3>
@@ -99,6 +100,7 @@ export default function PrivacyPolicyPage() {
               <li>Vercel (frontend hosting, CDN, and anonymous page-speed measurements through Vercel Speed Insights)</li>
               <li>Amazon Web Services Lambda (backend API hosting, Mumbai ap-south-1 region)</li>
               <li>Sentry (error monitoring; no personally identifiable payloads are sent)</li>
+              <li>Your browser&rsquo;s push service (Google, Mozilla, Apple or Microsoft), which delivers notifications you turn on; they see that a notification was sent to your device, not its text</li>
               <li>
                 Groq, with Google Gemini as a fallback (AI-assisted moderation triage). When a moderator asks for a
                 suggestion on a report, we send only the text of the reported content and the report reason, after

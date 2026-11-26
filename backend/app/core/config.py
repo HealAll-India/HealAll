@@ -120,10 +120,22 @@ class Settings(BaseSettings):
     AI_TRIAGE_TIMEOUT_SECONDS: float = Field(default=8.0, gt=0, le=30)
     AI_TRIAGE_RATE_LIMIT_PER_HOUR: int = Field(default=60, ge=1)
 
+    # Web push (browser and Android notifications). Off, and every send a
+    # no-op, until both VAPID keys are set. Generate the pair once and keep
+    # the private key secret: rotating it invalidates every subscription.
+    VAPID_PUBLIC_KEY: str | None = None
+    VAPID_PRIVATE_KEY: str | None = None
+    VAPID_SUBJECT: str = "mailto:hello@healallindia.com"
+
     @property
     def ai_triage_active(self) -> bool:
         """True only when the flag is on and a provider key is configured."""
         return self.AI_TRIAGE_ENABLED and bool(self.GROQ_API_KEY or self.GEMINI_API_KEY)
+
+    @property
+    def push_enabled(self) -> bool:
+        """True only when both VAPID keys are configured."""
+        return bool(self.VAPID_PUBLIC_KEY and self.VAPID_PRIVATE_KEY)
 
     @property
     def allowed_origins(self) -> list[str]:

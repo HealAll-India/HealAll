@@ -111,6 +111,14 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
+  # Web push stays off until both VAPID keys are set.
+  VapidPublicKey:
+    Type: String
+    Default: ""
+  VapidPrivateKey:
+    Type: String
+    NoEcho: true
+    Default: ""
 
 Resources:
   ApiLogGroup:
@@ -171,6 +179,8 @@ Resources:
           AI_TRIAGE_ENABLED: !Ref AiTriageEnabled
           GROQ_API_KEY: !Ref GroqApiKey
           GEMINI_API_KEY: !Ref GeminiApiKey
+          VAPID_PUBLIC_KEY: !Ref VapidPublicKey
+          VAPID_PRIVATE_KEY: !Ref VapidPrivateKey
 
   HttpApi:
     Type: AWS::ApiGatewayV2::Api

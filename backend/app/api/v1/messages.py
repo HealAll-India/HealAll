@@ -1,13 +1,15 @@
 """Consent-based messaging endpoints."""
 
+from dataclasses import asdict
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.after_response import after_response
 from app.core.exceptions import DuplicateException
 from app.core.limiter import limiter
 from app.db.session import get_db
@@ -23,7 +25,7 @@ from app.schemas.message import (
     RequestConsentRequest,
     SendMessageRequest,
 )
-from app.services import message_service
+from app.services import message_service, push_service
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -56,6 +58,7 @@ def _conversation_response(
 async def request_consent(
     request: Request,
     payload: RequestConsentRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ConsentRequestResponse:
@@ -72,6 +75,10 @@ async def request_consent(
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
 
+    notice = push_service.new_message_request(current_user, consent.id)
+    for user_id in await push_service.recipients(db, current_user.id, [consent.to_user_id]):
+        await after_response(background_tasks, push_service.notify_user, user_id, **asdict(notice))
+
     return ConsentRequestResponse(
         id=consent.id,
         from_user_id=consent.from_user_id,
@@ -86,11 +93,12 @@ async def request_consent(
 @router.post("/consent/{request_id}/accept", response_model=ConversationResponse)
 async def accept_consent(
     request_id: UUID,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ConversationResponse:
     """Accept incoming consent request and open conversation."""
-    _consent, conversation = await message_service.accept_consent(
+    consent, conversation = await message_service.accept_consent(
         db=db,
         request_id=request_id,
         current_user=current_user,
@@ -100,6 +108,10 @@ async def accept_consent(
     except IntegrityError:
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
+
+    notice = push_service.message_request_accepted(current_user, conversation.id)
+    for user_id in await push_service.recipients(db, current_user.id, [consent.from_user_id]):
+        await after_response(background_tasks, push_service.notify_user, user_id, **asdict(notice))
 
     return _conversation_response(conversation)
 
@@ -219,6 +231,7 @@ async def send_message(
     request: Request,
     conversation_id: UUID,
     payload: SendMessageRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MessageResponse:
@@ -234,6 +247,11 @@ async def send_message(
     except IntegrityError:
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
+
+    other_id = await push_service.conversation_partner_id(db, message.conversation_id, current_user.id)
+    notice = push_service.new_message(current_user, message.conversation_id)
+    for user_id in await push_service.recipients(db, current_user.id, [other_id]):
+        await after_response(background_tasks, push_service.notify_user, user_id, **asdict(notice))
 
     return MessageResponse(
         id=message.id,

@@ -143,6 +143,7 @@ Set in `infra/aws/api/.env.prod` (gitignored; template `.env.example`); `infra/a
 | `GROQ_MODEL` | optional, default `openai/gpt-oss-20b` |
 | `GEMINI_API_KEY` | optional, aistudio.google.com key (fallback provider via OpenAI-compatible endpoint) |
 | `GEMINI_MODEL` | optional, default `gemini-3.5-flash-lite` |
+| `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` | web push key pair; push is off until both are set. CI deploy reads repo variable `VAPID_PUBLIC_KEY` and secret `VAPID_PRIVATE_KEY` |
 
 GitHub repo Variables (Settings → Secrets and variables → Actions → Variables):
 
