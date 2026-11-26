@@ -24,6 +24,12 @@ function getMapTileImageSource(tileUrl: string | undefined): string | null {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // Android app links file for the Play Store build, generated from env
+  // (see lib/android/asset-links.ts).
+  async rewrites() {
+    return [{ source: "/.well-known/assetlinks.json", destination: "/android-assetlinks" }];
+  },
+
   async headers() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_ORIGIN ?? "https://*.healallindia.com";
     // Vercel's preview-deploy toolbar (live feedback widget) only loads on

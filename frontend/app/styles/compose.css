@@ -69,3 +69,15 @@
 /* Map picker locate button + error */
 .map-picker-locate-btn { margin-left: auto; }
 .map-picker-error { font-size: 12px; margin: 0; }
+
+/* Crisis line under Support and Urgent posts */
+.crisis-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: #912018;
+}
+.crisis-note a { color: inherit; font-weight: 700; }

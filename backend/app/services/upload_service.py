@@ -1,5 +1,7 @@
 """Upload service — generates presigned PUT URLs for MinIO/S3."""
 
+import asyncio
+import logging
 import uuid
 from urllib.parse import quote, urlparse
 
@@ -10,6 +12,7 @@ from app.core.config import get_settings
 from app.core.exceptions import HealAllException
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 class UploadException(HealAllException):
@@ -91,3 +94,34 @@ def post_attachment_key(post_id: str, file_name: str) -> str:
 def identity_document_key(user_id: str, file_name: str) -> str:
     ext = file_name.rsplit(".", 1)[-1] if "." in file_name else "bin"
     return f"identity/{user_id}/{uuid.uuid4()}.{ext}"
+
+
+def _delete_prefix(bucket: str, prefix: str) -> int:
+    """Delete every object under ``prefix`` in ``bucket``; returns how many."""
+    client = _s3_client()
+    deleted = 0
+    for page in client.get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
+        keys = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
+        if keys:
+            client.delete_objects(Bucket=bucket, Delete={"Objects": keys, "Quiet": True})
+            deleted += len(keys)
+    return deleted
+
+
+async def delete_member_files(user_id: str, post_ids: list[str]) -> None:
+    """Best-effort removal of a deleted member's uploads.
+
+    Covers their profile photos, identity documents and the attachments on
+    their own posts (see the ``*_key`` helpers above for the layout). A
+    failure is logged, never raised: the account itself is already gone.
+    """
+    targets = [
+        (settings.S3_BUCKET_MEDIA, f"profile-photos/{user_id}/"),
+        (settings.S3_BUCKET_IDENTITY, f"identity/{user_id}/"),
+        *((settings.S3_BUCKET_MEDIA, f"post-attachments/{post_id}/") for post_id in post_ids),
+    ]
+    for bucket, prefix in targets:
+        try:
+            await asyncio.to_thread(_delete_prefix, bucket, prefix)
+        except Exception:
+            logger.exception("delete_member_files: could not clear %s/%s", bucket, prefix)

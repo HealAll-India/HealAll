@@ -46,3 +46,8 @@ export function unblockUser(token: string, userId: UUID) {
 export function listBlockedUsers(token: string) {
   return apiGet<BlockedUserResponse[]>("/v1/users/me/blocked", { token });
 }
+
+/** Permanently delete the signed-in member's account and their data. */
+export function deleteMyAccount(token: string) {
+  return apiDelete<void>("/v1/users/me", { token });
+}

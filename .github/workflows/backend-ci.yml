@@ -140,6 +140,7 @@ jobs:
               tests/test_after_response.py
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
+              tests/integration/test_account_deletion.py
               tests/integration/test_session_refresh.py
           - shard: posts-feed
             paths: >-

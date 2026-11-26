@@ -95,3 +95,10 @@
   .prof-hero { grid-template-columns: auto 1fr; }
   .prof-hero__actions { grid-column: 1 / -1; }
 }
+
+/* Delete account (Google Play requires an in-app path) */
+.delete-account { margin-top: 8px; border-color: var(--danger-line); }
+.delete-account__title { margin: 0; font-size: 16px; color: var(--danger); }
+.delete-account__text { margin: 0; font-size: 13px; }
+.delete-account__open { width: fit-content; }
+.delete-account__actions { gap: 8px; }
