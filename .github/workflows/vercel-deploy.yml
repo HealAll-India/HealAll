@@ -65,11 +65,13 @@ jobs:
       - uses: actions/setup-node@v5
         if: steps.pre.outputs.has_token == 'true'
         with:
-          node-version: '20'
+          # Match the Node version set on the Vercel project (24.x).
+          node-version: '24'
 
       - name: Install Vercel CLI
         if: steps.pre.outputs.has_token == 'true'
-        run: npm install --global vercel@39
+        # vercel@39 rejects the project's Node 24.x setting.
+        run: npm install --global vercel@66
 
       - name: Determine environment
         id: env
