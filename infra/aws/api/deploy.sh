@@ -110,6 +110,8 @@ PARAMS=(
   "AiTriageEnabled=${AI_TRIAGE_ENABLED:-false}"
   "GroqApiKey=${GROQ_API_KEY:-}"
   "GeminiApiKey=${GEMINI_API_KEY:-}"
+  "VapidPublicKey=${VAPID_PUBLIC_KEY:-}"
+  "VapidPrivateKey=${VAPID_PRIVATE_KEY:-}"
 )
 aws cloudformation deploy --region "${REGION}" --stack-name "${STACK_NAME}" \
   --template-file "${HERE}/healall-api.yml" --capabilities CAPABILITY_IAM \

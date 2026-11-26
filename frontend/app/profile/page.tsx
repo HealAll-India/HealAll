@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
+import { NotificationsCard } from "@/components/profile/notifications-card";
 import { AuthRequired } from "@/components/ui/auth-required";
 import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
 import { ApiError } from "@/lib/api/client";
@@ -405,6 +406,8 @@ export default function ProfilePage() {
               {saving ? "Saving…" : "Save privacy settings"}
             </button>
           </section>
+
+          <NotificationsCard />
         </>
       )}
 

@@ -22,6 +22,7 @@ from app.models.comment import Comment
 from app.models.message import DMConsentRequest, Conversation, Message
 from app.models.report import Report, ModerationAction
 from app.models.report_triage import ReportTriage
+from app.models.push import PushSubscription
 from app.db.url import asyncpg_url
 
 # this is the Alembic Config object, which provides
