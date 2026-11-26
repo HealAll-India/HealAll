@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
   return (
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
       <div style={{ marginBottom: "2.5rem" }}>
-        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: October 2, 2026</p>
+        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: November 26, 2026</p>
         <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#111827", margin: "0 0 12px" }}>Privacy Policy</h1>
         <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
           HealAll (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is committed to protecting your privacy.
@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
           people who can offer it. We operate at{" "}
           <a href="https://healallindia.com" style={{ color: "#16a34a" }}>healallindia.com</a>.
         </p>
-        <p>Contact: <a href="mailto:anupamkumar.nith@gmail.com" style={{ color: "#16a34a" }}>anupamkumar.nith@gmail.com</a></p>
+        <p>Contact: <a href="mailto:hello@healallindia.com" style={{ color: "#16a34a" }}>hello@healallindia.com</a></p>
       </Section>
 
       <Section title="2. Information We Collect">
@@ -34,6 +34,8 @@ export default function PrivacyPolicyPage() {
           <li><strong>Invite code:</strong> Used to verify you were invited to join</li>
           <li><strong>Profile information:</strong> Bio, skills, avatar image (optional)</li>
           <li><strong>Posts &amp; messages:</strong> Help requests, comments, and direct messages you create</li>
+          <li><strong>Post location (optional):</strong> The address, pincode or map pin you add to a help request, and your device location if you choose &ldquo;use my location&rdquo; on the map</li>
+          <li><strong>Photos (optional):</strong> Images you attach to posts</li>
         </ul>
 
         <h3>Information from Google (if you sign in with Google)</h3>
@@ -92,10 +94,10 @@ export default function PrivacyPolicyPage() {
               <li>Upstash (Redis caching)</li>
               <li>Amazon Web Services (S3 object storage for media uploads, ap-south-1 region)</li>
               <li>Resend (transactional email delivery)</li>
-              <li>MSG91 (SMS OTP delivery for Indian phone numbers)</li>
+              <li>MSG91 (SMS delivery of one-time codes, once SMS sign-in is switched on; it is not in use today)</li>
               <li>Google (OAuth authentication; ID-token-only flow)</li>
-              <li>Vercel (frontend hosting + CDN)</li>
-              <li>Railway (backend hosting)</li>
+              <li>Vercel (frontend hosting, CDN, and anonymous page-speed measurements through Vercel Speed Insights)</li>
+              <li>Amazon Web Services Lambda (backend API hosting, Mumbai ap-south-1 region)</li>
               <li>Sentry (error monitoring; no personally identifiable payloads are sent)</li>
               <li>
                 Groq, with Google Gemini as a fallback (AI-assisted moderation triage). When a moderator asks for a
@@ -125,7 +127,9 @@ export default function PrivacyPolicyPage() {
         <ul>
           <li>Account data is retained while your account is active</li>
           <li>OTP codes expire within 10 minutes and are deleted after use</li>
-          <li>If you request account deletion, we delete your personal data within 30 days, except where retention is required by law</li>
+          <li>When you delete your account in the app, your account and its data are deleted immediately, and your uploaded photos within 30 days</li>
+          <li>If you ask us to delete your account by email, we do it within 30 days</li>
+          <li>Encrypted backups expire within 30 days; we keep data longer only where Indian law requires it</li>
         </ul>
       </Section>
 
@@ -134,13 +138,13 @@ export default function PrivacyPolicyPage() {
         <ul>
           <li><strong>Access</strong> — request a copy of data we hold about you</li>
           <li><strong>Correction</strong> — update incorrect information via your profile settings</li>
-          <li><strong>Deletion</strong> — request account and data deletion by emailing us</li>
+          <li><strong>Deletion</strong> — delete your account from your profile in the app, or by email. See <Link href="/delete-account" style={{ color: "#16a34a" }}>how to delete your account</Link></li>
           <li><strong>Portability</strong> — request your data in a machine-readable format</li>
           <li><strong>Withdraw consent</strong> — stop using the platform at any time</li>
         </ul>
         <p>
           To exercise these rights, email{" "}
-          <a href="mailto:anupamkumar.nith@gmail.com" style={{ color: "#16a34a" }}>anupamkumar.nith@gmail.com</a>.
+          <a href="mailto:hello@healallindia.com" style={{ color: "#16a34a" }}>hello@healallindia.com</a>.
         </p>
       </Section>
 
@@ -149,6 +153,10 @@ export default function PrivacyPolicyPage() {
           HealAll is available to users aged 13 and above. Users aged 13–17 must have parental consent.
           We do not knowingly collect data from children under 13. If you believe a child under 13
           has created an account, please contact us immediately.
+        </p>
+        <p>
+          Read our <Link href="/child-safety" style={{ color: "#16a34a" }}>child safety standards</Link> to see
+          what we ban and how to report it.
         </p>
       </Section>
 
@@ -179,7 +187,7 @@ export default function PrivacyPolicyPage() {
       <Section title="11. Contact">
         <p>
           Questions or concerns about this policy:{" "}
-          <a href="mailto:anupamkumar.nith@gmail.com" style={{ color: "#16a34a" }}>anupamkumar.nith@gmail.com</a>
+          <a href="mailto:hello@healallindia.com" style={{ color: "#16a34a" }}>hello@healallindia.com</a>
         </p>
         <p>We aim to respond within 7 business days.</p>
       </Section>

@@ -5,6 +5,7 @@ import { useAuthStore } from "@/lib/stores/auth-store";
 import type { MyUserProfile, UserInfo } from "@/lib/types/api";
 
 vi.mock("next/image", () => ({ default: () => null }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("@/components/ui/india-location-picker", () => ({ IndiaLocationPicker: () => null }));
 vi.mock("@/components/ui/auth-required", () => ({ AuthRequired: () => <p>Sign in</p> }));
 vi.mock("@/lib/api/uploads", () => ({ presignProfilePhoto: vi.fn(), putToPresignedUrl: vi.fn() }));
@@ -14,6 +15,7 @@ const users = vi.hoisted(() => ({
   updateMyProfile: vi.fn(),
   updatePrivacy: vi.fn(),
   addSkill: vi.fn(),
+  deleteMyAccount: vi.fn(),
 }));
 vi.mock("@/lib/api/users", () => users);
 

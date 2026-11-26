@@ -111,6 +111,13 @@ export default function NewPostPage() {
                     </select>
                   </label>
                 </div>
+                {(payload.category === "emotional_support" || payload.category === "urgent") && (
+                  <p className="crisis-note">
+                    HealAll members are volunteers, not an emergency service. If you or someone near you is in
+                    danger, call <a href="tel:112">112</a>. To talk to a trained counsellor any time, call
+                    Tele-MANAS on <a href="tel:14416">14416</a>.
+                  </p>
+                )}
               </div>
               <div>
                 <h3 className="section-label">

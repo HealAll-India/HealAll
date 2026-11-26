@@ -2,3 +2,20 @@
    Legal & docs — /terms, /privacy-policy, /contributors, /changelog
    Owned by those pages.
    ───────────────────────────────────────────── */
+
+.legal { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+.legal__header { margin-bottom: 2.5rem; }
+.legal__updated { font-size: 13px; color: #9ca3af; margin: 0 0 8px; }
+.legal__title { font-size: 32px; font-weight: 800; color: #111827; margin: 0 0 12px; }
+.legal__lead { font-size: 16px; color: #6b7280; line-height: 1.7; margin: 0; }
+.legal a { color: #16a34a; }
+.legal-section { margin-bottom: 2.5rem; }
+.legal-section__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.legal-section__body { font-size: 15px; color: #374151; line-height: 1.75; }
