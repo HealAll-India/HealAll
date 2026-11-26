@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.after_response import after_response
 from app.core.config import get_settings
-from app.core.exceptions import DuplicateException, UnauthenticatedException
+from app.core.exceptions import DuplicateException, InvalidOTPException, UnauthenticatedException
 from app.core.limiter import limiter
 from app.core.security import create_access_token
 from app.db.session import get_db
@@ -46,6 +46,20 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         samesite="lax",
         max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
+
+
+async def _check_otp(db: AsyncSession, phone_or_email: str, otp_code: str) -> None:
+    """Verify an OTP, keeping a wrong guess on the attempt counter.
+
+    get_db rolls back when a route raises, which would also undo the counter
+    increment and leave OTP_MAX_ATTEMPTS unenforced. So a wrong guess is
+    committed before its error goes back.
+    """
+    try:
+        await auth_service.verify_otp_code(db, phone_or_email, otp_code)
+    except InvalidOTPException:
+        await db.commit()
+        raise
 
 
 def _user_info(user: User) -> UserInfo:
@@ -152,7 +166,7 @@ async def verify_otp(
     After both phone and email are verified, user reaches verification level 1.
     """
     # Verify OTP
-    await auth_service.verify_otp_code(db, verify_data.phone_or_email, verify_data.otp_code)
+    await _check_otp(db, verify_data.phone_or_email, verify_data.otp_code)
 
     # Get user
     user = await auth_service.get_user_by_phone_or_email(db, verify_data.phone_or_email)
@@ -232,7 +246,7 @@ async def login(
     Returns access token and sets refresh token in httpOnly cookie.
     """
     # Verify OTP
-    await auth_service.verify_otp_code(db, login_data.phone_or_email, login_data.otp_code)
+    await _check_otp(db, login_data.phone_or_email, login_data.otp_code)
 
     # Get user
     user = await auth_service.get_user_by_phone_or_email(db, login_data.phone_or_email)

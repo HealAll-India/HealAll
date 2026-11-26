@@ -18,6 +18,11 @@ class ValidationException(HealAllException):
         super().__init__("VALIDATION_ERROR", message, details)
 
 
+class InvalidOTPException(ValidationException):
+    """A wrong OTP guess. The route must commit before re-raising it, so the
+    guess still counts towards OTP_MAX_ATTEMPTS when get_db rolls back."""
+
+
 class UnauthenticatedException(HealAllException):
     """Authentication required."""
 
