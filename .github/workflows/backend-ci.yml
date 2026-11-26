@@ -149,6 +149,8 @@ jobs:
               tests/integration/test_feed.py
               tests/integration/test_comments.py
               tests/integration/test_public.py
+              tests/integration/test_uploads.py
+              tests/test_upload_limits.py
           - shard: cases-messages
             paths: >-
               tests/test_health.py

@@ -93,11 +93,14 @@ Resources:
       Bucket: !Ref MediaBucket
       PolicyDocument:
         Statement:
-          - Sid: PublicReadGet
+          # Only profile photos are public (they are shown as avatars).
+          # Post attachments and anything else stay private and are read
+          # through the API with short-lived signed URLs.
+          - Sid: PublicReadProfilePhotos
             Effect: Allow
             Principal: "*"
             Action: s3:GetObject
-            Resource: !Sub "${MediaBucket.Arn}/*"
+            Resource: !Sub "${MediaBucket.Arn}/profile-photos/*"
           - Sid: DenyInsecureTransport
             Effect: Deny
             Principal: "*"
