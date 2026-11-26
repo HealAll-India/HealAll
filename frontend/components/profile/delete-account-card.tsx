@@ -28,10 +28,13 @@ export function DeleteAccountCard() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!token || confirmText.trim() !== CONFIRM_WORD) return;
+    const memberId = useAuthStore.getState().user?.id;
     setDeleting(true);
     setError(null);
     try {
       await deleteMyAccount(token);
+      // Someone else may have signed in on this device meanwhile; leave them be.
+      if (useAuthStore.getState().user?.id !== memberId) return;
       clearSession();
       router.replace("/?account=deleted");
     } catch (err) {

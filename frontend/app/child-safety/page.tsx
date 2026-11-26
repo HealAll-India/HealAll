@@ -38,12 +38,13 @@ export default function ChildSafetyPage() {
       <LegalSection title="How to report it">
         <ul>
           <li>
-            In HealAll, use <strong>Report</strong> on the post, comment, message or profile. Choose the reason that
-            fits best and say a child is involved. Reports go to our moderators, not to the person you report.
+            In HealAll, open the post and use <strong>Report</strong>. Choose the reason that fits best and say a child
+            is involved. Reports go to our moderators, not to the person you report.
           </li>
           <li>
-            Or email <a href="mailto:hello@healallindia.com?subject=Child%20safety%20report">hello@healallindia.com</a>{" "}
-            with the subject &ldquo;Child safety report&rdquo;.
+            For a comment, message or profile, or if you can&apos;t use Report, email{" "}
+            <a href="mailto:hello@healallindia.com?subject=Child%20safety%20report">hello@healallindia.com</a> with the
+            subject &ldquo;Child safety report&rdquo; and say where you saw it.
           </li>
           <li>
             If a child is in immediate danger, call <a href="tel:112">112</a>. You can also call Childline on{" "}

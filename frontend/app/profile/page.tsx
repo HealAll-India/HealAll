@@ -407,7 +407,7 @@ export default function ProfilePage() {
             </button>
           </section>
 
-          <DeleteAccountCard />
+          <DeleteAccountCard key={memberId} />
         </>
       )}
 

@@ -57,7 +57,10 @@ export default function DeleteAccountPage() {
       <LegalSection title="What we keep, and for how long">
         <ul>
           <li>Encrypted database backups that contain your data expire within 30 days.</li>
-          <li>Help cases you took part in stay for the other members involved, with your name removed.</li>
+          <li>
+            Help cases on your own requests are deleted with them. On other members&apos; cases, your helper role and
+            your notes are removed and the case stays for the people still on it.
+          </li>
           <li>
             Anything Indian law requires us to keep, for example in response to a valid legal request, is kept only
             for as long as the law requires.
