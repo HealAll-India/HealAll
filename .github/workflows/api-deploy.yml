@@ -41,6 +41,8 @@ jobs:
       APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Lets the smoke test through the Cloudflare-only check once it is on.
+      ORIGIN_VERIFY_SECRET: ${{ secrets.ORIGIN_VERIFY_SECRET }}
       MSG91_TEMPLATE_ID_OTP: ${{ secrets.MSG91_TEMPLATE_ID_OTP }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
