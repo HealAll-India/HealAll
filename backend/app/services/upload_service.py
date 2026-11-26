@@ -4,6 +4,7 @@ import uuid
 from urllib.parse import quote, urlparse
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app.core.config import get_settings
@@ -26,6 +27,9 @@ def _s3_client():
         aws_access_key_id=settings.S3_ACCESS_KEY,
         aws_secret_access_key=settings.S3_SECRET_KEY,
         region_name=settings.S3_REGION,
+        # SigV4 signs every header we put in the presign (Content-Type and
+        # Content-Length), so S3 rejects an upload that differs from them.
+        config=Config(signature_version="s3v4"),
     )
 
 
@@ -34,17 +38,26 @@ def generate_presigned_put(
     object_key: str,
     content_type: str,
     expires_in: int = 300,
+    content_length: int | None = None,
 ) -> str:
-    """Return a presigned PUT URL for direct client upload."""
+    """Return a presigned PUT URL for direct client upload.
+
+    When ``content_length`` is given it is signed into the URL together with
+    the content type, so S3 rejects a PUT whose body size or Content-Type
+    differs from what the API approved.
+    """
     client = _s3_client()
+    params: dict[str, object] = {
+        "Bucket": bucket,
+        "Key": object_key,
+        "ContentType": content_type,
+    }
+    if content_length is not None:
+        params["ContentLength"] = content_length
     try:
         url: str = client.generate_presigned_url(
             "put_object",
-            Params={
-                "Bucket": bucket,
-                "Key": object_key,
-                "ContentType": content_type,
-            },
+            Params=params,
             ExpiresIn=expires_in,
         )
         return url

@@ -150,6 +150,7 @@ export default function ProfilePage() {
       const presigned = await presignProfilePhoto(token, {
         file_name: file.name,
         content_type: file.type,
+        size_bytes: file.size,
       });
       await putToPresignedUrl(presigned.upload_url, file);
       const publicUrl = presigned.public_url;
