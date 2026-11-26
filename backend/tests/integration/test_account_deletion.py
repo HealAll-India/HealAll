@@ -73,7 +73,8 @@ async def test_delete_account_frees_email_and_phone_for_signup(
     client: AsyncClient, db_session: AsyncSession, member: tuple[dict[str, str], str]
 ):
     headers, _ = member
-    assert (await client.delete("/v1/users/me", headers=headers)).status_code == 204
+    resp = await client.delete("/v1/users/me", headers=headers)
+    assert resp.status_code == 204
 
     invite = await _create_invite(db_session, "DELETE-INVITE-002")
     await _signup_and_login(client, db_session, invite.code, phone=PHONE, email=EMAIL)
