@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote, urlparse
 
 import boto3
@@ -158,25 +160,56 @@ def _owner_ids_in(bucket: str, folder: str) -> list[str]:
     return ids
 
 
-async def purge_orphaned_files(user_ids: set[str], post_ids: set[str], *, apply: bool) -> list[str]:
+def _newest_upload(bucket: str, prefix: str) -> datetime | None:
+    """When the newest object under ``prefix`` was written, or None if empty."""
+    newest = None
+    for page in _s3_client().get_paginator("list_objects_v2").paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            if newest is None or obj["LastModified"] > newest:
+                newest = obj["LastModified"]
+    return newest
+
+
+async def purge_orphaned_files(
+    existing_ids: Callable[[str, list[str]], Awaitable[set[str]]],
+    *,
+    apply: bool,
+    min_age: timedelta = timedelta(hours=1),
+) -> tuple[list[str], list[str]]:
     """Find, and with ``apply`` delete, upload folders whose owner row is gone.
 
-    ``user_ids`` and ``post_ids`` are every id that still exists. Returns the
-    orphaned ``bucket/prefix`` folders. Errors on one folder are logged and the
-    sweep goes on.
+    Storage is listed first and ``existing_ids(owner, ids)`` is asked
+    afterwards which of those ``"user"`` or ``"post"`` ids still exist, so an
+    owner created while the sweep runs is never mistaken for a missing one.
+    Folders written to within ``min_age`` are skipped as well, to leave room
+    for an upload or a transaction that is still in flight.
+
+    Returns ``(orphans, failed)`` as ``bucket/prefix`` strings: every orphaned
+    folder found, and those that could not be fully deleted.
     """
     buckets = {"media": settings.S3_BUCKET_MEDIA, "identity": settings.S3_BUCKET_IDENTITY}
+    cutoff = datetime.now(UTC) - min_age
     orphans: list[tuple[str, str]] = []
     for bucket_key, folder, owner in _OWNED_FOLDERS:
         bucket = buckets[bucket_key]
-        known = user_ids if owner == "user" else post_ids
-        for owner_id in await asyncio.to_thread(_owner_ids_in, bucket, folder):
-            if owner_id not in known:
-                orphans.append((bucket, f"{folder}{owner_id}/"))
+        candidates = await asyncio.to_thread(_owner_ids_in, bucket, folder)
+        if not candidates:
+            continue
+        alive = await existing_ids(owner, candidates)
+        for owner_id in candidates:
+            if owner_id in alive:
+                continue
+            prefix = f"{folder}{owner_id}/"
+            newest = await asyncio.to_thread(_newest_upload, bucket, prefix)
+            if newest is not None and newest > cutoff:
+                continue
+            orphans.append((bucket, prefix))
+    failed: list[str] = []
     if apply:
         for bucket, prefix in orphans:
             try:
                 await asyncio.to_thread(_delete_prefix, bucket, prefix)
             except Exception:
                 logger.exception("purge_orphaned_files: could not clear %s/%s", bucket, prefix)
-    return [f"{bucket}/{prefix}" for bucket, prefix in orphans]
+                failed.append(f"{bucket}/{prefix}")
+    return [f"{bucket}/{prefix}" for bucket, prefix in orphans], failed
