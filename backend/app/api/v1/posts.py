@@ -21,14 +21,19 @@ from app.schemas.post import (
     PostResponse,
     PostSummary,
     UpdatePostRequest,
+    area_coordinate,
 )
-from app.services import post_service
+from app.services import case_service, post_service
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 
-def _post_to_response(post, author: User) -> PostResponse:
-    """Build a PostResponse from ORM models, including location fields."""
+def _post_to_response(post, author: User, *, exact_location: bool = True) -> PostResponse:
+    """Build a PostResponse from ORM models.
+
+    With ``exact_location=False`` the street address is dropped and the pin is
+    rounded to area level.
+    """
     return PostResponse(
         id=post.id,
         title=post.title,
@@ -36,10 +41,11 @@ def _post_to_response(post, author: User) -> PostResponse:
         category=post.category,
         urgency=post.urgency,
         city=post.city,
-        address=post.address,
+        address=post.address if exact_location else None,
         pincode=post.pincode,
-        latitude=post.latitude,
-        longitude=post.longitude,
+        latitude=post.latitude if exact_location else area_coordinate(post.latitude),
+        longitude=post.longitude if exact_location else area_coordinate(post.longitude),
+        location_precision="exact" if exact_location else "area",
         status=post.status,
         author=AuthorInfo(
             id=author.id,
@@ -91,7 +97,8 @@ async def get_post(
     if not author:
         raise NotFoundException("Post not found") from None
 
-    return _post_to_response(post, author)
+    exact = await case_service.can_see_exact_location(db, post, current_user)
+    return _post_to_response(post, author, exact_location=exact)
 
 
 @router.patch("/{post_id}", response_model=PostResponse)

@@ -69,6 +69,44 @@ async def _is_case_team_member(db: AsyncSession, case: Case, post: Post, user: U
     return verifier_result.scalar_one_or_none() is not None
 
 
+# Roles that may always see a post's exact address and pin.
+LOCATION_TRUSTED_ROLES = {
+    UserRole.CASE_VERIFIER.value,
+    UserRole.MODERATOR.value,
+    UserRole.ADMIN.value,
+    UserRole.HEAD_ADMIN.value,
+}
+
+
+async def can_see_exact_location(db: AsyncSession, post: Post, user: User) -> bool:
+    """Whether ``user`` may see the post's street address and exact pin.
+
+    The author, trusted roles, whoever verified the post and the active case
+    team see it. Everyone else gets area-level location only.
+    """
+    if post.author_id == user.id or _has_any_role(user, LOCATION_TRUSTED_ROLES):
+        return True
+
+    verifier = await db.execute(
+        select(Verification.id).where(Verification.post_id == post.id, Verification.verifier_id == user.id).limit(1)
+    )
+    if verifier.scalar_one_or_none() is not None:
+        return True
+
+    team = await db.execute(
+        select(Case.id)
+        .outerjoin(
+            CaseHelper,
+            (CaseHelper.case_id == Case.id)
+            & (CaseHelper.user_id == user.id)
+            & (CaseHelper.status == CaseHelperStatus.ACTIVE.value),
+        )
+        .where(Case.post_id == post.id, or_(Case.owner_id == user.id, CaseHelper.id.is_not(None)))
+        .limit(1)
+    )
+    return team.scalar_one_or_none() is not None
+
+
 async def _get_helper_counts(db: AsyncSession, case_ids: list[UUID]) -> dict[UUID, int]:
     if not case_ids:
         return {}

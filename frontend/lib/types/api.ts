@@ -154,6 +154,8 @@ export interface PostResponse {
   pincode?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** "area": no street address and the pin is rounded to about 1 km. */
+  location_precision?: "exact" | "area";
   status: string;
   author: AuthorInfo;
   created_at: string;
