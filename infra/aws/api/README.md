@@ -12,6 +12,9 @@ Cloudflare (DNS + proxy) -> API Gateway HTTP API (custom domain, TLS via ACM)
 
 ## Deploy
 
+Normally GitHub Actions does this on every merge to `main` (`.github/workflows/api-deploy.yml`,
+no AWS keys; one-time setup in `infra/aws/bootstrap/README.md`). To deploy by hand instead:
+
 ```bash
 cp infra/aws/api/.env.example infra/aws/api/.env.prod   # once; fill it in, never commit it
 ./infra/aws/api/deploy.sh
