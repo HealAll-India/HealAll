@@ -95,6 +95,7 @@ PARAMS=(
   "Msg91ApiKey=${MSG91_API_KEY:-}"
   "Msg91TemplateIdOtp=${MSG91_TEMPLATE_ID_OTP:-}"
   "GoogleClientId=${GOOGLE_CLIENT_ID:-}"
+  "AllowedOriginRegex=${APP_ALLOWED_ORIGIN_REGEX:-}"
   "SentryDsn=${SENTRY_DSN:-}"
   "AiTriageEnabled=${AI_TRIAGE_ENABLED:-false}"
   "GroqApiKey=${GROQ_API_KEY:-}"

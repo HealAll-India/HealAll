@@ -58,6 +58,10 @@ Parameters:
   AllowedOrigins:
     Type: String
     Default: https://healallindia.com,https://www.healallindia.com
+  AllowedOriginRegex:
+    Type: String
+    Default: ""
+    Description: Optional regex for extra CORS origins, e.g. Vercel preview URLs. Empty allows none.
   S3AccessKey:
     Type: String
     NoEcho: true
@@ -146,6 +150,7 @@ Resources:
           APP_SECRET_KEY: !Ref AppSecretKey
           JWT_SECRET_KEY: !Ref JwtSecretKey
           APP_ALLOWED_ORIGINS: !Ref AllowedOrigins
+          APP_ALLOWED_ORIGIN_REGEX: !Ref AllowedOriginRegex
           DATABASE_URL: !Ref DatabaseUrl
           REDIS_URL: !Ref RedisUrl
           S3_ACCESS_KEY: !Ref S3AccessKey
