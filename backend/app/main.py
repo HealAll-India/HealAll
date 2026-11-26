@@ -1,9 +1,10 @@
 """FastAPI application factory and configuration."""
 
+import hmac
 import logging
 
 import sentry_sdk
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -34,6 +35,19 @@ logging.basicConfig(
 )
 
 settings = get_settings()
+
+
+def require_metrics_token(request: Request) -> None:
+    """Gate /metrics: a bearer token when METRICS_TOKEN is set, else dev only."""
+    settings = get_settings()
+    token = settings.METRICS_TOKEN
+    if not token:
+        if settings.APP_ENV == "production":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+        return
+    sent = request.headers.get("authorization", "")
+    if not hmac.compare_digest(sent.encode(), f"Bearer {token}".encode()):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
 def create_app() -> FastAPI:
@@ -90,7 +104,7 @@ def create_app() -> FastAPI:
             should_group_status_codes=False,
             should_ignore_untemplated=True,
             excluded_handlers=["/health", "/metrics"],
-        ).instrument(app).expose(app, include_in_schema=False)
+        ).instrument(app).expose(app, include_in_schema=False, dependencies=[Depends(require_metrics_token)])
 
     # Health check endpoint
     @app.get("/health", response_model=HealthResponse, tags=["health"])

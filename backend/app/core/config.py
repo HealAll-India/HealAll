@@ -106,6 +106,9 @@ class Settings(BaseSettings):
 
     # Metrics
     METRICS_ENABLED: bool = True
+    # Bearer token Prometheus must send to read /metrics. In production
+    # /metrics answers 404 unless this is set.
+    METRICS_TOKEN: str | None = None
 
     # Community verification
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
