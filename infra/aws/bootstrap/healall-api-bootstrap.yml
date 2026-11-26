@@ -11,8 +11,11 @@ Description: >
       on main of HealAll-India/HealAll, limited to the healall-api resources
     * ECR repository healall-api (keeps the last 5 images)
     * A monthly AWS Budgets alarm for the whole account, emailed to you
+    * Secret healall-api-prod/app (set by put-secrets.sh, never by CI)
+    * Policy healall-api-prod-runtime: what the function may do
 
-  Everything here is free except ECR image storage (about $0.10 per GB-month).
+  Free except ECR storage (about $0.10 per GB-month) and the secret
+  ($0.40 a month plus $0.05 per 10,000 reads).
 
 Parameters:
   ExistingOidcProviderArn:
@@ -36,6 +39,13 @@ Parameters:
   ApiDomainName:
     Type: String
     Default: api.healallindia.com
+
+  MediaBucketName:
+    Type: String
+    Default: healall-media-prod
+  IdentityBucketName:
+    Type: String
+    Default: healall-identity-ephemeral-prod
 
   BudgetEmail:
     Type: String
@@ -87,6 +97,44 @@ Resources:
             Condition:
               StringLike:
                 "aws:sourceArn": !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:healall-api-*"
+
+  # The API's secrets as one JSON object. CloudFormation creates it with a
+  # placeholder and never touches the value again; put-secrets.sh sets it.
+  AppSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub healall-api-${Environment}/app
+      Description: HealAll API settings (APP_SECRET_KEY, DATABASE_URL, ...). Set with infra/aws/api/put-secrets.sh.
+      SecretString: "{}"
+
+  # Everything the running API may do in AWS. Replaces the long-lived
+  # healall-app-prod access key.
+  ApiRuntimePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub healall-api-${Environment}-runtime
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ReadAppSecret
+            Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: !Ref AppSecret
+          - Sid: S3Objects
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${MediaBucketName}/*"
+              - !Sub "arn:${AWS::Partition}:s3:::${IdentityBucketName}/*"
+          - Sid: S3List
+            Effect: Allow
+            Action: s3:ListBucket
+            Resource:
+              - !Sub "arn:${AWS::Partition}:s3:::${MediaBucketName}"
+              - !Sub "arn:${AWS::Partition}:s3:::${IdentityBucketName}"
 
   DeployRole:
     Type: AWS::IAM::Role
@@ -174,7 +222,8 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:healall-api-*"
 
               # The function's own execution role. It may only ever carry the
-              # basic logging policy, so CI cannot mint a more powerful role.
+              # basic logging policy and the runtime policy above, both owned
+              # by this stack, so CI cannot mint a more powerful role.
               - Sid: FunctionRoleManage
                 Effect: Allow
                 Action:
@@ -196,7 +245,9 @@ Resources:
                 Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/healall-api-*"
                 Condition:
                   ArnEquals:
-                    "iam:PolicyARN": !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    "iam:PolicyARN":
+                      - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                      - !Ref ApiRuntimePolicy
               - Sid: FunctionRolePassToLambdaOnly
                 Effect: Allow
                 Action: iam:PassRole
@@ -287,3 +338,8 @@ Outputs:
     Value: !GetAtt DeployRole.Arn
   RepositoryUri:
     Value: !GetAtt ApiRepository.RepositoryUri
+  AppSecretArn:
+    Description: Fill it with infra/aws/api/put-secrets.sh.
+    Value: !Ref AppSecret
+  RuntimePolicyArn:
+    Value: !Ref ApiRuntimePolicy

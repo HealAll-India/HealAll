@@ -17,6 +17,7 @@ no AWS keys; one-time setup in `infra/aws/bootstrap/README.md`). To deploy by ha
 
 ```bash
 cp infra/aws/api/.env.example infra/aws/api/.env.prod   # once; fill it in, never commit it
+./infra/aws/api/put-secrets.sh                          # when a secret changes
 ./infra/aws/api/deploy.sh
 ```
 
@@ -26,12 +27,23 @@ add in Cloudflare and waits), deploys `healall-api.yml`, and calls `/health`.
 Run it again to ship a new version. First run only: point the Cloudflare `api`
 record at the `DnsTarget` it prints, with SSL/TLS on Full or Full (strict).
 
+## Secrets and AWS access
+
+The function's secrets are one JSON secret in Secrets Manager,
+`healall-api-prod/app`, which the app reads once per cold start
+(`APP_SECRETS_ARN`). They are not stack parameters or Lambda environment
+variables, so anyone who can only view the function cannot read them. S3
+access comes from the function's role (policy `healall-api-prod-runtime` in
+the bootstrap stack), so there is no long-lived S3 key. Once this is live,
+delete the `healall-app-prod` user's access key.
+
 ## Cost
 
 At HealAll's traffic this is close to free: Lambda's always-free monthly
 allowance (1M requests, 400,000 GB-seconds) covers it, API Gateway HTTP APIs
 cost about $1 per million requests, and ECR keeps the last 5 images (a few
-cents). There is no hourly charge.
+cents). The secret costs $0.40 a month plus $0.05 per 10,000 reads, one
+read per cold start. There is no hourly charge.
 
 ## Things that differ from a long-running server
 

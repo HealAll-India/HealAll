@@ -36,21 +36,14 @@ jobs:
       AWS_REGION: ap-south-1
       ENVIRONMENT: prod
       SKIP_MIGRATIONS: ${{ inputs.skip_migrations && '1' || '0' }}
+      # Only what migrations need. The function's own secrets live in Secrets
+      # Manager (infra/aws/api/put-secrets.sh), not in GitHub.
       APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
       JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      REDIS_URL: ${{ secrets.REDIS_URL }}
-      S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
-      S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
-      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-      MSG91_API_KEY: ${{ secrets.MSG91_API_KEY }}
       MSG91_TEMPLATE_ID_OTP: ${{ secrets.MSG91_TEMPLATE_ID_OTP }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
-      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       APP_ALLOWED_ORIGIN_REGEX: ${{ vars.APP_ALLOWED_ORIGIN_REGEX }}
       AI_TRIAGE_ENABLED: ${{ vars.AI_TRIAGE_ENABLED || 'false' }}
     steps:
