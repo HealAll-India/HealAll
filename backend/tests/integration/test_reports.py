@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import UserRole
@@ -86,6 +87,24 @@ async def submitted_post(db_session: AsyncSession, target_user: User) -> Post:
     return post
 
 
+@pytest.fixture
+async def active_post(db_session: AsyncSession, target_user: User) -> Post:
+    """Create a live post authored by target_user."""
+    post = Post(
+        author_id=target_user.id,
+        title="Need a wheelchair for a week",
+        description="My mother is recovering from surgery and needs a wheelchair.",
+        category=PostCategory.URGENT.value,
+        urgency=PostUrgency.HIGH.value,
+        city="Pune",
+        status=PostStatus.ACTIVE.value,
+    )
+    db_session.add(post)
+    await db_session.commit()
+    await db_session.refresh(post)
+    return post
+
+
 def _auth_headers(user: User) -> dict[str, str]:
     """Build a Bearer token header for the given user."""
     token = create_access_token(
@@ -105,12 +124,12 @@ def _auth_headers(user: User) -> dict[str, str]:
 async def test_report_post(
     client: AsyncClient,
     regular_user: User,
-    submitted_post: Post,
+    active_post: Post,
 ):
     """Authenticated user can create a report against a post."""
     payload = {
         "target_type": ReportTargetType.POST.value,
-        "target_id": str(submitted_post.id),
+        "target_id": str(active_post.id),
         "reason": ReportReason.SPAM.value,
         "description": "This post looks like spam.",
     }
@@ -124,10 +143,35 @@ async def test_report_post(
     assert response.status_code == 201, response.text
     data = response.json()
     assert data["target_type"] == ReportTargetType.POST.value
-    assert data["target_id"] == str(submitted_post.id)
+    assert data["target_id"] == str(active_post.id)
     assert data["reason"] == ReportReason.SPAM.value
     assert data["status"] == ReportStatus.PENDING.value
     assert data["reporter_id"] == str(regular_user.id)
+
+
+@pytest.mark.asyncio
+async def test_report_hidden_post_not_found(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    regular_user: User,
+    target_user: User,
+    submitted_post: Post,
+):
+    """A post that isn't live can't be reported, even by its author: moderators couldn't open it."""
+    for reporter in (regular_user, target_user):
+        response = await client.post(
+            "/v1/reports",
+            json={
+                "target_type": ReportTargetType.POST.value,
+                "target_id": str(submitted_post.id),
+                "reason": ReportReason.SPAM.value,
+            },
+            headers=_auth_headers(reporter),
+        )
+        assert response.status_code == 404, response.text
+
+    count = await db_session.execute(select(func.count(Report.id)).where(Report.target_id == submitted_post.id))
+    assert count.scalar_one() == 0
 
 
 @pytest.mark.asyncio

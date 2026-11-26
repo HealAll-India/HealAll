@@ -54,6 +54,7 @@ async def get_verification_queue(
             VerificationQueueItem(
                 post_id=post.id,
                 title=post.title,
+                description=post.description,
                 category=post.category,
                 urgency=post.urgency,
                 city=post.city,

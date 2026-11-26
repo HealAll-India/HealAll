@@ -30,7 +30,11 @@ async def get_pending_posts(
     total_result = await db.execute(select(func.count()).select_from(query.subquery()))
     total = total_result.scalar_one()
 
-    result = await db.execute(query.order_by(Post.created_at.asc()).offset((page - 1) * per_page).limit(per_page))
+    # Oldest submission first. A submitted post can't be edited, so updated_at is
+    # when it was submitted (the queue shows it as submitted_at).
+    result = await db.execute(
+        query.order_by(Post.updated_at.asc(), Post.id.asc()).offset((page - 1) * per_page).limit(per_page)
+    )
     posts = list(result.scalars().all())
 
     return posts, total
