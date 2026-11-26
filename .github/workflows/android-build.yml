@@ -72,7 +72,8 @@ jobs:
         run: |
           set -euo pipefail
           sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$sdkmanager" --licenses > /dev/null
+          # yes exits non-zero once sdkmanager closes the pipe; that is expected.
+          { yes 2>/dev/null || true; } | "$sdkmanager" --licenses > /dev/null
           "$sdkmanager" --install "build-tools;${BUILD_TOOLS_VERSION}" "platforms;android-36" > /dev/null
           # Bubblewrap looks for sdkmanager under tools/bin.
           if [ ! -e "$ANDROID_HOME/tools" ]; then
