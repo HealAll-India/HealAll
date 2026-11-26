@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
-from jwt import PyJWTError
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
@@ -91,7 +90,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         return payload
-    except PyJWTError as e:
+    except jwt.PyJWTError as e:
         raise ValueError(f"Invalid token: {e}") from e
 
 

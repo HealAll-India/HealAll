@@ -394,3 +394,30 @@ async def test_verify_post_second_decision_after_needs_info(
     assert data["decision"] == VerificationDecision.VERIFIED.value
     assert data["new_status"] == "active"
     assert data["case_id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_verifier_cannot_verify_own_post(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    verifier_user: User,
+):
+    """A verifier's own request needs someone else's decision (403)."""
+    own_post = Post(
+        author_id=verifier_user.id,
+        title="My own request for help",
+        description="This is a request written by the verifier themselves.",
+        category=PostCategory.URGENT.value,
+        urgency=PostUrgency.HIGH.value,
+        city="Delhi",
+        status=PostStatus.SUBMITTED.value,
+    )
+    db_session.add(own_post)
+    await db_session.commit()
+
+    response = await client.post(
+        f"/v1/verification/{own_post.id}/verify",
+        json={"remarks": "Approving my own post should not work."},
+        headers=_auth_headers(verifier_user),
+    )
+    assert response.status_code == 403, response.text
