@@ -1,20 +1,22 @@
 """Comment endpoints."""
 
+from dataclasses import asdict
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.after_response import after_response
 from app.core.exceptions import DuplicateException
 from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.comment import CommentAuthor, CommentResponse, CreateCommentRequest
-from app.services import comment_service
+from app.services import comment_service, push_service
 
 router = APIRouter(tags=["comments"])
 
@@ -29,6 +31,7 @@ async def create_comment(
     request: Request,
     post_id: UUID,
     payload: CreateCommentRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CommentResponse:
@@ -44,6 +47,11 @@ async def create_comment(
     except IntegrityError:
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
+
+    author_id = await push_service.post_author_id(db, comment.post_id)
+    notice = push_service.new_comment(current_user, comment.post_id)
+    for user_id in await push_service.recipients(db, current_user.id, [author_id]):
+        await after_response(background_tasks, push_service.notify_user, user_id, **asdict(notice))
 
     return CommentResponse(
         id=comment.id,

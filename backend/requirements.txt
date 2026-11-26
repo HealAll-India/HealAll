@@ -29,6 +29,9 @@ redis>=5.2.0
 # Storage
 boto3>=1.35.0
 
+# Web push (VAPID signing + payload encryption)
+pywebpush>=2.0.3
+
 # Observability
 structlog>=24.4.0
 sentry-sdk[fastapi]>=2.18.0

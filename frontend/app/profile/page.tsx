@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
+import { NotificationsCard } from "@/components/profile/notifications-card";
 import { DeleteAccountCard } from "@/components/profile/delete-account-card";
 import { AuthRequired } from "@/components/ui/auth-required";
 import { IndiaLocationPicker } from "@/components/ui/india-location-picker";
@@ -408,6 +409,7 @@ export default function ProfilePage() {
             </button>
           </section>
 
+          <NotificationsCard />
           <DeleteAccountCard key={memberId} />
         </>
       )}

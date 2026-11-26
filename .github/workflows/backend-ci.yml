@@ -161,6 +161,7 @@ jobs:
               tests/integration/test_conversation_views.py
               tests/integration/test_schema_drift.py
               tests/test_database_url.py
+              tests/integration/test_push.py
           - shard: moderation-verification
             paths: >-
               tests/integration/test_moderation.py

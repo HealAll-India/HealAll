@@ -96,6 +96,16 @@
   .prof-hero__actions { grid-column: 1 / -1; }
 }
 
+/* Notifications card (components/profile/notifications-card.tsx) */
+.notif-card { margin-bottom: 16px; }
+.notif-card__row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.notif-card__text { min-width: 0; }
+.notif-card__title { margin: 0; font-size: 15px; font-weight: 700; }
+.notif-card__status { margin: 2px 0 0; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.notif-card__status[data-status="on"] { color: var(--primary-strong); }
+.notif-card__status[data-status="blocked"] { color: var(--danger); }
+.notif-card__hint { font-size: 13px; }
+.notif-card__error { margin: 0; }
 /* Delete account (Google Play requires an in-app path) */
 .delete-account { margin-top: 8px; border-color: var(--danger-line); }
 .delete-account__title { margin: 0; font-size: 16px; color: var(--danger); }
