@@ -51,6 +51,8 @@ The script doesn't generate access keys for the app IAM user (CloudFormation can
 
 To trigger manually: GitHub → Actions → `aws-infra` → Run workflow.
 
+The CI role can change bucket settings only. It has no IAM write access and cannot read or write objects, so a merged PR can never widen its own permissions or read identity documents. A change to an IAM resource in this stack (the app user's policy, the deploy role, the OIDC provider) fails in CI by design: an admin applies it with `deploy.sh` using their own credentials, then merges the PR, and the CI run becomes a no-op.
+
 ## Updating the stack
 
 Edit `healall-media.yml`, open a PR, merge to `main`. CI deploys the change. For local iteration:
