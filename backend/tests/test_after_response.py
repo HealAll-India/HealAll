@@ -10,9 +10,11 @@ import logging
 import pytest
 from fastapi import BackgroundTasks
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import after_response as after_response_module
 from app.core.after_response import after_response, runs_on_lambda
+from app.models.user import User
 from app.services import notification_service
 
 
@@ -81,8 +83,20 @@ async def test_on_lambda_a_hung_send_is_cut_off(
 
 
 async def test_on_lambda_resend_otp_sends_before_answering(
-    client: AsyncClient, on_lambda: None, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient, db_session: AsyncSession, on_lambda: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # resend-otp only sends to addresses that belong to an account.
+    db_session.add(
+        User(
+            name="Member",
+            phone="+919811100001",
+            email="member@example.com",
+            city="Delhi",
+            age_range="25-34",
+            roles=["helper"],
+        )
+    )
+    await db_session.commit()
     sent: list[tuple[str, str]] = []
 
     async def fake_send_otp_email(email: str, otp_code: str, purpose: str = "verification") -> None:

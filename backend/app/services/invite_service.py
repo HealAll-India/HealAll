@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ExpiredException, NotFoundException
@@ -48,19 +48,44 @@ async def get_invite_by_code(db: AsyncSession, code: str) -> InviteCode:
     return invite
 
 
-async def validate_and_use_invite(db: AsyncSession, code: str) -> InviteCode:
-    """Validate an invite code and increment use count."""
+async def check_invite(db: AsyncSession, code: str) -> InviteCode:
+    """Raise unless the invite code could be used right now. Does not use it."""
     invite = await get_invite_by_code(db, code)
-
     if not invite.is_available:
         if invite.is_expired:
             raise ExpiredException("Invite code has expired")
         raise ExpiredException("Invite code has been fully used")
+    return invite
 
-    invite.use()
-    await db.flush()
+
+async def validate_and_use_invite(db: AsyncSession, code: str) -> InviteCode:
+    """Validate an invite code and take one use, atomically.
+
+    The check and the increment happen in one UPDATE, so two signups racing
+    for the last use of a code cannot both succeed.
+    """
+    result = await db.execute(
+        update(InviteCode)
+        .where(
+            InviteCode.code == code,
+            InviteCode.revoked == False,  # noqa: E712
+            InviteCode.expires_at > datetime.now(UTC),
+            InviteCode.use_count < InviteCode.max_uses,
+        )
+        .values(use_count=InviteCode.use_count + 1)
+        .returning(InviteCode.id)
+        .execution_options(synchronize_session=False)
+    )
+    invite_id = result.scalar_one_or_none()
+    if invite_id is None:
+        # Work out why, for a useful error. Raises NotFound when missing/revoked.
+        invite = await get_invite_by_code(db, code)
+        if invite.is_expired:
+            raise ExpiredException("Invite code has expired")
+        raise ExpiredException("Invite code has been fully used")
+
+    invite = await db.get(InviteCode, invite_id)
     await db.refresh(invite)
-
     return invite
 
 

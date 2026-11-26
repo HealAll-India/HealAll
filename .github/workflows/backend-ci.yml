@@ -141,6 +141,7 @@ jobs:
               tests/test_after_response.py
               tests/test_upload_cleanup.py
               tests/test_security_config.py
+              tests/test_security_low_findings.py
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
               tests/integration/test_account_deletion.py

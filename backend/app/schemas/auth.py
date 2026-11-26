@@ -63,9 +63,13 @@ class SignupRequest(BaseModel):
 
 
 class SignupResponse(BaseModel):
-    """Signup response."""
+    """Signup response.
 
-    id: UUID
+    ``id`` is ``None`` when the email already had an account: the response
+    must not reveal whose account it is.
+    """
+
+    id: UUID | None = None
     name: str
     verification_level: int
     pending_verification: list[str]
