@@ -24,6 +24,7 @@ backend/graphify-out/
 # Claude Code / agent tooling — local state only
 .claude/worktrees/
 .claude/settings.local.json
+.claude/memory.db
 .claude-flow/
 .swarm/
 .superpowers/
@@ -53,3 +54,6 @@ IMPLEMENTATION_STATUS.md
 mythoughts/
 AGENTS.md
 .next/
+
+# Local virtualenvs of any name
+.venv*/
