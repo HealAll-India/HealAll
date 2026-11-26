@@ -11,6 +11,8 @@ export interface PresignedUploadResponse {
 interface PresignBody {
   file_name: string;
   content_type: string;
+  /** Exact file size in bytes. Signed into the URL, so S3 rejects a different size. */
+  size_bytes: number;
 }
 
 export function presignProfilePhoto(token: string, body: PresignBody) {
@@ -33,8 +35,9 @@ export function presignPostAttachment(
 
 /**
  * PUT the given file to a presigned S3 URL. Throws on non-2xx.
- * The Content-Type header MUST match what was sent to the presign endpoint
- * — S3 signs it and rejects mismatches.
+ * The Content-Type header and the body size MUST match what was sent to the
+ * presign endpoint — S3 signs both and rejects mismatches. The browser sets
+ * Content-Length from the File itself.
  */
 export async function putToPresignedUrl(
   uploadUrl: string,

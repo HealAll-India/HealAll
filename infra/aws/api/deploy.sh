@@ -22,11 +22,17 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "${HERE}/../../.." && pwd)"
 ENV_FILE="${ENV_FILE:-${HERE}/.env.${ENVIRONMENT}}"
 
-[ -f "${ENV_FILE}" ] || { echo "Missing ${ENV_FILE}: copy .env.example to it and fill it in." >&2; exit 1; }
-set -a
-# shellcheck disable=SC1090
-source "${ENV_FILE}"
-set +a
+# Locally, settings come from .env.<env>. In GitHub Actions (CI=true) they come
+# from repository secrets already in the environment.
+if [ -f "${ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a
+elif [ "${CI:-}" != "true" ]; then
+  echo "Missing ${ENV_FILE}: copy .env.example to it and fill it in." >&2
+  exit 1
+fi
 for name in APP_SECRET_KEY JWT_SECRET_KEY DATABASE_URL REDIS_URL S3_ACCESS_KEY S3_SECRET_KEY RESEND_API_KEY; do
   [ -n "${!name:-}" ] || { echo "${name} is empty in ${ENV_FILE}" >&2; exit 1; }
 done
@@ -75,6 +81,10 @@ if [ "$(aws acm describe-certificate --region "${REGION}" --certificate-arn "${C
   echo "==> Add this CNAME in Cloudflare (DNS only, grey cloud). Waiting for it to validate..."
   aws acm describe-certificate --region "${REGION}" --certificate-arn "${CERT_ARN}" \
     --query 'Certificate.DomainValidationOptions[0].ResourceRecord.[Name,Value]' --output table
+  if [ "${CI:-}" = "true" ]; then
+    echo "::error::Certificate for ${DOMAIN} is not validated yet. Add the CNAME above in Cloudflare (DNS only), then re-run this workflow."
+    exit 1
+  fi
   aws acm wait certificate-validated --region "${REGION}" --certificate-arn "${CERT_ARN}"
 fi
 
