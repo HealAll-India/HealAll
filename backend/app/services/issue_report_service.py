@@ -16,6 +16,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.services.notification_service import send_email
+from app.services.triage_masking import mask_pii
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +53,18 @@ def _build_github_body(
     contact_email: str | None,
     page_url: str | None,
 ) -> str:
+    """Body for the PUBLIC GitHub issue.
+
+    The repo is public, so the reporter's email never goes here (it stays in
+    the team email), and emails, phone numbers and ID numbers typed into the
+    description are masked. The team email keeps the original text.
+    """
     # Use a unique fence so an attacker can't break out by embedding triple-backticks.
     fence = "~~~"
-    safe = description.strip().replace(fence, "~~ ~")
+    safe = mask_pii(description.strip()).replace(fence, "~~ ~")
     parts = ["Reported via the landing-page feedback form.", ""]
     if contact_email:
-        parts.append(f"- **Contact email:** {contact_email}")
+        parts.append("- **Contact:** the reporter left an email (in the team inbox, not shown here)")
     if page_url:
         parts.append(f"- **Page URL:** {page_url}")
     parts += ["", "**Description:**", "", fence, safe, fence]

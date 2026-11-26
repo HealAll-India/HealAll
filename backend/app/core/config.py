@@ -4,7 +4,7 @@ import re
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, field_validator
+from pydantic import Field, PostgresDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -153,6 +153,19 @@ class Settings(BaseSettings):
         except re.error as exc:
             raise ValueError(f"Invalid APP_ALLOWED_ORIGIN_REGEX: {exc}") from exc
         return v
+
+    @model_validator(mode="after")
+    def no_debug_in_production(self) -> "Settings":
+        """Production never runs in debug, even if APP_DEBUG is left unset.
+
+        APP_DEBUG defaults to True for local work. In production it would
+        publish /docs, put exception text in 500 responses, log every SQL
+        statement with its parameters, and drop the Secure flag on the
+        refresh cookie.
+        """
+        if self.APP_ENV == "production":
+            self.APP_DEBUG = False
+        return self
 
 
 @lru_cache
