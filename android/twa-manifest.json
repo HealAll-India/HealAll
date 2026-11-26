@@ -1,0 +1,55 @@
+{
+  "packageId": "com.healallindia.app",
+  "host": "healallindia.com",
+  "name": "HealAll",
+  "launcherName": "HealAll",
+  "display": "standalone",
+  "themeColor": "#FAF8F4",
+  "themeColorDark": "#FAF8F4",
+  "navigationColor": "#FAF8F4",
+  "navigationColorDark": "#FAF8F4",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#00000000",
+  "backgroundColor": "#FAF8F4",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://healallindia.com/icons/icon-512.png",
+  "maskableIconUrl": "https://healallindia.com/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionCode": 1,
+  "appVersion": "1.0.0",
+  "shortcuts": [
+    {
+      "name": "Ask for help",
+      "shortName": "Ask",
+      "url": "https://healallindia.com/posts/new",
+      "chosenIconUrl": "https://healallindia.com/icons/icon-192.png"
+    },
+    {
+      "name": "Messages",
+      "shortName": "Messages",
+      "url": "https://healallindia.com/messages",
+      "chosenIconUrl": "https://healallindia.com/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://healallindia.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://healallindia.com/",
+  "minSdkVersion": 24,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}
