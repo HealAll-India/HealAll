@@ -1,6 +1,7 @@
 """Post schemas."""
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -8,6 +9,15 @@ from pydantic import BaseModel, Field, model_validator
 from app.models.post import PostCategory, PostUrgency
 
 PINCODE_PATTERN = r"^[1-9][0-9]{5}$"  # India 6-digit, no leading zero
+
+# Two decimal places is roughly 1 km: enough to show the area on a map
+# without pointing at a door.
+AREA_COORD_DECIMALS = 2
+
+
+def area_coordinate(value: float | None) -> float | None:
+    """Round a coordinate to area level, or pass ``None`` through."""
+    return None if value is None else round(value, AREA_COORD_DECIMALS)
 
 
 class CreatePostRequest(BaseModel):
@@ -78,6 +88,9 @@ class PostResponse(BaseModel):
     pincode: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    # "exact" for the author and case team; "area" (no street address,
+    # pin rounded to about 1 km) for everyone else.
+    location_precision: Literal["exact", "area"] = "exact"
     status: str
     author: AuthorInfo
     created_at: datetime

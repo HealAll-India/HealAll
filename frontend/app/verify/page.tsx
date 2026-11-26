@@ -227,9 +227,8 @@ export default function CommunityVerifyPage() {
             </p>
 
             <div className="verify-item__loc">
-              📍 {item.address ?? "—"}
+              📍 {item.address ? `${item.address} · ` : ""}{item.city}
               {item.pincode ? ` · ${item.pincode}` : ""}
-              {" · "}{item.city}
             </div>
 
             {hasMap && (
