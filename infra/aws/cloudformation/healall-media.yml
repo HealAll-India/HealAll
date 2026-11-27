@@ -229,17 +229,33 @@ Resources:
                   - cloudformation:DescribeChangeSet
                   - cloudformation:DeleteChangeSet
                 Resource: "*"
-              # Resources the template manages
+              # Bucket settings only. No object access: this role must not be
+              # able to read identity documents or rewrite uploads.
               - Effect: Allow
                 Action:
-                  - s3:*
+                  - s3:CreateBucket
+                  - s3:ListBucket
+                  - s3:GetBucket*
+                  - s3:PutBucket*
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutLifecycleConfiguration
+                  - s3:GetEncryptionConfiguration
+                  - s3:PutEncryptionConfiguration
                 Resource:
                   - !GetAtt MediaBucket.Arn
-                  - !Sub "${MediaBucket.Arn}/*"
                   - !GetAtt IdentityBucket.Arn
-                  - !Sub "${IdentityBucket.Arn}/*"
-                  - "arn:aws:s3:::cf-templates-*"
-                  - "arn:aws:s3:::cf-templates-*/*"
+              # The identity bucket must never be opened up from CI.
+              - Effect: Deny
+                Action:
+                  - s3:DeleteBucket
+                  - s3:DeleteBucketPolicy
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:PutBucketAcl
+                Resource:
+                  - !GetAtt IdentityBucket.Arn
+              # Read-only IAM. Changes to IAM resources in this stack (the app
+              # user's policy, this role, the OIDC provider) are applied by an
+              # admin with deploy.sh, so CI can never widen its own access.
               - Effect: Allow
                 Action:
                   - iam:GetRole
@@ -250,12 +266,6 @@ Resources:
                   - iam:GetUserPolicy
                   - iam:ListRolePolicies
                   - iam:ListUserPolicies
-                  - iam:PassRole
-                  - iam:PutRolePolicy
-                  - iam:PutUserPolicy
-                  - iam:DeleteRolePolicy
-                  - iam:DeleteUserPolicy
-                  - iam:UpdateAssumeRolePolicy
                 Resource:
                   - !Sub "arn:aws:iam::${AWS::AccountId}:role/healall-deploy-${Environment}"
                   - !GetAtt AppUser.Arn
