@@ -318,6 +318,6 @@ export function apiPatch<T>(path: string, options: RequestOptions = {}) {
   return request<T>("PATCH", path, options);
 }
 
-export function apiDelete<T>(path: string, options: Omit<RequestOptions, "data"> = {}) {
+export function apiDelete<T>(path: string, options: RequestOptions = {}) {
   return request<T>("DELETE", path, options);
 }

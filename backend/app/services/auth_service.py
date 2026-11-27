@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -11,6 +11,7 @@ from app.core.constants import OTP_EXPIRY_MINUTES, OTP_MAX_ATTEMPTS, Verificatio
 from app.core.exceptions import (
     DuplicateException,
     ExpiredException,
+    InvalidOTPException,
     NotFoundException,
     RateLimitException,
     UnauthenticatedException,
@@ -137,15 +138,24 @@ async def verify_otp_code(
     if otp_attempt.is_expired:
         raise ExpiredException("OTP has expired. Please request a new one.")
 
-    if otp_attempt.attempts >= OTP_MAX_ATTEMPTS:
+    # Reserve this guess atomically before checking it, so parallel requests
+    # cannot each read the same count and all slip under the limit.
+    reserved = await db.execute(
+        update(OTPAttempt)
+        .where(OTPAttempt.id == otp_attempt.id, OTPAttempt.attempts < OTP_MAX_ATTEMPTS)
+        .values(attempts=OTPAttempt.attempts + 1)
+        .returning(OTPAttempt.attempts)
+        .execution_options(synchronize_session=False)
+    )
+    attempts_used = reserved.scalar_one_or_none()
+    if attempts_used is None:
         raise ValidationException("Maximum OTP attempts exceeded. Please request a new one.")
-
-    # Verify OTP
-    otp_attempt.attempts += 1
+    otp_attempt.attempts = attempts_used
 
     if not verify_otp(otp_code, otp_attempt.otp_hash):
-        await db.flush()
-        raise ValidationException(f"Invalid OTP. {OTP_MAX_ATTEMPTS - otp_attempt.attempts} attempts remaining.")
+        # InvalidOTPException tells the route to commit the spent guess before
+        # the error response; get_db would otherwise roll it back.
+        raise InvalidOTPException(f"Invalid OTP. {OTP_MAX_ATTEMPTS - attempts_used} attempts remaining.")
 
     # Mark as verified
     otp_attempt.verified_at = datetime.now(UTC)
@@ -192,6 +202,9 @@ async def get_user_by_phone_or_email(db: AsyncSession, phone_or_email: str) -> U
 
 async def create_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
     """Create access and refresh tokens for a new sign-in session."""
+    if not user.is_active:
+        # Same rule as get_current_user: a suspended account gets no session.
+        raise UnauthenticatedException("This account is suspended.")
     # The refresh token's family names this sign-in; access tokens carry it as `sid`.
     session_id = uuid4()
     access_token = create_access_token(

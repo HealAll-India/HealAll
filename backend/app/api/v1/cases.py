@@ -1,14 +1,16 @@
 """Case lifecycle endpoints."""
 
+from dataclasses import asdict
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.core.after_response import after_response
 from app.core.exceptions import DuplicateException
 from app.db.session import get_db
 from app.models.user import User
@@ -25,7 +27,7 @@ from app.schemas.case import (
     CloseCaseRequest,
     UpdateCaseRequest,
 )
-from app.services import case_service
+from app.services import case_service, push_service
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -176,6 +178,7 @@ async def update_case(
 )
 async def offer_help(
     case_id: UUID,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CaseHelperResponse:
@@ -190,6 +193,11 @@ async def offer_help(
     except IntegrityError:
         await db.rollback()
         raise DuplicateException("Resource already exists or constraint violated") from None
+
+    notice = push_service.help_offered(current_user, helper.case_id)
+    team_ids = await push_service.case_team_ids(db, helper.case_id)
+    if user_ids := await push_service.recipients(db, current_user.id, team_ids):
+        await after_response(background_tasks, push_service.notify_users, user_ids, **asdict(notice))
 
     return CaseHelperResponse(
         id=helper.id,

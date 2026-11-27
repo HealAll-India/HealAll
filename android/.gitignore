@@ -1,0 +1,6 @@
+# Only the Bubblewrap config and docs live here. The Android project is
+# generated in CI, and signing keys must never be committed.
+*
+!.gitignore
+!twa-manifest.json
+!README.md

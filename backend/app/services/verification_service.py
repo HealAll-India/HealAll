@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import InvalidStateException, NotFoundException
+from app.core.exceptions import ForbiddenException, InvalidStateException, NotFoundException
 from app.models.case import Case, CaseStatus
 from app.models.post import Post, PostStatus
 from app.models.verification import Verification, VerificationDecision
@@ -60,6 +60,10 @@ async def apply_verification_decision(
 ) -> tuple[Post, Verification, Case | None]:
     """Apply a decision, persist verification history, and create case on approval."""
     post = await get_post_for_decision(db, post_id)
+    if post.author_id == verifier_id:
+        # Self-acts are blocked at the service layer: a verifier can't approve
+        # (or reject) their own request.
+        raise ForbiddenException("You cannot verify your own post")
 
     verification = Verification(
         post_id=post.id,

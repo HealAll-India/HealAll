@@ -1,10 +1,12 @@
 """Application configuration using Pydantic Settings."""
 
+import json
+import os
 import re
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, field_validator
+from pydantic import Field, PostgresDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -106,6 +108,14 @@ class Settings(BaseSettings):
 
     # Metrics
     METRICS_ENABLED: bool = True
+    # Bearer token Prometheus must send to read /metrics. In production
+    # /metrics answers 404 unless this is set.
+    METRICS_TOKEN: str | None = None
+
+    # Shared secret Cloudflare sends as X-Origin-Verify. When set, requests
+    # without it get 403, so nobody can skip Cloudflare by calling API
+    # Gateway directly. Unset (local dev, Railway): no check.
+    ORIGIN_VERIFY_SECRET: str | None = None
 
     # Community verification
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
@@ -120,10 +130,22 @@ class Settings(BaseSettings):
     AI_TRIAGE_TIMEOUT_SECONDS: float = Field(default=8.0, gt=0, le=30)
     AI_TRIAGE_RATE_LIMIT_PER_HOUR: int = Field(default=60, ge=1)
 
+    # Web push (browser and Android notifications). Off, and every send a
+    # no-op, until both VAPID keys are set. Generate the pair once and keep
+    # the private key secret: rotating it invalidates every subscription.
+    VAPID_PUBLIC_KEY: str | None = None
+    VAPID_PRIVATE_KEY: str | None = None
+    VAPID_SUBJECT: str = "mailto:hello@healallindia.com"
+
     @property
     def ai_triage_active(self) -> bool:
         """True only when the flag is on and a provider key is configured."""
         return self.AI_TRIAGE_ENABLED and bool(self.GROQ_API_KEY or self.GEMINI_API_KEY)
+
+    @property
+    def push_enabled(self) -> bool:
+        """True only when both VAPID keys are configured."""
+        return bool(self.VAPID_PUBLIC_KEY and self.VAPID_PRIVATE_KEY)
 
     @property
     def allowed_origins(self) -> list[str]:
@@ -142,8 +164,48 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid APP_ALLOWED_ORIGIN_REGEX: {exc}") from exc
         return v
 
+    @model_validator(mode="after")
+    def no_debug_in_production(self) -> "Settings":
+        """Production never runs in debug, even if APP_DEBUG is left unset.
+
+        APP_DEBUG defaults to True for local work. In production it would
+        publish /docs, put exception text in 500 responses, log every SQL
+        statement with its parameters, and drop the Secure flag on the
+        refresh cookie.
+        """
+        if self.APP_ENV == "production":
+            self.APP_DEBUG = False
+        return self
+
+
+def load_aws_secret_into_env() -> None:
+    """Copy the app's secrets from AWS Secrets Manager into the environment.
+
+    On Lambda, APP_SECRETS_ARN names one secret whose value is a JSON object
+    of setting names to values (APP_SECRET_KEY, DATABASE_URL, ...). Keeping
+    them there instead of in the function's environment means nobody who can
+    only read the function's configuration can read the secrets. Variables
+    already set in the environment win, so a local override still works.
+    Without APP_SECRETS_ARN this does nothing.
+    """
+    secret_id = os.environ.get("APP_SECRETS_ARN", "").strip()
+    if not secret_id:
+        return
+    import boto3  # only needed on AWS
+
+    client = boto3.client("secretsmanager", region_name=os.environ.get("AWS_REGION"))
+    raw = client.get_secret_value(SecretId=secret_id)["SecretString"]
+    values = json.loads(raw)
+    if not isinstance(values, dict):
+        raise ValueError("APP_SECRETS_ARN must hold a JSON object of setting names to values")
+    for name, value in values.items():
+        if value is None or value == "":
+            continue
+        os.environ.setdefault(str(name), str(value))
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Return cached application settings."""
+    load_aws_secret_into_env()
     return Settings()

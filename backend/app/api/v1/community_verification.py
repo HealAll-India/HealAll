@@ -20,7 +20,7 @@ from app.schemas.community_verification import (
     CommunityVoteResult,
     CommunityVoteSummary,
 )
-from app.schemas.post import AuthorInfo
+from app.schemas.post import AuthorInfo, area_coordinate
 from app.services import community_verification_service
 
 router = APIRouter(prefix="/community-verification", tags=["community-verification"])
@@ -84,10 +84,12 @@ async def get_community_queue(
                 category=post.category,
                 urgency=post.urgency,
                 city=post.city,
-                address=post.address,
+                # Voters judge whether a request is genuine; the area is
+                # enough for that, so the street address stays private.
+                address=None,
                 pincode=post.pincode,
-                latitude=post.latitude,
-                longitude=post.longitude,
+                latitude=area_coordinate(post.latitude),
+                longitude=area_coordinate(post.longitude),
                 author=AuthorInfo(
                     id=author.id,
                     name=author.name,

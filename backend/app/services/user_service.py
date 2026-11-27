@@ -2,13 +2,15 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import DuplicateException, NotFoundException
+from app.core.constants import UserRole
+from app.core.exceptions import DuplicateException, ForbiddenException, NotFoundException
+from app.models.post import Post
 from app.models.privacy import UserBlock, UserPrivacySettings
-from app.models.user import User, UserSkill
+from app.models.user import OTPAttempt, User, UserSkill
 from app.schemas.user import UpdatePrivacyRequest, UserProfileUpdate
 
 
@@ -162,3 +164,37 @@ async def is_user_blocked(db: AsyncSession, blocker_id: UUID, blocked_id: UUID) 
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+# Staff accounts can't delete themselves in the app: their moderation actions
+# reference them with ON DELETE CASCADE, so deleting the account would erase
+# the audit trail for every member they acted on. They step down first.
+_STAFF_ROLES = {UserRole.MODERATOR.value, UserRole.ADMIN.value, UserRole.HEAD_ADMIN.value}
+
+
+async def delete_account(db: AsyncSession, user_id: UUID) -> list[UUID]:
+    """Permanently delete a member's account and everything tied to it.
+
+    One DELETE on ``users``: the schema's ON DELETE CASCADE / SET NULL foreign
+    keys remove their posts, comments, messages, conversations, skills,
+    privacy settings, blocks, votes, reports and refresh tokens, and detach
+    them from cases. OTP rows are keyed by phone/email, not by user id, so
+    they are removed here as well.
+
+    Returns the ids of the member's posts (soft-deleted ones included), so
+    the caller can remove their uploaded files once the delete is committed.
+    """
+    user = await get_user_by_id(db, user_id)
+
+    if _STAFF_ROLES.intersection(user.roles or []):
+        raise ForbiddenException(
+            "Moderators and admins can't delete their account in the app. "
+            "Ask a head admin to remove your staff role first."
+        )
+
+    post_ids = list((await db.execute(select(Post.id).where(Post.author_id == user.id))).scalars().all())
+
+    await db.execute(delete(OTPAttempt).where(OTPAttempt.phone_or_email.in_([user.phone, user.email])))
+    await db.execute(delete(User).where(User.id == user.id))
+    await db.flush()
+    return post_ids

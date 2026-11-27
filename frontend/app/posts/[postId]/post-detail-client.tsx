@@ -257,6 +257,11 @@ export default function PostDetailClient() {
                   <p className="muted post-loc-meta">
                     {post.city}{post.pincode ? ` · ${post.pincode}` : ""}
                   </p>
+                  {post.location_precision === "area" && (
+                    <p className="muted post-loc-meta">
+                      Approximate area. The exact address is shared with the case team once you join the case.
+                    </p>
+                  )}
                   {post.latitude != null && post.longitude != null && (
                     <>
                       <MapPicker
@@ -266,6 +271,7 @@ export default function PostDetailClient() {
                         readOnly
                         height={220}
                       />
+                      {post.location_precision !== "area" && (
                       <a
                         className="secondary post-loc-directions-link"
                         href={`https://www.google.com/maps/dir/?api=1&destination=${post.latitude},${post.longitude}`}
@@ -274,6 +280,7 @@ export default function PostDetailClient() {
                       >
                         🧭 Get Directions
                       </a>
+                      )}
                     </>
                   )}
                 </section>

@@ -137,16 +137,24 @@ jobs:
               tests/test_google_auth.py
               tests/test_rate_limits.py
               tests/test_auth_identifiers.py
+              tests/test_security_tokens.py
               tests/test_after_response.py
+              tests/test_upload_cleanup.py
+              tests/test_security_config.py
+              tests/test_security_low_findings.py tests/test_aws_secret_loader.py tests/test_origin_guard.py
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
+              tests/integration/test_account_deletion.py
               tests/integration/test_session_refresh.py
+              tests/integration/test_otp_attempt_limit.py
           - shard: posts-feed
             paths: >-
               tests/integration/test_posts.py
               tests/integration/test_feed.py
               tests/integration/test_comments.py
               tests/integration/test_public.py
+              tests/integration/test_uploads.py
+              tests/test_upload_limits.py
           - shard: cases-messages
             paths: >-
               tests/test_health.py
@@ -155,6 +163,7 @@ jobs:
               tests/integration/test_conversation_views.py
               tests/integration/test_schema_drift.py
               tests/test_database_url.py
+              tests/integration/test_push.py
           - shard: moderation-verification
             paths: >-
               tests/integration/test_moderation.py

@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.after_response import after_response
 from app.core.config import get_settings
-from app.core.exceptions import DuplicateException, UnauthenticatedException
+from app.core.exceptions import (
+    DuplicateException,
+    InvalidOTPException,
+    NotFoundException,
+    UnauthenticatedException,
+)
 from app.core.limiter import limiter
 from app.core.security import create_access_token
 from app.db.session import get_db
@@ -34,6 +39,7 @@ settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 REFRESH_COOKIE = "healall_refresh"
+SIGNUP_OTP_SENT = "OTP sent to your email. Please verify to continue."
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -46,6 +52,20 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         samesite="lax",
         max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
+
+
+async def _check_otp(db: AsyncSession, phone_or_email: str, otp_code: str) -> None:
+    """Verify an OTP, keeping a wrong guess on the attempt counter.
+
+    get_db rolls back when a route raises, which would also undo the counter
+    increment and leave OTP_MAX_ATTEMPTS unenforced. So a wrong guess is
+    committed before its error goes back.
+    """
+    try:
+        await auth_service.verify_otp_code(db, phone_or_email, otp_code)
+    except InvalidOTPException:
+        await db.commit()
+        raise
 
 
 def _user_info(user: User) -> UserInfo:
@@ -69,7 +89,6 @@ async def signup(
     request: Request,
     signup_data: SignupRequest,
     background_tasks: BackgroundTasks,
-    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SignupResponse:
     """
@@ -77,33 +96,32 @@ async def signup(
 
     Requires a valid invite code. Sends OTP to email for verification.
     """
+    # Check the invite first so the steps below can't be used without one to
+    # probe which emails and phone numbers have accounts.
+    await invite_service.check_invite(db, signup_data.invite_code)
+
     existing_user = await auth_service.get_user_by_email(db, signup_data.email)
     if existing_user:
+        # Send a sign-in code to the account's own inbox, and answer exactly as
+        # a fresh signup would, so the response doesn't reveal the account.
         email_otp, _ = await auth_service.create_otp(db, existing_user.email, purpose="login")
         await db.commit()
 
         await after_response(
             background_tasks, notification_service.send_otp_email, existing_user.email, email_otp, "login"
         )
-        response.status_code = status.HTTP_200_OK
-
-        pending = []
-        if not existing_user.email_verified:
-            pending.append("email")
-        if not existing_user.phone_verified:
-            pending.append("phone")
-
         return SignupResponse(
-            id=existing_user.id,
-            name=existing_user.name,
-            verification_level=existing_user.verification_level,
-            pending_verification=pending,
-            message="Account already exists. OTP sent to your email to sign in.",
+            id=None,
+            name=signup_data.name,
+            verification_level=0,
+            pending_verification=["email"],
+            message=SIGNUP_OTP_SENT,
         )
 
     if await auth_service.check_phone_exists(db, signup_data.phone):
         # Keep this as a hard duplicate: SMS login is not active yet, and a
-        # phone collision may be another person's account.
+        # phone collision may be another person's account. Only reachable
+        # with a valid invite code.
         raise DuplicateException("Phone number already registered")
 
     await invite_service.validate_and_use_invite(db, signup_data.invite_code)
@@ -134,7 +152,7 @@ async def signup(
         name=user.name,
         verification_level=user.verification_level,
         pending_verification=pending,
-        message="OTP sent to your email. Please verify to continue.",
+        message=SIGNUP_OTP_SENT,
     )
 
 
@@ -152,7 +170,7 @@ async def verify_otp(
     After both phone and email are verified, user reaches verification level 1.
     """
     # Verify OTP
-    await auth_service.verify_otp_code(db, verify_data.phone_or_email, verify_data.otp_code)
+    await _check_otp(db, verify_data.phone_or_email, verify_data.otp_code)
 
     # Get user
     user = await auth_service.get_user_by_phone_or_email(db, verify_data.phone_or_email)
@@ -200,20 +218,21 @@ async def resend_otp(
 
     Rate limited to 5 requests per hour.
     """
-    otp, _ = await auth_service.create_otp(db, resend_data.phone_or_email, purpose="login")
+    medium = "phone" if resend_data.phone_or_email.startswith("+") else "email"
 
-    await db.commit()
+    # Only send to addresses that belong to an account, so this endpoint
+    # can't be used to mail or text strangers. Answer the same either way so
+    # it doesn't reveal which addresses have accounts.
+    try:
+        user = await auth_service.get_user_by_phone_or_email(db, resend_data.phone_or_email)
+    except NotFoundException:
+        user = None
 
-    if resend_data.phone_or_email.startswith("+"):
-        await after_response(
-            background_tasks, notification_service.send_otp_sms, resend_data.phone_or_email, otp, "login"
-        )
-        medium = "phone"
-    else:
-        await after_response(
-            background_tasks, notification_service.send_otp_email, resend_data.phone_or_email, otp, "login"
-        )
-        medium = "email"
+    if user is not None:
+        otp, _ = await auth_service.create_otp(db, resend_data.phone_or_email, purpose="login")
+        await db.commit()
+        sender = notification_service.send_otp_sms if medium == "phone" else notification_service.send_otp_email
+        await after_response(background_tasks, sender, resend_data.phone_or_email, otp, "login")
 
     return ResendOTPResponse(message=f"OTP sent to {medium}")
 
@@ -232,7 +251,7 @@ async def login(
     Returns access token and sets refresh token in httpOnly cookie.
     """
     # Verify OTP
-    await auth_service.verify_otp_code(db, login_data.phone_or_email, login_data.otp_code)
+    await _check_otp(db, login_data.phone_or_email, login_data.otp_code)
 
     # Get user
     user = await auth_service.get_user_by_phone_or_email(db, login_data.phone_or_email)

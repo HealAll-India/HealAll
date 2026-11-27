@@ -3,10 +3,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.api.v1.auth import REFRESH_COOKIE
+from app.core.after_response import after_response
+from app.core.config import get_settings
+from app.core.exceptions import ValidationException
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import (
@@ -19,9 +23,25 @@ from app.schemas.user import (
     UpdatePrivacyRequest,
     UserProfileUpdate,
 )
-from app.services import user_service
+from app.services import upload_service, user_service
 
+settings = get_settings()
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def _check_avatar_url(update_data: UserProfileUpdate, user: User) -> None:
+    """Only accept avatars uploaded through our own profile-photo upload.
+
+    Anything else (a tracking pixel, a huge remote image, a javascript: URL)
+    would be shown to everyone who sees the member. Clearing the avatar and
+    resending the current value are always allowed.
+    """
+    url = update_data.avatar_url
+    if url is None or url == "" or url == user.avatar_url:
+        return
+    allowed = upload_service.public_object_url(settings.S3_BUCKET_MEDIA, f"profile-photos/{user.id}/")
+    if not url.startswith(allowed) or ".." in url or "?" in url or "#" in url:
+        raise ValidationException("avatar_url must be a photo uploaded through HealAll")
 
 
 @router.get("/me", response_model=MyUserProfile)
@@ -65,6 +85,7 @@ async def update_my_profile(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MyUserProfile:
     """Update current user's profile."""
+    _check_avatar_url(update_data, current_user)
     user = await user_service.update_user_profile(db, current_user.id, update_data)
     await db.commit()
 
@@ -90,6 +111,23 @@ async def update_my_profile(
             show_phone=privacy.show_phone,
             show_full_city=privacy.show_full_city,
         ),
+    )
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_account(
+    response: Response,
+    background_tasks: BackgroundTasks,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Permanently delete the current member's account and their data."""
+    user_id = str(current_user.id)
+    post_ids = await user_service.delete_account(db, current_user.id)
+    await db.commit()
+    response.delete_cookie(key=REFRESH_COOKIE)
+    await after_response(
+        background_tasks, upload_service.delete_member_files, user_id, [str(post_id) for post_id in post_ids]
     )
 
 

@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
-import { State, City } from "country-state-city";
+import indiaLocations from "@/lib/data/india-locations.json";
 
 /**
- * Two cascading <select>s — state then city — using country-state-city's
- * prebuilt India data. Emits a single "City, State" string upward so existing
+ * Two cascading <select>s — state then city — using India's states and
+ * cities from lib/data/india-locations.json (generated from country-state-city
+ * by scripts/generate-india-locations.mjs, so the 8 MB world list never ships). Emits a single "City, State" string upward so existing
  * string-based `city` fields in the API and DB don't need to change.
  *
  * Fully controlled: state/city are derived from `value` on every render, so
@@ -28,7 +28,14 @@ interface Props {
   labelCity?: string;
 }
 
-const COUNTRY_CODE = "IN";
+interface IndiaState {
+  code: string;
+  name: string;
+  cities: string[];
+}
+
+const STATES: readonly IndiaState[] = indiaLocations;
+const KNOWN_STATE_NAMES: ReadonlySet<string> = new Set(STATES.map((s) => s.name.toLowerCase()));
 
 function splitValue(
   value: string,
@@ -56,28 +63,21 @@ export function IndiaLocationPicker({
   labelState = "State",
   labelCity = "City",
 }: Props) {
-  const states = useMemo(() => State.getStatesOfCountry(COUNTRY_CODE), []);
-  const knownStateNames = useMemo(
-    () => new Set(states.map((s) => s.name.toLowerCase())),
-    [states],
-  );
+  const states = STATES;
 
   // Derive selection from the controlled value on every render.
-  const { city, state } = splitValue(value ?? "", knownStateNames);
+  const { city, state } = splitValue(value ?? "", KNOWN_STATE_NAMES);
   const stateCode =
-    states.find((s) => s.name.toLowerCase() === state.toLowerCase())?.isoCode ?? "";
+    states.find((s) => s.name.toLowerCase() === state.toLowerCase())?.code ?? "";
 
-  const cities = useMemo(
-    () => (stateCode ? City.getCitiesOfState(COUNTRY_CODE, stateCode) : []),
-    [stateCode],
-  );
+  const cities = states.find((s) => s.code === stateCode)?.cities ?? [];
 
   function emit(nextCity: string, nextStateCode: string) {
     if (!nextStateCode) {
       onChange("");
       return;
     }
-    const stateName = states.find((s) => s.isoCode === nextStateCode)?.name ?? "";
+    const stateName = states.find((s) => s.code === nextStateCode)?.name ?? "";
     onChange(nextCity ? `${nextCity}, ${stateName}` : `, ${stateName}`);
   }
 
@@ -93,7 +93,7 @@ export function IndiaLocationPicker({
         >
           <option value="">Select state…</option>
           {states.map((s) => (
-            <option key={s.isoCode} value={s.isoCode}>
+            <option key={s.code} value={s.code}>
               {s.name}
             </option>
           ))}
@@ -103,7 +103,7 @@ export function IndiaLocationPicker({
       <label className="location-picker-field">
         {labelCity}
         <select
-          value={cities.some((c) => c.name === city) ? city : ""}
+          value={cities.includes(city) ? city : ""}
           required={required}
           disabled={disabled || !stateCode}
           onChange={(e) => emit(e.target.value, stateCode)}
@@ -116,11 +116,8 @@ export function IndiaLocationPicker({
               : "Pick state first"}
           </option>
           {cities.map((c) => (
-            <option
-              key={`${c.name}-${c.latitude ?? ""}-${c.longitude ?? ""}`}
-              value={c.name}
-            >
-              {c.name}
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>

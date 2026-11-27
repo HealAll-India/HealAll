@@ -8,6 +8,7 @@ import { Plus } from "lucide-react";
 
 import { logout } from "@/lib/api/auth";
 import { useHydrated } from "@/lib/hooks/use-hydrated";
+import { unsubscribeThisDevice } from "@/lib/push/web-push";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
 import { AccountMenu } from "./account-menu";
@@ -40,6 +41,9 @@ export function AppShell({ children, messagesCount = null }: Props) {
   useEffect(() => {
     function onExpired() {
       if (!useAuthStore.getState().accessToken) return;
+      // The token no longer works, so the API can't be told; unsubscribing
+      // still stops this device getting the member's notifications.
+      void unsubscribeThisDevice(null);
       clearSession();
       router.replace("/login?reason=expired");
     }
@@ -49,6 +53,9 @@ export function AppShell({ children, messagesCount = null }: Props) {
 
   async function handleSignOut() {
     if (accessToken) {
+      // First, while the token still works: a shared phone must stop getting
+      // this member's notifications. Never throws, and gives up after a few seconds.
+      await unsubscribeThisDevice(accessToken);
       try { await logout(accessToken); } catch { /* ignore */ }
     }
     clearSession();
@@ -113,6 +120,7 @@ export function AppShell({ children, messagesCount = null }: Props) {
             <span className="app-footer__copy">© 2026 HealAll</span>
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/child-safety">Child safety</Link>
             <Link href="/#community-guidelines">Community guidelines</Link>
             <Link href="/contributors">Contributors</Link>
             <Link href="/changelog">Changelog</Link>

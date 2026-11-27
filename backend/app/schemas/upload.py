@@ -8,6 +8,7 @@ class PresignedUploadRequest(BaseModel):
 
     file_name: str = Field(..., min_length=1, max_length=200)
     content_type: str = Field(..., min_length=1, max_length=100)
+    size_bytes: int = Field(..., gt=0, description="Exact size of the file to upload, in bytes")
 
 
 class PresignedUploadResponse(BaseModel):

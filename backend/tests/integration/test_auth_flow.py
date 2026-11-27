@@ -190,16 +190,18 @@ async def test_signup_with_existing_email_sends_login_otp(
         "email": existing_user.email,
         "city": "Mumbai",
         "age_range": "18-24",
-        "invite_code": "NOT-NEEDED",
+        "invite_code": invite_code.code,
         "roles": ["helper"],
     }
 
     response = await client.post("/v1/auth/signup", json=signup_data)
 
-    assert response.status_code == 200
+    # Answers exactly like a fresh signup, without revealing whose account it is.
+    assert response.status_code == 201
     data = response.json()
-    assert data["id"] == str(existing_user.id)
-    assert "sign in" in data["message"].lower()
+    assert data["id"] is None
+    assert data["name"] == "New User"
+    assert data["message"] == "OTP sent to your email. Please verify to continue."
 
     await db_session.refresh(invite_code)
     assert invite_code.use_count == 0

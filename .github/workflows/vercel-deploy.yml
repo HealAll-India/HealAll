@@ -1,32 +1,30 @@
 name: Vercel Deploy
 
-# Vercel's Git integration cannot auto-deploy a PRIVATE repo owned by a
-# GitHub *organisation* on the Hobby plan. This workflow replaces that
-# integration: it builds with the Vercel CLI and deploys via a token, which
-# works on Hobby for private org repos. Disconnect the Vercel dashboard Git
-# integration once this is green so the two don't double-deploy.
+# Fallback deploy with the Vercel CLI, run by hand from the Actions tab.
+#
+# Day to day, Vercel's Git integration deploys this project: every push to
+# main goes to production and every PR gets a preview. Running this on every
+# push as well would deploy main twice, so it only runs on demand, for when
+# the Git integration is unavailable (for example a private org repo on the
+# Hobby plan, which the integration can't deploy).
 #
 # Required repo secret:  VERCEL_TOKEN  (https://vercel.com/account/tokens)
-# The org/project IDs below are not secret — they only identify the project.
+# The org/project IDs below are not secret, they only identify the project.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/vercel-deploy.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/vercel-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [preview, production]
+        default: preview
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
-  group: vercel-deploy-${{ github.ref }}
+  group: vercel-deploy-${{ inputs.environment }}
   cancel-in-progress: true
 
 env:
@@ -42,8 +40,6 @@ jobs:
     name: Deploy to Vercel
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Skip on forks — they cannot access the VERCEL_TOKEN secret anyway.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Preflight — is VERCEL_TOKEN configured?
         id: pre
@@ -65,17 +61,17 @@ jobs:
       - uses: actions/setup-node@v5
         if: steps.pre.outputs.has_token == 'true'
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Install Vercel CLI
         if: steps.pre.outputs.has_token == 'true'
-        run: npm install --global vercel@39
+        run: npm install --global vercel@66
 
       - name: Determine environment
         id: env
         if: steps.pre.outputs.has_token == 'true'
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ inputs.environment }}" = "production" ]; then
             echo "vercel_env=production" >> "$GITHUB_OUTPUT"
             echo "prod_flag=--prod" >> "$GITHUB_OUTPUT"
           else
@@ -83,9 +79,7 @@ jobs:
             echo "prod_flag=" >> "$GITHUB_OUTPUT"
           fi
 
-      # Vercel CLI 39.x does NOT read the token from the VERCEL_TOKEN env var
-      # for `pull` (it errors "No existing credentials found"), so pass it
-      # explicitly. The preflight above guarantees it is non-empty here, so
+      # Pass the token explicitly: older CLIs ignored VERCEL_TOKEN for `pull`. The preflight above guarantees it is non-empty here, so
       # this never expands to a bare `--token=` flag.
       - name: Pull Vercel project settings + env
         if: steps.pre.outputs.has_token == 'true'
@@ -102,33 +96,3 @@ jobs:
           url=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }} --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to: $url" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Comment preview URL on PR
-        if: steps.pre.outputs.has_token == 'true' && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const url = '${{ steps.deploy.outputs.url }}';
-            const marker = '<!-- vercel-cli-deploy -->';
-            const body = `${marker}\n🔼 **Preview deploy ready:** ${url}`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body && c.body.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }

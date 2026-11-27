@@ -10,6 +10,8 @@ from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.core.config import Settings, get_settings
+
 # Set by the proxies in front of the API, most specific first: Cloudflare's
 # visitor IP, then the client IP from the hosting edge.
 _CLIENT_IP_HEADERS = ("cf-connecting-ip", "x-real-ip", "x-forwarded-for")
@@ -32,4 +34,27 @@ def client_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=client_ip, default_limits=["200/minute"])
+def storage_uri(settings: Settings) -> str | None:
+    """Where the rate-limit counters live.
+
+    In production they go to Redis, so every API instance shares one count.
+    On Lambda each instance is its own process, and in-memory counters would
+    let a caller multiply every limit by the number of warm instances.
+    Elsewhere (local, tests) they stay in memory.
+    """
+    if settings.APP_ENV == "production" and settings.REDIS_URL:
+        return settings.REDIS_URL
+    return None
+
+
+_STORAGE_URI = storage_uri(get_settings())
+
+limiter = Limiter(
+    key_func=client_ip,
+    default_limits=["200/minute"],
+    storage_uri=_STORAGE_URI,
+    # If Redis is unreachable, keep limiting per instance instead of failing
+    # every request; slowapi switches back once Redis answers again.
+    in_memory_fallback_enabled=_STORAGE_URI is not None,
+    key_prefix="healall-rl",
+)

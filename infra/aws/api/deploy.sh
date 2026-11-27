@@ -6,7 +6,10 @@
 # Prerequisites:
 #   * AWS CLI v2 signed in to the HealAll account (`aws sts get-caller-identity`).
 #   * Docker with buildx running.
-#   * First run: cp infra/aws/api/.env.example infra/aws/api/.env.prod, fill it in.
+#   * First run: cp infra/aws/api/.env.example infra/aws/api/.env.prod, fill it in,
+#     then ./infra/aws/api/put-secrets.sh. The function reads its secrets from
+#     Secrets Manager; this script only needs DATABASE_URL and the two app keys
+#     to run migrations.
 #
 # Usage:
 #   ./infra/aws/api/deploy.sh                     # build, push, migrate, deploy
@@ -33,7 +36,7 @@ elif [ "${CI:-}" != "true" ]; then
   echo "Missing ${ENV_FILE}: copy .env.example to it and fill it in." >&2
   exit 1
 fi
-for name in APP_SECRET_KEY JWT_SECRET_KEY DATABASE_URL REDIS_URL S3_ACCESS_KEY S3_SECRET_KEY RESEND_API_KEY; do
+for name in APP_SECRET_KEY JWT_SECRET_KEY DATABASE_URL; do
   [ -n "${!name:-}" ] || { echo "${name} is empty in ${ENV_FILE}" >&2; exit 1; }
 done
 
@@ -95,21 +98,11 @@ PARAMS=(
   "ImageUri=${IMAGE}"
   "ApiDomainName=${DOMAIN}"
   "CertificateArn=${CERT_ARN}"
-  "AppSecretKey=${APP_SECRET_KEY}"
-  "JwtSecretKey=${JWT_SECRET_KEY}"
-  "DatabaseUrl=${DATABASE_URL}"
-  "RedisUrl=${REDIS_URL}"
-  "S3AccessKey=${S3_ACCESS_KEY}"
-  "S3SecretKey=${S3_SECRET_KEY}"
-  "ResendApiKey=${RESEND_API_KEY}"
-  "Msg91ApiKey=${MSG91_API_KEY:-}"
   "Msg91TemplateIdOtp=${MSG91_TEMPLATE_ID_OTP:-}"
   "GoogleClientId=${GOOGLE_CLIENT_ID:-}"
   "AllowedOriginRegex=${APP_ALLOWED_ORIGIN_REGEX:-}"
-  "SentryDsn=${SENTRY_DSN:-}"
   "AiTriageEnabled=${AI_TRIAGE_ENABLED:-false}"
-  "GroqApiKey=${GROQ_API_KEY:-}"
-  "GeminiApiKey=${GEMINI_API_KEY:-}"
+  "VapidPublicKey=${VAPID_PUBLIC_KEY:-}"
 )
 aws cloudformation deploy --region "${REGION}" --stack-name "${STACK_NAME}" \
   --template-file "${HERE}/healall-api.yml" --capabilities CAPABILITY_IAM \
@@ -120,10 +113,17 @@ output() {
   aws cloudformation describe-stacks --region "${REGION}" --stack-name "${STACK_NAME}" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
-ENDPOINT="$(output DefaultEndpoint)"
 TARGET="$(output DnsTarget)"
-echo "==> ${ENDPOINT}/health (the first call includes a cold start)"
-curl -fsS --max-time 30 "${ENDPOINT}/health"
+# The default execute-api URL is off, so test the custom domain on its AWS
+# hostname: --connect-to keeps the TLS name api.healallindia.com but skips
+# DNS, which may still point somewhere else before the cut-over.
+HEALTH_HEADERS=()
+if [ -n "${ORIGIN_VERIFY_SECRET:-}" ]; then
+  HEALTH_HEADERS=(-H "X-Origin-Verify: ${ORIGIN_VERIFY_SECRET}")
+fi
+echo "==> https://${DOMAIN}/health via ${TARGET} (the first call includes a cold start)"
+curl -fsS --max-time 30 --connect-to "${DOMAIN}:443:${TARGET}:443" \
+  "${HEALTH_HEADERS[@]+"${HEALTH_HEADERS[@]}"}" "https://${DOMAIN}/health"
 echo
 echo
 echo "Done. In Cloudflare, point the 'api' record at:"

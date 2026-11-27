@@ -330,3 +330,72 @@ async def test_list_my_posts_pagination(client: AsyncClient, auth_headers: dict[
     assert data["per_page"] == 2
     assert data["page"] == 1
     assert len(data["items"]) <= 2
+
+
+# ---------------------------------------------------------------------------
+# Location privacy
+# ---------------------------------------------------------------------------
+
+
+async def _active_post_with_pin(client: AsyncClient, db: AsyncSession, headers: dict[str, str]) -> str:
+    from sqlalchemy import update
+
+    from app.models.post import Post
+
+    resp = await client.post(
+        "/v1/posts",
+        json={**_VALID_POST, "latitude": 19.059984, "longitude": 72.829544},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    post_id = resp.json()["id"]
+    await db.execute(update(Post).where(Post.id == post_id).values(status=PostStatus.ACTIVE.value))
+    await db.commit()
+    return post_id
+
+
+@pytest.mark.asyncio
+async def test_non_team_member_sees_area_only(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+):
+    post_id = await _active_post_with_pin(client, db_session, auth_headers)
+
+    data = (await client.get(f"/v1/posts/{post_id}", headers=other_auth_headers)).json()
+    assert data["location_precision"] == "area"
+    assert data["address"] is None
+    assert data["latitude"] == 19.06
+    assert data["longitude"] == 72.83
+    assert data["city"] == "Mumbai"
+    assert data["pincode"] == "400050"
+
+
+@pytest.mark.asyncio
+async def test_author_sees_exact_location(client: AsyncClient, db_session: AsyncSession, auth_headers: dict[str, str]):
+    post_id = await _active_post_with_pin(client, db_session, auth_headers)
+
+    data = (await client.get(f"/v1/posts/{post_id}", headers=auth_headers)).json()
+    assert data["location_precision"] == "exact"
+    assert data["address"] == _VALID_POST["address"]
+    assert data["latitude"] == 19.059984
+
+
+@pytest.mark.asyncio
+async def test_case_helper_sees_exact_location(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+):
+    from sqlalchemy import select
+
+    from app.models.case import Case, CaseHelper, CaseHelperStatus
+    from app.models.user import User
+
+    post_id = await _active_post_with_pin(client, db_session, auth_headers)
+    helper = (await db_session.execute(select(User).where(User.email == "postuser2@example.com"))).scalar_one()
+    case = Case(post_id=post_id)
+    db_session.add(case)
+    await db_session.flush()
+    db_session.add(CaseHelper(case_id=case.id, user_id=helper.id, status=CaseHelperStatus.ACTIVE.value))
+    await db_session.commit()
+
+    data = (await client.get(f"/v1/posts/{post_id}", headers=other_auth_headers)).json()
+    assert data["location_precision"] == "exact"
+    assert data["address"] == _VALID_POST["address"]
