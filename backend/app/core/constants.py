@@ -25,13 +25,29 @@ class UserRole(str, Enum):
 
 
 class AgeRange(str, Enum):
-    """Age range options."""
+    """Age range options.
+
+    HealAll is for people 18 and over. TEEN stays only so accounts made before
+    that rule still load; new sign-ups and profile edits can't choose it (see
+    ``reject_under_18``).
+    """
 
     TEEN = "13-17"
     YOUNG_ADULT = "18-24"
     ADULT = "25-34"
     MIDDLE_AGED = "35-44"
     SENIOR = "45+"
+
+
+MINIMUM_AGE = 18
+UNDER_18_MESSAGE = "HealAll is for people 18 and over."
+
+
+def reject_under_18(value: AgeRange | None) -> AgeRange | None:
+    """Refuse the under-18 age range on sign-up and profile edits."""
+    if value == AgeRange.TEEN:
+        raise ValueError(UNDER_18_MESSAGE)
+    return value
 
 
 # OTP Configuration

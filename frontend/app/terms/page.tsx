@@ -9,7 +9,7 @@ export default function TermsPage() {
   return (
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
       <div style={{ marginBottom: "2.5rem" }}>
-        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: April 26, 2026</p>
+        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: November 27, 2026</p>
         <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#111827", margin: "0 0 12px" }}>Terms of Service</h1>
         <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
           By creating an account or using HealAll, you agree to these terms.
@@ -31,7 +31,7 @@ export default function TermsPage() {
 
       <Section title="2. Eligibility">
         <ul>
-          <li>You must be at least 13 years old. Users aged 13–17 must have parental consent.</li>
+          <li>You must be at least 18 years old. HealAll is not for anyone under 18, even with a parent&apos;s consent, and we close an account once we learn it belongs to someone under 18.</li>
           <li>You must have a valid invite code to create an account.</li>
           <li>You must provide accurate information during registration.</li>
           <li>One account per person. Creating duplicate accounts may result in suspension.</li>
