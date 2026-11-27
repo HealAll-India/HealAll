@@ -250,7 +250,6 @@ Resources:
                   - s3:DeleteBucket
                   - s3:DeleteBucketPolicy
                   - s3:PutBucketPublicAccessBlock
-                  - s3:DeletePublicAccessBlock
                   - s3:PutBucketAcl
                 Resource:
                   - !GetAtt IdentityBucket.Arn
