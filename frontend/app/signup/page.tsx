@@ -249,6 +249,7 @@ export default function SignupPage() {
                 <select value={ageRange} onChange={e => setAgeRange(e.target.value as AgeRange)}>
                   {ageRanges.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
+                <span className="sms-helper-text">HealAll is for people 18 and over.</span>
               </label>
 
               <div style={{ background: "var(--bg-subtle)", borderRadius: "10px", padding: "12px 14px" }}>

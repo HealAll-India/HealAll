@@ -97,6 +97,7 @@ export default function OtpSignupPage() {
               <select value={formData.age_range} onChange={e => setFormData(prev => ({ ...prev, age_range: e.target.value as SignupRequest["age_range"] }))}>
                 {ageRanges.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
+              <span className="sms-helper-text">HealAll is for people 18 and over.</span>
             </label>
           </div>
           <div style={{ background: "var(--bg-subtle)", borderRadius: "10px", padding: "12px 14px" }}>

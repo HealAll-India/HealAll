@@ -12,12 +12,16 @@ export default function ChildSafetyPage() {
   return (
     <main className="legal">
       <div className="legal__header">
-        <p className="legal__updated">Last updated: November 26, 2026</p>
+        <p className="legal__updated">Last updated: November 27, 2026</p>
         <h1 className="legal__title">Child safety standards</h1>
         <p className="legal__lead">
           HealAll has zero tolerance for child sexual abuse and exploitation (CSAE). This page sets out what we ban,
           how to report it, and what we do when we find it. It applies to everything on HealAll: posts, comments,
           profiles and private messages, on the website and in the HealAll app.
+        </p>
+        <p className="legal__lead">
+          HealAll is for adults: you must be 18 or over to have an account, and we close any account we learn
+          belongs to someone under 18.
         </p>
       </div>
 

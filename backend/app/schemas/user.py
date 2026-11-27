@@ -1,10 +1,11 @@
 """User profile schemas."""
 
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
 
-from app.core.constants import AgeRange
+from app.core.constants import AgeRange, reject_under_18
 
 
 class UserProfileUpdate(BaseModel):
@@ -12,7 +13,7 @@ class UserProfileUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=2, max_length=120)
     city: str | None = Field(None, min_length=2, max_length=100)
-    age_range: AgeRange | None = None
+    age_range: Annotated[AgeRange | None, AfterValidator(reject_under_18)] = None
     bio: str | None = Field(None, max_length=1000)
     avatar_url: str | None = Field(None, max_length=500)
 

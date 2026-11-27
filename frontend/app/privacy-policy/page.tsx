@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
   return (
     <main style={{ maxWidth: "720px", margin: "0 auto", padding: "3rem 1.5rem 5rem" }}>
       <div style={{ marginBottom: "2.5rem" }}>
-        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: November 26, 2026</p>
+        <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 8px" }}>Last updated: November 27, 2026</p>
         <h1 style={{ fontSize: "32px", fontWeight: 800, color: "#111827", margin: "0 0 12px" }}>Privacy Policy</h1>
         <p style={{ fontSize: "16px", color: "#6b7280", lineHeight: 1.7, margin: 0 }}>
           HealAll (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;) is committed to protecting your privacy.
@@ -152,9 +152,9 @@ export default function PrivacyPolicyPage() {
 
       <Section title="8. Children">
         <p>
-          HealAll is available to users aged 13 and above. Users aged 13–17 must have parental consent.
-          We do not knowingly collect data from children under 13. If you believe a child under 13
-          has created an account, please contact us immediately.
+          HealAll is for people aged 18 and over. We do not knowingly collect data from anyone under 18.
+          If we learn that an account belongs to someone under 18, we close it and delete its data. If you
+          believe a child has created an account, please contact us immediately.
         </p>
         <p>
           Read our <Link href="/child-safety" style={{ color: "#16a34a" }}>child safety standards</Link> to see

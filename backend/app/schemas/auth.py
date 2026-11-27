@@ -7,7 +7,7 @@ from uuid import UUID
 from email_validator import EmailNotValidError, validate_email
 from pydantic import AfterValidator, BaseModel, EmailStr, Field, field_validator
 
-from app.core.constants import AgeRange, UserRole
+from app.core.constants import AgeRange, UserRole, reject_under_18
 
 _PHONE_SEPARATORS = re.compile(r"[\s\-().]")
 
@@ -47,7 +47,7 @@ class SignupRequest(BaseModel):
     phone: str = Field(..., pattern=r"^\+91\d{10}$")
     email: EmailStr
     city: str = Field(..., min_length=2, max_length=100)
-    age_range: AgeRange
+    age_range: Annotated[AgeRange, AfterValidator(reject_under_18)]
     invite_code: str = Field(..., min_length=5, max_length=20)
     roles: list[UserRole] = Field(..., min_length=1)
 
@@ -157,7 +157,7 @@ class GoogleSignupRequest(BaseModel):
     nonce: str | None = Field(default=None, max_length=128)
     phone: str = Field(..., pattern=r"^\+91\d{10}$")
     city: str = Field(..., min_length=2, max_length=100)
-    age_range: AgeRange
+    age_range: Annotated[AgeRange, AfterValidator(reject_under_18)]
     roles: list[UserRole] = Field(..., min_length=1)
 
     @field_validator("roles")
