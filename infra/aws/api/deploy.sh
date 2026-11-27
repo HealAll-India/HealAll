@@ -113,10 +113,17 @@ output() {
   aws cloudformation describe-stacks --region "${REGION}" --stack-name "${STACK_NAME}" \
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
-ENDPOINT="$(output DefaultEndpoint)"
 TARGET="$(output DnsTarget)"
-echo "==> ${ENDPOINT}/health (the first call includes a cold start)"
-curl -fsS --max-time 30 "${ENDPOINT}/health"
+# The default execute-api URL is off, so test the custom domain on its AWS
+# hostname: --connect-to keeps the TLS name api.healallindia.com but skips
+# DNS, which may still point somewhere else before the cut-over.
+HEALTH_HEADERS=()
+if [ -n "${ORIGIN_VERIFY_SECRET:-}" ]; then
+  HEALTH_HEADERS=(-H "X-Origin-Verify: ${ORIGIN_VERIFY_SECRET}")
+fi
+echo "==> https://${DOMAIN}/health via ${TARGET} (the first call includes a cold start)"
+curl -fsS --max-time 30 --connect-to "${DOMAIN}:443:${TARGET}:443" \
+  "${HEALTH_HEADERS[@]+"${HEALTH_HEADERS[@]}"}" "https://${DOMAIN}/health"
 echo
 echo
 echo "Done. In Cloudflare, point the 'api' record at:"

@@ -112,6 +112,11 @@ class Settings(BaseSettings):
     # /metrics answers 404 unless this is set.
     METRICS_TOKEN: str | None = None
 
+    # Shared secret Cloudflare sends as X-Origin-Verify. When set, requests
+    # without it get 403, so nobody can skip Cloudflare by calling API
+    # Gateway directly. Unset (local dev, Railway): no check.
+    ORIGIN_VERIFY_SECRET: str | None = None
+
     # Community verification
     COMMUNITY_VERIFY_THRESHOLD: int = Field(default=3, ge=1)
 

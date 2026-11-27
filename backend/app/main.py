@@ -26,6 +26,7 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.limiter import limiter
+from app.core.origin_guard import OriginGuardMiddleware
 from app.schemas.common import ErrorInfo, ErrorResponse, HealthResponse
 
 # Configure logging
@@ -94,6 +95,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Added last, so it runs first: refuse traffic that skipped Cloudflare.
+    if settings.ORIGIN_VERIFY_SECRET:
+        app.add_middleware(OriginGuardMiddleware, secret=settings.ORIGIN_VERIFY_SECRET)
 
     # Include routers
     app.include_router(v1_router)

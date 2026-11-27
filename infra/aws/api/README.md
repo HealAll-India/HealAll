@@ -37,12 +37,28 @@ access comes from the function's role (policy `healall-api-prod-runtime` in
 the bootstrap stack), so there is no long-lived S3 key. Once this is live,
 delete the `healall-app-prod` user's access key.
 
+## Only through Cloudflare
+
+The default `*.execute-api.amazonaws.com` URL is switched off
+(`DisableExecuteApiEndpoint`), so only `api.healallindia.com` answers. The
+custom domain still has an AWS hostname (`DnsTarget`) that anyone who learns
+it could call with the right TLS name, skipping Cloudflare. To close that:
+
+1. Pick a long random string.
+2. In Cloudflare, add a Transform Rule (Rules > Transform Rules > Modify
+   Request Header) for hostname `api.healallindia.com` that sets
+   `X-Origin-Verify` to that string.
+3. Add `ORIGIN_VERIFY_SECRET` with the same string to `.env.prod`, run
+   `put-secrets.sh`, and add it as a GitHub secret for the deploy smoke test.
+
+From then on the API answers 403 to requests without the header.
+
 ## Cost
 
 At HealAll's traffic this is close to free: Lambda's always-free monthly
 allowance (1M requests, 400,000 GB-seconds) covers it, API Gateway HTTP APIs
 cost about $1 per million requests, and ECR keeps the last 5 images (a few
-cents). The secret costs $0.40 a month plus $0.05 per 10,000 reads, one
+cents). Switching off the default URL and the header check are free. The secret costs $0.40 a month plus $0.05 per 10,000 reads, one
 read per cold start. There is no hourly charge.
 
 ## Things that differ from a long-running server
