@@ -41,24 +41,12 @@ Parameters:
       bills is ingestion past the 5 GB a month free tier, which this API stays
       far below (INFO level, one access line per request, no bodies).
 
-  # App settings. Secret values never appear in the console as parameters.
-  AppSecretKey:
-    Type: String
-    NoEcho: true
-    MinLength: 32
-  JwtSecretKey:
-    Type: String
-    NoEcho: true
-    MinLength: 32
-  DatabaseUrl:
-    Type: String
-    NoEcho: true
-    Description: Neon connection string (postgresql://...); the app converts it for asyncpg.
-  RedisUrl:
-    Type: String
-    NoEcho: true
-    AllowedPattern: "^rediss?://.+"
-    ConstraintDescription: must be a redis:// or rediss:// URL (the app connects at start-up).
+  # App settings that are not secret. Secrets (APP_SECRET_KEY, JWT_SECRET_KEY,
+  # DATABASE_URL, REDIS_URL, RESEND_API_KEY, MSG91_API_KEY, SENTRY_DSN,
+  # GROQ_API_KEY, GEMINI_API_KEY, VAPID_PRIVATE_KEY, METRICS_TOKEN) live in
+  # the Secrets Manager secret healall-api-<env>/app, created by the bootstrap
+  # stack and filled by put-secrets.sh. The function reads it at start-up, so
+  # they never appear in the stack's parameters or the function's settings.
   AllowedOrigins:
     Type: String
     Default: https://healallindia.com,https://www.healallindia.com
@@ -66,12 +54,6 @@ Parameters:
     Type: String
     Default: ""
     Description: Optional regex for extra CORS origins, e.g. Vercel preview URLs. Empty allows none.
-  S3AccessKey:
-    Type: String
-    NoEcho: true
-  S3SecretKey:
-    Type: String
-    NoEcho: true
   S3Region:
     Type: String
     Default: ap-south-1
@@ -81,43 +63,19 @@ Parameters:
   S3BucketIdentity:
     Type: String
     Default: healall-identity-ephemeral-prod
-  ResendApiKey:
-    Type: String
-    NoEcho: true
-    Description: Required in production. Without it OTP emails go to the log instead of the inbox.
-  Msg91ApiKey:
-    Type: String
-    NoEcho: true
-    Default: ""
   Msg91TemplateIdOtp:
     Type: String
     Default: ""
   GoogleClientId:
     Type: String
     Default: ""
-  SentryDsn:
-    Type: String
-    NoEcho: true
-    Default: ""
   AiTriageEnabled:
     Type: String
     Default: "false"
     AllowedValues: ["true", "false"]
-  GroqApiKey:
-    Type: String
-    NoEcho: true
-    Default: ""
-  GeminiApiKey:
-    Type: String
-    NoEcho: true
-    Default: ""
-  # Web push stays off until both VAPID keys are set.
+  # Web push stays off until both VAPID keys are set (the private one is in the secret).
   VapidPublicKey:
     Type: String
-    Default: ""
-  VapidPrivateKey:
-    Type: String
-    NoEcho: true
     Default: ""
 
 Resources:
@@ -137,10 +95,11 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
-      # Logs only. S3 access stays with the healall-app-prod keys the app
-      # already uses (S3AccessKey / S3SecretKey).
+      # Logs, plus the runtime policy from the bootstrap stack: read the app
+      # secret and use the two S3 buckets. No long-lived AWS keys.
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/healall-api-${Environment}-runtime
 
   ApiFunction:
     Type: AWS::Lambda::Function
@@ -159,28 +118,20 @@ Resources:
         Variables:
           APP_ENV: production
           APP_DEBUG: "false"
-          APP_SECRET_KEY: !Ref AppSecretKey
-          JWT_SECRET_KEY: !Ref JwtSecretKey
+          APP_SECRETS_ARN: !Sub healall-api-${Environment}/app
           APP_ALLOWED_ORIGINS: !Ref AllowedOrigins
           APP_ALLOWED_ORIGIN_REGEX: !Ref AllowedOriginRegex
-          DATABASE_URL: !Ref DatabaseUrl
-          REDIS_URL: !Ref RedisUrl
-          S3_ACCESS_KEY: !Ref S3AccessKey
-          S3_SECRET_KEY: !Ref S3SecretKey
+          # Empty keys: boto3 uses the function's role for S3.
+          S3_ACCESS_KEY: ""
+          S3_SECRET_KEY: ""
           S3_REGION: !Ref S3Region
           S3_ENDPOINT_URL: !Sub https://s3.${S3Region}.amazonaws.com
           S3_BUCKET_MEDIA: !Ref S3BucketMedia
           S3_BUCKET_IDENTITY: !Ref S3BucketIdentity
-          RESEND_API_KEY: !Ref ResendApiKey
-          MSG91_API_KEY: !Ref Msg91ApiKey
           MSG91_TEMPLATE_ID_OTP: !Ref Msg91TemplateIdOtp
           GOOGLE_CLIENT_ID: !Ref GoogleClientId
-          SENTRY_DSN: !Ref SentryDsn
           AI_TRIAGE_ENABLED: !Ref AiTriageEnabled
-          GROQ_API_KEY: !Ref GroqApiKey
-          GEMINI_API_KEY: !Ref GeminiApiKey
           VAPID_PUBLIC_KEY: !Ref VapidPublicKey
-          VAPID_PRIVATE_KEY: !Ref VapidPrivateKey
 
   HttpApi:
     Type: AWS::ApiGatewayV2::Api

@@ -29,8 +29,10 @@ def _s3_client():
     return boto3.client(
         "s3",
         endpoint_url=settings.S3_ENDPOINT_URL,
-        aws_access_key_id=settings.S3_ACCESS_KEY,
-        aws_secret_access_key=settings.S3_SECRET_KEY,
+        # Empty keys mean "use the default credential chain": on Lambda that
+        # is the function's own role, so no long-lived key is needed there.
+        aws_access_key_id=settings.S3_ACCESS_KEY or None,
+        aws_secret_access_key=settings.S3_SECRET_KEY or None,
         region_name=settings.S3_REGION,
         # SigV4 signs every header we put in the presign (Content-Type and
         # Content-Length), so S3 rejects an upload that differs from them.

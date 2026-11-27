@@ -28,7 +28,8 @@ This stack is never deployed from CI, so the deploy role cannot widen its own
 permissions. What the role can do: update only the `healall-api-prod`
 CloudFormation stack, push to the `healall-api` ECR repo, manage Lambda
 functions, log groups and roles named `healall-api-*` (those roles may only
-carry `AWSLambdaBasicExecutionRole`), manage HTTP APIs in ap-south-1 and the
+carry `AWSLambdaBasicExecutionRole` and the stack's own `healall-api-prod-runtime`
+policy), manage HTTP APIs in ap-south-1 and the
 `api.healallindia.com` custom domain, and request ACM certificates.
 
 ## 2. Add GitHub settings
@@ -44,12 +45,19 @@ Variables:
 | `APP_ALLOWED_ORIGIN_REGEX` | optional, extra CORS origins |
 | `AI_TRIAGE_ENABLED` | optional, `true` or `false` |
 
-Secrets (same meaning as in `infra/aws/api/.env.example`):
+Secrets, only what migrations need: `APP_SECRET_KEY`, `JWT_SECRET_KEY`,
+`DATABASE_URL`. Optional, not secret: `MSG91_TEMPLATE_ID_OTP`, `GOOGLE_CLIENT_ID`.
 
-- Required: `APP_SECRET_KEY`, `JWT_SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`,
-  `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `RESEND_API_KEY`
-- Optional: `MSG91_API_KEY`, `MSG91_TEMPLATE_ID_OTP`, `GOOGLE_CLIENT_ID`,
-  `SENTRY_DSN`, `GROQ_API_KEY`, `GEMINI_API_KEY`
+The API's own secrets (Redis, Resend, MSG91, Sentry, AI keys, the VAPID
+private key, the metrics token, and the three above) go in Secrets Manager,
+not GitHub. With an admin login, fill `infra/aws/api/.env.prod` and run:
+
+```bash
+./infra/aws/api/put-secrets.sh
+```
+
+Run it again whenever a secret changes. S3 needs no keys: the function uses
+its own role.
 
 ## 3. First deploy
 
