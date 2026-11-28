@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import html
 import os
+from datetime import date
 
 # ---------------------------------------------------------------------------
 # Inline logo attachment (CID embedding — works in Gmail without "show images")
@@ -372,4 +374,59 @@ def welcome_email(name: str) -> tuple[str, str]:
     )
 
     preview = f"Welcome to HealAll, {first}! You're now part of India's mutual-aid community."
+    return subject, _base(hero, body, preview)
+
+
+def under_18_notice_email(name: str, close_on: date) -> tuple[str, str]:
+    """Returns (subject, html_body) for the one warning to a member who signed up as 13 to 17.
+
+    HealAll became 18+; their account closes on ``close_on`` unless they
+    confirm on their profile that they are 18 or over.
+    """
+    first = html.escape(name.split()[0]) if name else "there"
+    when = f"{close_on.day} {close_on:%B %Y}"
+    subject = "Your HealAll account will close on " + when
+
+    hero = (
+        "<h1 style=\"margin:0;font-family:'DM Sans',Arial,sans-serif;"
+        'font-size:24px;font-weight:800;color:#ffffff;line-height:1.2;">'
+        "HealAll is now for people 18 and over"
+        "</h1>"
+    )
+
+    def _p(text: str) -> str:
+        return (
+            "<p style=\"margin:0 0 16px;font-family:'DM Sans',Arial,sans-serif;"
+            f'font-size:15px;color:#374151;line-height:1.7;">{text}</p>\n'
+        )
+
+    body = (
+        _p(f"Hi {first},")
+        + _p(
+            "When you joined HealAll, you chose the age range 13 to 17. HealAll is now only for people"
+            " aged 18 and over, so we have to close accounts that belong to anyone younger."
+        )
+        + _p(
+            f"<strong>Your account will close on {when}.</strong> Closing it permanently deletes your"
+            " profile, posts, comments and messages."
+        )
+        + _p(
+            "If you are 18 or over and picked the wrong range, sign in before then and confirm your"
+            " age range on your Profile page. Your account will then stay open."
+        )
+        + _p("If you want to keep anything you posted, save it before that date. Thank you for being part of HealAll.")
+        + '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">\n'
+        "  <tr>\n"
+        '    <td align="center">\n'
+        '      <a href="https://healallindia.com/profile"\n'
+        "         style=\"display:inline-block;font-family:'DM Sans',Arial,sans-serif;\n"
+        "                font-size:15px;font-weight:700;color:#ffffff;background:#16a34a;\n"
+        "                padding:14px 36px;border-radius:9999px;text-decoration:none;\n"
+        '                white-space:nowrap;">Open my profile</a>\n'
+        "    </td>\n"
+        "  </tr>\n"
+        "</table>\n"
+    )
+
+    preview = f"HealAll is now 18+. Your account closes on {when} unless you confirm you're 18 or over."
     return subject, _base(hero, body, preview)

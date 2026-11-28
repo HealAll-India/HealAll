@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Under18Card } from "@/components/admin/under-18-card";
 import { AuthRequired } from "@/components/ui/auth-required";
 import { getAdminStats } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -55,6 +56,7 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const isAdmin = user?.roles?.some((r) => r === "admin" || r === "head_admin") ?? false;
+  const isHeadAdmin = user?.roles?.includes("head_admin") ?? false;
 
   useEffect(() => {
     if (!token || !isAdmin) return;
@@ -116,6 +118,8 @@ export default function AdminDashboardPage() {
             <StatCard label="Pending verifications" value={stats.pending_verifications} accent="#d97706" href="/admin/verification" />
             <StatCard label="Pending reports" value={stats.pending_reports} accent="#dc2626" href="/admin/moderation" />
           </div>
+
+          {isHeadAdmin && <Under18Card />}
 
           {/* Quick links */}
           <section className="card stack">

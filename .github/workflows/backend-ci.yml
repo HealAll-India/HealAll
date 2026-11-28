@@ -146,6 +146,7 @@ jobs:
               tests/integration/test_auth_flow.py
               tests/integration/test_users.py
               tests/integration/test_account_deletion.py
+              tests/integration/test_under_18.py
               tests/integration/test_session_refresh.py
               tests/integration/test_otp_attempt_limit.py
           - shard: posts-feed
