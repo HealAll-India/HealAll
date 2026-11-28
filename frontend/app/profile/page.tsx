@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 
+import { AgeConfirmCard } from "@/components/profile/age-confirm-card";
 import { NotificationsCard } from "@/components/profile/notifications-card";
 import { DeleteAccountCard } from "@/components/profile/delete-account-card";
 import { AuthRequired } from "@/components/ui/auth-required";
@@ -298,6 +299,8 @@ export default function ProfilePage() {
 
       {profile && (
         <>
+          {profile.age_range === "13-17" && <AgeConfirmCard onUpdated={setProfile} />}
+
           {/* Edit details */}
           <section className="card stack" style={{ marginBottom: "16px" }}>
             <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 700 }}>Edit profile</h2>

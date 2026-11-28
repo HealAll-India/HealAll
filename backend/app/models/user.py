@@ -38,6 +38,9 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     suspended_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the one warning went to a member who signed up as 13 to 17 (HealAll is
+    # 18+). Their account closes no sooner than a week after this.
+    under_18_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     skills: Mapped[list["UserSkill"]] = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")

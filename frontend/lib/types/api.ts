@@ -503,3 +503,23 @@ export interface AdminStatsResponse {
   pending_verifications: number;
   pending_reports: number;
 }
+
+/** Members whose account still says 13 to 17 (HealAll is 18+). Dates are IST. */
+export interface Under18SummaryResponse {
+  total: number;
+  not_warned: number;
+  waiting: number;
+  due: number;
+  staff: number;
+  next_close_on: string | null;
+}
+
+export interface Under18WarnResponse {
+  sent: number;
+  failed: number;
+  close_on: string;
+}
+
+export interface Under18CloseResponse {
+  closed: number;
+}
