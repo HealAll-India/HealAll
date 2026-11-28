@@ -154,6 +154,9 @@ Resources:
           S3_BUCKET_MEDIA: !Ref S3BucketMedia
           S3_BUCKET_IDENTITY: !Ref S3BucketIdentity
           RESEND_API_KEY: !Ref ResendApiKey
+          # ResendProvider reads the sender from these; without them it falls back to noreply@healall.in.
+          SMTP_FROM_EMAIL: noreply@healallindia.com
+          SMTP_FROM_NAME: HealAll
           MSG91_API_KEY: !Ref Msg91ApiKey
           MSG91_TEMPLATE_ID_OTP: !Ref Msg91TemplateIdOtp
           GOOGLE_CLIENT_ID: !Ref GoogleClientId
